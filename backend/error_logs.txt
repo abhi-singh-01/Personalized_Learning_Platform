@@ -1,0 +1,33 @@
+[2026-02-20T19:50:52.958Z] 500 - AI features are currently disabled by the Administrator.
+Details: {}
+
+[2026-02-20T19:50:54.456Z] 500 - AI features are currently disabled by the Administrator.
+Details: {}
+
+[2026-02-20T19:50:55.090Z] 500 - AI features are currently disabled by the Administrator.
+Details: {}
+
+[2026-02-20T19:50:55.318Z] 500 - AI features are currently disabled by the Administrator.
+Details: {}
+
+[2026-02-21T09:20:57.304Z] 404 - Course not found
+Details: {}
+
+[2026-02-21T09:20:57.357Z] 404 - Course not found
+Details: {}
+
+[2026-02-21T09:36:29.740Z] 404 - Course not found
+Details: {}
+
+[2026-02-21T09:36:29.810Z] 404 - Course not found
+Details: {}
+
+[2026-02-21T09:39:10.050Z] 404 - Course not found
+Details: {}
+
+[2026-02-21T10:00:40.149Z] 503 - Sorry for the inconvenience, the website is under maintenance.
+Details: {}
+
+[2026-02-21T10:00:58.137Z] 503 - Sorry for the inconvenience, the website is under maintenance.
+Details: {}
+
