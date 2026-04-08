@@ -1,0 +1,42 @@
+# Render.com Backend Deployment Config
+# This file tells Render how to build and start the backend.
+# Reference: https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: learnai-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false  # Set manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false  # Set to your Vercel frontend URL
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: PLATFORM_FEE_RATE
+        value: "0.02"
+      - key: PLATFORM_GST_RATE
+        value: "0.18"
+      - key: PAYOUT_DELAY_DAYS
+        value: "5"
+    healthCheckPath: /api/auth

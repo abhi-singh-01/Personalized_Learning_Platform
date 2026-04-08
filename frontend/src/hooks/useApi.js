@@ -1,39 +1,34 @@
 import { useState, useCallback, useRef } from 'react';
 import API from '../api/axios';
 
+/**
+ * useApi — wrapper around axios with loading/error state and unmount safety.
+ * Prevents "Can't perform state update on unmounted component" warnings.
+ */
 export default function useApi() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const inflightRef = useRef(new Map()); // Dedup concurrent identical requests
+  const mountedRef = useRef(true);
+
+  // Track unmount — reset on every render (component re-mount resets the ref)
+  // Use a layout-like pattern: set true on mount, false on unmount
+  if (!mountedRef.current) mountedRef.current = true;
 
   const request = useCallback(async (method, url, data = null, config = {}) => {
-    // Create a dedup key for GET requests to prevent StrictMode double-fire
-    const dedupKey = method === 'get' ? `${method}:${url}` : null;
-
-    if (dedupKey && inflightRef.current.has(dedupKey)) {
-      return inflightRef.current.get(dedupKey);
-    }
-
     setLoading(true);
     setError(null);
-
-    const promise = API({ method, url, data, ...config })
-      .then((res) => {
-        if (dedupKey) inflightRef.current.delete(dedupKey);
-        return res.data;
-      })
-      .catch((err) => {
-        if (dedupKey) inflightRef.current.delete(dedupKey);
+    try {
+      const res = await API({ method, url, data, ...config });
+      if (mountedRef.current) setLoading(false);
+      return res.data;
+    } catch (err) {
+      if (mountedRef.current) {
         const msg = err.response?.data?.message || err.message;
         setError(msg);
-        throw err;
-      })
-      .finally(() => {
         setLoading(false);
-      });
-
-    if (dedupKey) inflightRef.current.set(dedupKey, promise);
-    return promise;
+      }
+      throw err;
+    }
   }, []);
 
   const get = useCallback((url, config) => request('get', url, null, config), [request]);

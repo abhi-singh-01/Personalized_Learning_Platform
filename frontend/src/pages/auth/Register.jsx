@@ -95,7 +95,7 @@ export default function Register() {
     try {
       const user = await register({ ...form, role: 'learner' });
       toast.success('Account created successfully! Welcome aboard 🎉');
-      nav(`/${user.role}/dashboard`);
+      nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed';
       setError(msg);
@@ -115,7 +115,7 @@ export default function Register() {
           setGLoading(true);
           try {
             const user = await googleLogin(response.credential, 'learner');
-            nav(`/${user.role}/dashboard`);
+            nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
           } catch (err) {
             setError(err.response?.data?.message || 'Google sign-up failed');
           } finally { setGLoading(false); }

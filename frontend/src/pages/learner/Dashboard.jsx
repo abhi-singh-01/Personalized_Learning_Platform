@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
@@ -38,10 +38,14 @@ export default function LearnerDashboard() {
   const [feedback, setFeedback] = useState(null);
   const [fbLoading, setFbLoading] = useState(false);
   const [scheduleData, setScheduleData] = useState({ upcoming: [], cancelled: [] });
+  const fetchedRef = useRef(false);
   usePageTitle('Dashboard');
 
   useEffect(() => {
-    api.get('/analytics/learner/dashboard').then((res) => setData(res.data));
+    if (fetchedRef.current) return; // StrictMode guard
+    fetchedRef.current = true;
+
+    api.get('/analytics/learner/dashboard').then((res) => setData(res.data)).catch(() => {});
     api.get('/schedules/learner/upcoming').then((res) => setScheduleData(res.data || { upcoming: [], cancelled: [] })).catch(() => {});
   }, []);
 

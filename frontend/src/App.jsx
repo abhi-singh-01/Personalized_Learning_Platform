@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorBoundary from './components/auth/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
@@ -45,29 +47,21 @@ import AIChatBot from './components/ui/AIChatBot';
 
 const LazyFallback = () => (
   <div className="flex h-64 items-center justify-center">
-    <div className="animate-spin h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative">
+        <div className="w-10 h-10 border-4 border-primary-200 dark:border-primary-800 rounded-full" />
+        <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin absolute inset-0" />
+      </div>
+      <p className="text-xs text-gray-400 font-medium">Loading module...</p>
+    </div>
   </div>
 );
 
-function ProtectedRoute({ children, allowedRoles }) {
-  const { user, loading } = useAuth();
-  if (loading)
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  if (!user) return <Navigate to="/login" />;
-  if (allowedRoles && !allowedRoles.includes(user.role))
-    return <Navigate to={'/' + user.role + '/dashboard'} />;
-  return children;
-}
-
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   return (
-    <>
+    <ErrorBoundary>
     <Suspense fallback={<LazyFallback />}>
       <Routes>
         {/* Public pages */}
@@ -75,8 +69,8 @@ export default function App() {
         <Route
           path="/login"
           element={
-            user ? (
-              <Navigate to={'/' + user.role + '/dashboard'} />
+            !loading && user ? (
+              <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />
             ) : (
               <Login />
             )
@@ -85,8 +79,8 @@ export default function App() {
         <Route
           path="/register"
           element={
-            user ? (
-              <Navigate to={'/' + user.role + '/dashboard'} />
+            !loading && user ? (
+              <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />
             ) : (
               <Register />
             )
@@ -142,6 +136,6 @@ export default function App() {
       </Routes>
     </Suspense>
     <AIChatBot />
-    </>
+    </ErrorBoundary>
   );
 }

@@ -13,7 +13,13 @@ export function AuthProvider({ children }) {
   const [sessionWarning, setSessionWarning] = useState(false);
   const idleTimerRef = useRef(null);
   const warningTimerRef = useRef(null);
-  const fetchedRef = useRef(false); // Prevent duplicate /auth/me calls (StrictMode)
+
+  // ── StrictMode guard: prevent double /auth/me fetch ──
+  const fetchedRef = useRef(false);
+
+  // Derived state for convenience
+  const role = user?.role || 'learner';
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   // Check if stored token has exceeded max age
   const isTokenExpired = () => {
@@ -23,10 +29,13 @@ export function AuthProvider({ children }) {
   };
 
   const logout = useCallback(async () => {
+    // Remove server-side session (device slot)
     try {
-      const token = localStorage.getItem('token');
-      if (token) await API.post('/auth/logout');
-    } catch { /* silent */ }
+      const t = localStorage.getItem('token');
+      if (t) {
+        await API.post('/auth/logout');
+      }
+    } catch { /* silent — clear local state regardless */ }
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -44,10 +53,12 @@ export function AuthProvider({ children }) {
     clearTimeout(idleTimerRef.current);
     clearTimeout(warningTimerRef.current);
 
+    // Show warning 2 minutes before timeout
     warningTimerRef.current = setTimeout(() => {
       setSessionWarning(true);
     }, SESSION_TIMEOUT_MS - 2 * 60 * 1000);
 
+    // Auto logout after full timeout
     idleTimerRef.current = setTimeout(() => {
       logout();
       window.location.href = '/login?expired=1';
@@ -62,7 +73,7 @@ export function AuthProvider({ children }) {
     const handleActivity = () => resetIdleTimer();
 
     events.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }));
-    resetIdleTimer();
+    resetIdleTimer(); // start the timer
 
     return () => {
       events.forEach((e) => window.removeEventListener(e, handleActivity));
@@ -71,35 +82,47 @@ export function AuthProvider({ children }) {
     };
   }, [user, resetIdleTimer]);
 
-  // Initial load: restore session — runs ONCE even in StrictMode
+  // ── Initial load: restore session (StrictMode-safe) ──
   useEffect(() => {
+    // Guard: skip if already fetched (React StrictMode double-mount)
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const saved = localStorage.getItem('user');
 
-    if (token && saved) {
+    if (storedToken && saved) {
+      // Check token age
       if (isTokenExpired()) {
         logout();
         setLoading(false);
         return;
       }
 
-      // Immediately restore cached user (prevents blank screen)
-      setUser(JSON.parse(saved));
+      // Immediately restore cached user (prevents blank flash)
+      try {
+        setUser(JSON.parse(saved));
+      } catch {
+        // Corrupted localStorage — clear it
+        localStorage.removeItem('user');
+      }
 
-      // Validate with server (single call)
-      API.get('/auth/me')
+      // Background refresh from server
+      const controller = new AbortController();
+      API.get('/auth/me', { signal: controller.signal })
         .then((res) => {
           const freshUser = res.data.data;
           setUser(freshUser);
           localStorage.setItem('user', JSON.stringify(freshUser));
         })
-        .catch(() => {
+        .catch((err) => {
+          // Don't logout on abort (component unmount)
+          if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
           logout();
         })
         .finally(() => setLoading(false));
+
+      return () => controller.abort();
     } else {
       setLoading(false);
     }
@@ -107,8 +130,8 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await API.post('/auth/login', { email, password });
-    const { token, user: u } = res.data.data;
-    localStorage.setItem('token', token);
+    const { token: t, user: u } = res.data.data;
+    localStorage.setItem('token', t);
     localStorage.setItem('user', JSON.stringify(u));
     localStorage.setItem('loginTime', Date.now().toString());
     setUser(u);
@@ -117,8 +140,8 @@ export function AuthProvider({ children }) {
 
   const googleLogin = async (idToken, role) => {
     const res = await API.post('/auth/google', { idToken, role });
-    const { token, user: u } = res.data.data;
-    localStorage.setItem('token', token);
+    const { token: t, user: u } = res.data.data;
+    localStorage.setItem('token', t);
     localStorage.setItem('user', JSON.stringify(u));
     localStorage.setItem('loginTime', Date.now().toString());
     setUser(u);
@@ -127,19 +150,27 @@ export function AuthProvider({ children }) {
 
   const register = async (data) => {
     const res = await API.post('/auth/register', data);
-    const { token, user: u } = res.data.data;
-    localStorage.setItem('token', token);
+    const { token: t, user: u } = res.data.data;
+    localStorage.setItem('token', t);
     localStorage.setItem('user', JSON.stringify(u));
     localStorage.setItem('loginTime', Date.now().toString());
     setUser(u);
     return u;
   };
 
+  // Deduped user refresh — call this from any component
+  const refreshUserRef = useRef(false);
   const refreshUser = async () => {
-    const res = await API.get('/auth/me');
-    const freshUser = res.data.data;
-    setUser(freshUser);
-    localStorage.setItem('user', JSON.stringify(freshUser));
+    if (refreshUserRef.current) return; // prevent concurrent refreshes
+    refreshUserRef.current = true;
+    try {
+      const res = await API.get('/auth/me');
+      const freshUser = res.data.data;
+      setUser(freshUser);
+      localStorage.setItem('user', JSON.stringify(freshUser));
+    } finally {
+      refreshUserRef.current = false;
+    }
   };
 
   const extendSession = () => {
@@ -148,7 +179,11 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, googleLogin, register, logout, refreshUser, sessionWarning, extendSession }}>
+    <AuthContext.Provider value={{
+      user, loading, role, token,
+      login, googleLogin, register, logout, refreshUser,
+      sessionWarning, extendSession,
+    }}>
       {children}
     </AuthContext.Provider>
   );

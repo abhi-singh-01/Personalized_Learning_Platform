@@ -40,7 +40,7 @@ export default function Login() {
     try {
       const user = await login(form.email, form.password);
       toast.success(`Welcome back, ${user.name || 'Learner'}!`);
-      nav(`/${user.role}/dashboard`);
+      nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Login failed';
       setError(msg);
@@ -67,8 +67,8 @@ export default function Login() {
         callback: async (response) => {
           setGLoading(true);
           try {
-            const user = await googleLogin(response.credential);
-            nav(`/${user.role}/dashboard`);
+            const user = await googleLogin(response.credential, 'learner');
+            nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
           } catch (err) {
             setError(err.response?.data?.message || 'Google login failed');
           } finally {

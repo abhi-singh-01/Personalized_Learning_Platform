@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
@@ -155,10 +155,14 @@ export default function EducatorDashboard() {
   const [schedules, setSchedules] = useState([]);
   const [cancelId, setCancelId] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    api.get('/analytics/educator/dashboard').then((res) => setData(res.data));
-    api.get('/schedules/educator').then((res) => setSchedules(res.data || []));
+    if (fetchedRef.current) return; // StrictMode guard
+    fetchedRef.current = true;
+
+    api.get('/analytics/educator/dashboard').then((res) => setData(res.data)).catch(() => {});
+    api.get('/schedules/educator').then((res) => setSchedules(res.data || [])).catch(() => {});
   }, []);
 
   const fetchCourses = () => {
