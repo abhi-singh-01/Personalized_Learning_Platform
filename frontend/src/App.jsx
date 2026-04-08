@@ -5,6 +5,7 @@ import AppLayout from './components/layout/AppLayout';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import CompleteProfile from './pages/auth/CompleteProfile';
 import About from './pages/About';
 import Features from './pages/Features';
 import Tracks from './pages/Tracks';
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="/tracks" element={<Tracks />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/become-educator" element={<BecomeEducator />} />
+        <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
 
         {/* Protected pages inside layout */}
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

@@ -40,3 +40,6 @@ Details: {}
 [2026-03-24T12:05:39.317Z] 500 - Expected property name or '}' in JSON at position 1 (line 1 column 2)
 Details: {}
 
+[2026-04-08T14:21:32.632Z] 400 - `teacher` is not a valid enum value for path `role`.
+Details: {"role":{"name":"ValidatorError","message":"`teacher` is not a valid enum value for path `role`.","properties":{"message":"`teacher` is not a valid enum value for path `role`.","type":"enum","enumValues":["learner","educator","admin"],"path":"role","value":"teacher","length":7},"kind":"enum","path":"role","value":"teacher"}}
+

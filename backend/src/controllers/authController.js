@@ -106,6 +106,10 @@ exports.login = async (req, res, next) => {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }
 
+    // Auto-migrate legacy roles
+    if (user.role === 'teacher') user.role = 'educator';
+    if (user.role === 'student') user.role = 'learner';
+
     const settings = await Setting.findOne();
     if (settings && settings.maintenanceMode && user.role !== 'admin') {
       throw new AppError('Sorry for the inconvenience, the website is under maintenance.', 503);
@@ -149,13 +153,18 @@ exports.googleLogin = async (req, res, next) => {
         throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
       }
 
+      // Auto-migrate legacy roles
+      if (user.role === 'teacher') user.role = 'educator';
+      if (user.role === 'student') user.role = 'learner';
+
       // Existing user — update googleId if not set
+      const needsSave = !user.googleId || user.isModified('role');
       if (!user.googleId) {
         user.googleId = googleId;
         user.authProvider = user.authProvider === 'local' ? 'local' : 'google';
         if (picture && !user.avatar) user.avatar = picture;
-        await user.save();
       }
+      if (needsSave) await user.save();
     } else {
       // New user — role is required
       const selectedRole = role || 'learner';

@@ -37,7 +37,6 @@ const couponSchema = new mongoose.Schema({
   autoApplyOnCheckout: { type: Boolean, default: false },
 }, { timestamps: true });
 
-couponSchema.index({ code: 1 });
 couponSchema.index({ expiresAt: 1, isActive: 1 });
 
 module.exports = mongoose.model('Coupon', couponSchema);

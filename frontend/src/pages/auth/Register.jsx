@@ -6,7 +6,6 @@ import usePageTitle from '../../hooks/usePageTitle';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-/* ── Country → State → City Data ── */
 const locationData = {
   India: {
     'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Thane'],
@@ -31,7 +30,6 @@ const locationData = {
     'Texas': ['Houston', 'Dallas', 'Austin', 'San Antonio'],
     'Florida': ['Miami', 'Orlando', 'Tampa', 'Jacksonville'],
     'Washington': ['Seattle', 'Spokane', 'Tacoma', 'Bellevue'],
-    'Illinois': ['Chicago', 'Springfield', 'Naperville', 'Peoria'],
   },
   'United Kingdom': {
     'England': ['London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds'],
@@ -53,14 +51,9 @@ const locationData = {
     'Bavaria': ['Munich', 'Nuremberg', 'Augsburg'],
     'Berlin': ['Berlin'],
     'Hamburg': ['Hamburg'],
-    'North Rhine-Westphalia': ['Cologne', 'Dusseldorf', 'Dortmund'],
   },
   Singapore: { 'Singapore': ['Singapore'] },
-  UAE: {
-    'Dubai': ['Dubai'],
-    'Abu Dhabi': ['Abu Dhabi'],
-    'Sharjah': ['Sharjah'],
-  },
+  UAE: { 'Dubai': ['Dubai'], 'Abu Dhabi': ['Abu Dhabi'], 'Sharjah': ['Sharjah'] },
 };
 
 const countries = Object.keys(locationData);
@@ -78,12 +71,10 @@ function GoogleIcon({ size = 20 }) {
 
 export default function Register() {
   usePageTitle('Sign Up');
-  const [step, setStep] = useState(1); // 1 = credentials, 2 = profile details (for Google users)
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', country: '', state: '', city: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
-  const [googleData, setGoogleData] = useState(null); // Stores token + user after Google sign-in
   const { register, googleLogin } = useAuth();
   const nav = useNavigate();
 
@@ -93,8 +84,6 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    // Validate phone
     if (!/^\d{10}$/.test(form.phone)) { setError('Phone number must be exactly 10 digits'); return; }
     if (!form.country) { setError('Please select your country'); return; }
     if (!form.state) { setError('Please select your state'); return; }
@@ -106,36 +95,7 @@ export default function Register() {
       nav(`/${user.role}/dashboard`);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Google: Step 2 — complete profile after Google sign-in
-  const handleCompleteProfile = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!/^\d{10}$/.test(form.phone)) { setError('Phone number must be exactly 10 digits'); return; }
-    if (!form.country || !form.state || !form.city) { setError('All location fields are required'); return; }
-
-    setLoading(true);
-    try {
-      const api = (await import('../../hooks/useApi')).default;
-      // We need to call the profile completion endpoint
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/auth/complete-profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ phone: form.phone, country: form.country, state: form.state, city: form.city }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to complete profile');
-      nav(`/${googleData.role}/dashboard`);
-    } catch (err) {
-      setError(err.message || 'Failed to complete profile');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const googleBtnRef = useRef(null);
@@ -150,13 +110,7 @@ export default function Register() {
           setGLoading(true);
           try {
             const user = await googleLogin(response.credential, 'learner');
-            if (!user.profileComplete) {
-              // Show step 2 — collect phone + location
-              setGoogleData(user);
-              setStep(2);
-            } else {
-              nav(`/${user.role}/dashboard`);
-            }
+            nav(`/${user.role}/dashboard`);
           } catch (err) {
             setError(err.response?.data?.message || 'Google sign-up failed');
           } finally { setGLoading(false); }
@@ -177,83 +131,12 @@ export default function Register() {
     else setError('Google Sign-In is still loading. Please try again.');
   }, []);
 
-  const set = (key) => (e) => {
-    const val = e.target.value;
-    const updates = { ...form, [key]: val };
-    // Reset dependent fields
+  const updateField = (key, value) => {
+    const updates = { ...form, [key]: value };
     if (key === 'country') { updates.state = ''; updates.city = ''; }
     if (key === 'state') { updates.city = ''; }
     setForm(updates);
   };
-
-  const handlePhoneChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-    setForm({ ...form, phone: val });
-  };
-
-  /* ── Location fields (shared between step 1 form and step 2) ── */
-  const LocationFields = () => (
-    <>
-      {/* Phone */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-          Mobile Number <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="tel"
-            className="input-field pl-10"
-            placeholder="10-digit mobile number"
-            value={form.phone}
-            onChange={handlePhoneChange}
-            required
-            maxLength={10}
-            pattern="\d{10}"
-          />
-          <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium ${form.phone.length === 10 ? 'text-emerald-500' : 'text-gray-400'}`}>
-            {form.phone.length}/10
-          </span>
-        </div>
-      </div>
-
-      {/* Country */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-          Country <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <select className="input-field pl-10 appearance-none" value={form.country} onChange={set('country')} required>
-            <option value="">Select country</option>
-            {countries.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* State & City — row */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-            State <span className="text-red-500">*</span>
-          </label>
-          <select className="input-field appearance-none" value={form.state} onChange={set('state')} required disabled={!form.country}>
-            <option value="">Select state</option>
-            {statesForCountry.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-            City <span className="text-red-500">*</span>
-          </label>
-          <select className="input-field appearance-none" value={form.city} onChange={set('city')} required disabled={!form.state}>
-            <option value="">Select city</option>
-            {citiesForState.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </div>
-    </>
-  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
@@ -261,7 +144,6 @@ export default function Register() {
       <div className="fixed bottom-10 right-10 w-60 h-60 bg-blue-200/40 dark:bg-blue-900/10 rounded-full blur-3xl" />
 
       <div className="relative w-full max-w-md animate-fade-in-up">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-8 group">
           <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all">
             <GraduationCap size={24} className="text-white" />
@@ -270,81 +152,105 @@ export default function Register() {
         </Link>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-8">
+          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">Create your account</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Start learning for free — no credit card required</p>
 
-          {/* ─── STEP 2: Complete Profile (Google users) ─── */}
-          {step === 2 ? (
-            <>
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">Complete your profile</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Welcome {googleData?.name || ''}! Just a few more details.
-              </p>
-              {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" /> {error}
-                </div>
-              )}
-              <form onSubmit={handleCompleteProfile} className="space-y-4">
-                <LocationFields />
-                <button type="submit" disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50">
-                  {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</> : <>Complete Setup <ArrowRight size={18} /></>}
-                </button>
-              </form>
-            </>
-          ) : (
-            /* ─── STEP 1: Registration ─── */
-            <>
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">Create your account</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Start learning for free — no credit card required</p>
-
-              {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" /> {error}
-                </div>
-              )}
-
-              {/* Google */}
-              <button onClick={handleGoogleRegister} disabled={gLoading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50 mb-5">
-                {gLoading ? <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /> : <GoogleIcon />}
-                Sign up with Google
-              </button>
-              <div ref={googleBtnRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, overflow: 'hidden' }} />
-
-              <div className="flex items-center gap-4 mb-5">
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">or</span>
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-              </div>
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
-                  <input className="input-field" placeholder="John Doe" value={form.name} onChange={set('name')} required />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
-                  <input type="email" className="input-field" placeholder="you@example.com" value={form.email} onChange={set('email')} required />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
-                  <input type="password" className="input-field" placeholder="Min 6 characters" value={form.password} onChange={set('password')} required minLength={6} />
-                </div>
-
-                <LocationFields />
-
-                <button type="submit" disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50">
-                  {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creating...</> : <>Sign up <ArrowRight size={18} /></>}
-                </button>
-              </form>
-
-              <p className="text-[11px] text-gray-400 text-center mt-4 leading-relaxed">
-                By signing up, you agree to our Terms of Service and Privacy Policy.
-              </p>
-            </>
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" /> {error}
+            </div>
           )}
+
+          {/* Google */}
+          <button onClick={handleGoogleRegister} disabled={gLoading}
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50 mb-5">
+            {gLoading ? <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /> : <GoogleIcon />}
+            Sign up with Google
+          </button>
+          <div ref={googleBtnRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, overflow: 'hidden' }} />
+
+          <div className="flex items-center gap-4 mb-5">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
+              <input className="input-field" placeholder="John Doe" value={form.name} onChange={(e) => updateField('name', e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
+              <input type="email" className="input-field" placeholder="you@example.com" value={form.email} onChange={(e) => updateField('email', e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
+              <input type="password" className="input-field" placeholder="Min 6 characters" value={form.password} onChange={(e) => updateField('password', e.target.value)} required minLength={6} />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Mobile Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type="tel" className="input-field pl-10" placeholder="10-digit mobile number"
+                  value={form.phone} onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  required maxLength={10} />
+                <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium ${form.phone.length === 10 ? 'text-emerald-500' : 'text-gray-400'}`}>
+                  {form.phone.length}/10
+                </span>
+              </div>
+            </div>
+
+            {/* Country */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Country <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <select className="input-field pl-10 appearance-none" value={form.country} onChange={(e) => updateField('country', e.target.value)} required>
+                  <option value="">Select country</option>
+                  {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* State & City */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <select className="input-field appearance-none" value={form.state} onChange={(e) => updateField('state', e.target.value)} required disabled={!form.country}>
+                  <option value="">Select state</option>
+                  {statesForCountry.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <select className="input-field appearance-none" value={form.city} onChange={(e) => updateField('city', e.target.value)} required disabled={!form.state}>
+                  <option value="">Select city</option>
+                  {citiesForState.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50">
+              {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creating...</> : <>Sign up <ArrowRight size={18} /></>}
+            </button>
+          </form>
+
+          <p className="text-[11px] text-gray-400 text-center mt-4 leading-relaxed">
+            By signing up, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </div>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">

@@ -5,12 +5,12 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, minlength: 6 },
-  role: { type: String, enum: ['learner', 'educator', 'admin'], required: true },
+  role: { type: String, enum: ['learner', 'educator', 'admin', 'teacher', 'student'], required: true },
   authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   googleId: { type: String, unique: true, sparse: true },
   avatar: { type: String, default: '' },
   bio: { type: String, default: '' },
-  phone: { type: String, default: '', match: [/^\d{10}$/, 'Phone must be exactly 10 digits'] },
+  phone: { type: String, default: '' },
   country: { type: String, default: '' },
   state: { type: String, default: '' },
   city: { type: String, default: '' },
@@ -64,6 +64,13 @@ userSchema.index({ engagementScore: 1 });
 
 
 userSchema.pre('save', async function (next) {
+  // Auto-migrate legacy roles
+  if (this.role === 'teacher') this.role = 'educator';
+  if (this.role === 'student') this.role = 'learner';
+  // Validate phone only if provided
+  if (this.phone && !/^\d{10}$/.test(this.phone)) {
+    return next(new Error('Phone must be exactly 10 digits'));
+  }
   if (!this.isModified('password') || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();

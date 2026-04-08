@@ -51,7 +51,6 @@ const uiConfigSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 uiConfigSchema.index({ screen: 1, isActive: 1, priority: -1 });
-uiConfigSchema.index({ key: 1 });
 uiConfigSchema.index({ expiresAt: 1 });
 
 module.exports = mongoose.model('UIConfig', uiConfigSchema);
