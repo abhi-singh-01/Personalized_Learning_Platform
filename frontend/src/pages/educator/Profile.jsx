@@ -4,8 +4,10 @@ import useApi from '../hooks/useApi';
 import Card from '../components/ui/Card';
 import { levelColors } from '../utils/helpers';
 import { User, Lock, Save } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function Profile() {
+  usePageTitle('Educator Profile');
   const { user, refreshUser } = useAuth();
   const api = useApi();
   const [tab, setTab] = useState('profile');

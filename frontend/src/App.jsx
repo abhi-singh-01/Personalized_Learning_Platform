@@ -9,6 +9,7 @@ import About from './pages/About';
 import Features from './pages/Features';
 import Tracks from './pages/Tracks';
 import Insights from './pages/Insights';
+import BecomeEducator from './pages/BecomeEducator';
 import LearnerDashboard from './pages/learner/Dashboard';
 import Courses from './pages/learner/Courses';
 import CourseDetail from './pages/learner/CourseDetail';
@@ -37,6 +38,7 @@ const ContentModeration = lazy(() => import('./pages/admin/ContentModeration'));
 const LiveClassManager = lazy(() => import('./pages/educator/LiveClassManager'));
 const EarningsDashboard = lazy(() => import('./pages/educator/EarningsDashboard'));
 const LiveClassRoom = lazy(() => import('./pages/learner/LiveClassRoom'));
+const PaymentHistory = lazy(() => import('./pages/learner/PaymentHistory'));
 
 import AIChatBot from './components/ui/AIChatBot';
 
@@ -93,6 +95,7 @@ export default function App() {
         <Route path="/features" element={<Features />} />
         <Route path="/tracks" element={<Tracks />} />
         <Route path="/insights" element={<Insights />} />
+        <Route path="/become-educator" element={<BecomeEducator />} />
 
         {/* Protected pages inside layout */}
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -104,6 +107,7 @@ export default function App() {
           <Route path="/learner/courses/:courseId/practice" element={<ProtectedRoute allowedRoles={['learner']}><PracticeQuiz /></ProtectedRoute>} />
           <Route path="/learner/study-plan" element={<ProtectedRoute allowedRoles={['learner']}><StudyPlan /></ProtectedRoute>} />
           <Route path="/learner/live-class/:classId" element={<ProtectedRoute allowedRoles={['learner']}><LiveClassRoom /></ProtectedRoute>} />
+          <Route path="/learner/payments" element={<ProtectedRoute allowedRoles={['learner']}><PaymentHistory /></ProtectedRoute>} />
 
           {/* Educator routes */}
           <Route path="/educator/dashboard" element={<ProtectedRoute allowedRoles={['educator']}><EducatorDashboard /></ProtectedRoute>} />

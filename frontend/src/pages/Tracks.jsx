@@ -6,6 +6,7 @@ import {
   GraduationCap, ArrowRight, LogIn, Clock, Users, Code, Database,
   Briefcase, Layers, Star, CheckCircle2,
 } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 const categories = ['All', 'Data & AI', 'Web Development', 'Career'];
 
@@ -80,6 +81,7 @@ const allTracks = [
 ];
 
 export default function Tracks() {
+  usePageTitle('Learning Tracks');
   const { dark } = useTheme();
   const [activeCategory, setActiveCategory] = useState('All');
   const [hoveredTrack, setHoveredTrack] = useState(null);

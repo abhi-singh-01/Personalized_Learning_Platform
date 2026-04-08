@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import { TicketPercent, IndianRupee, TrendingUp, Users, Calendar } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 function Stat({ icon: Icon, label, value }) {
   return (
@@ -18,6 +19,7 @@ function Stat({ icon: Icon, label, value }) {
 }
 
 export default function OffersDashboard() {
+  usePageTitle('Offers');
   const api = useApi();
   const [data, setData] = useState(null);
   const [start, setStart] = useState('');

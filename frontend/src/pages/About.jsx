@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { GraduationCap, Mail, ArrowLeft } from 'lucide-react';
 import PublicNavbar from '../components/layout/PublicNavbar';
+import usePageTitle from '../hooks/usePageTitle';
 
 const developers = [
   { name: 'Abhishek Mishra', role: 'Full-Stack Lead', desc: 'Architected the system and led integration across all modules.', email: 'abhishek@learnai.dev', initials: 'AM', color: 'from-indigo-500 to-violet-500' },
@@ -12,6 +13,7 @@ const developers = [
 const techStack = ['React.js', 'Node.js', 'Express.js', 'MongoDB', 'Google Gemini AI', 'Tailwind CSS', 'JWT Auth', 'Recharts'];
 
 export default function About() {
+  usePageTitle('About');
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <PublicNavbar />

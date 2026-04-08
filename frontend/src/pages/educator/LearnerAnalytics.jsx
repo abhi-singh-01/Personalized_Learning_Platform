@@ -7,8 +7,10 @@ import { levelColors, formatDate } from '../../utils/helpers';
 import { Users, Search } from 'lucide-react';
 
 import { UserPlus } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function LearnerAnalytics() {
+  usePageTitle('Learner Analytics');
   const api = useApi();
   const [courses, setCourses] = useState([]);
   const [assignedLearners, setAssignedLearners] = useState([]);

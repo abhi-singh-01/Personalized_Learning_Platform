@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import { PlusCircle, TicketPercent, Ban, Pencil, RotateCcw, Clock3 } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const initialForm = {
   code: '',
@@ -17,6 +18,7 @@ const initialForm = {
 };
 
 export default function EducatorCoupons() {
+  usePageTitle('Coupons');
   const api = useApi();
   const [coupons, setCoupons] = useState([]);
   const [form, setForm] = useState(initialForm);

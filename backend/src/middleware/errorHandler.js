@@ -1,4 +1,8 @@
 const { NODE_ENV } = require('../config/env');
+const path = require('path');
+const fs = require('fs');
+
+const errorLogPath = path.join(__dirname, '..', '..', 'error_logs.txt');
 
 const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
@@ -17,8 +21,15 @@ const errorHandler = (err, req, res, next) => {
     message = 'Invalid ID format';
   }
 
-  const fs = require('fs');
-  fs.appendFile('error_logs.txt', `[${new Date().toISOString()}] ${statusCode} - ${message}\nDetails: ${JSON.stringify(err.errors || {})}\n\n`, () => {});
+  // Async logging — non-blocking
+  const logEntry = `[${new Date().toISOString()}] ${statusCode} - ${message}\nDetails: ${JSON.stringify(err.errors || {})}\n\n`;
+  fs.appendFile(errorLogPath, logEntry, (writeErr) => {
+    if (writeErr) console.error('Failed to write error log:', writeErr.message);
+  });
+
+  if (NODE_ENV === 'development') {
+    console.error(`[ERROR ${statusCode}]`, message);
+  }
 
   res.status(statusCode).json({
     success: false,

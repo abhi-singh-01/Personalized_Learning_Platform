@@ -4,6 +4,7 @@ import Loading from '../../components/ui/Loading';
 import ReportExporter from '../../components/ui/ReportExporter';
 import { StatCard } from '../../components/ui/Card';
 import { Users, Server, BookOpen, Activity } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     BarChart, Bar, PieChart, Pie, Cell, Legend
@@ -12,6 +13,7 @@ import {
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function PlatformAnalytics() {
+  usePageTitle('Platform Analytics');
     const api = useApi();
     const [data, setData] = useState(null);
 

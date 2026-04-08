@@ -3,8 +3,10 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
 import { Flag, Star, Check, X, Eye, MessageSquare, AlertTriangle } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function ContentModeration() {
+  usePageTitle('Content Moderation');
   const api = useApi();
   const [reviews, setReviews] = useState([]);
   const [tab, setTab] = useState('flagged');

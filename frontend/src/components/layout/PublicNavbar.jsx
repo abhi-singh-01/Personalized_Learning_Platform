@@ -3,99 +3,84 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  GraduationCap,
-  Sun,
-  Moon,
-  LogIn,
-  Search,
-  Menu,
-  X,
-  ChevronDown,
-  UserCircle2,
-  BookOpen,
+  GraduationCap, Sun, Moon, LogIn, Search, Menu, X,
+  ChevronDown, UserCircle2, BookOpen, Compass, Lightbulb,
+  Code, Database, Briefcase, Brain, BarChart3, Layers,
 } from 'lucide-react';
 
-const learningTracks = [
-  { label: 'Data & AI', href: '/tracks' },
-  { label: 'Web Development', href: '/tracks' },
-  { label: 'Career Prep', href: '/tracks' },
+const categories = [
+  { label: 'Data & AI', icon: Brain, color: 'text-blue-500', href: '/tracks' },
+  { label: 'Web Development', icon: Code, color: 'text-emerald-500', href: '/tracks' },
+  { label: 'System Design', icon: Layers, color: 'text-purple-500', href: '/tracks' },
+  { label: 'Career Prep', icon: Briefcase, color: 'text-amber-500', href: '/tracks' },
+  { label: 'Analytics', icon: BarChart3, color: 'text-rose-500', href: '/tracks' },
+  { label: 'Databases', icon: Database, color: 'text-cyan-500', href: '/tracks' },
 ];
 
-/* ── Reusable search bar with live results ── */
-function NavSearch({ className = '', inputClass = '' }) {
+/* ── Live search ── */
+function NavSearch({ className = '', onNavigate }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const wrapRef = useRef(null);
-  const timerRef = useRef(null);
+  const [show, setShow] = useState(false);
+  const ref = useRef(null);
+  const timer = useRef(null);
 
   useEffect(() => {
     if (query.trim().length < 2) { setResults([]); return; }
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch('/api/courses/public?search=' + encodeURIComponent(query.trim()));
-        const json = await res.json();
-        setResults(json.data || []);
-        setShowResults(true);
+        const r = await fetch('/api/courses/public?search=' + encodeURIComponent(query.trim()));
+        const j = await r.json();
+        setResults(j.data || []);
+        setShow(true);
       } catch { setResults([]); }
       setSearching(false);
     }, 350);
-    return () => clearTimeout(timerRef.current);
+    return () => clearTimeout(timer.current);
   }, [query]);
 
   useEffect(() => {
-    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowResults(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setShow(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   return (
-    <div ref={wrapRef} className={`relative ${className}`}>
-      <div className="relative group">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/15 via-purple-500/15 to-pink-500/15 opacity-0 group-focus-within:opacity-100 transition-opacity" />
-        <div className={`relative flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80 px-3 py-1.5 ${inputClass}`}>
-          <Search size={16} className="text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search courses, skills, exams"
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setShowResults(true); }}
-            onFocus={() => results.length > 0 && setShowResults(true)}
-            className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
-          />
-          {searching && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
-        </div>
+    <div ref={ref} className={`relative ${className}`}>
+      <div className="flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 px-4 py-2 focus-within:border-purple-400 dark:focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 dark:focus-within:ring-purple-900/30 transition-all">
+        <Search size={16} className="text-gray-400 shrink-0" />
+        <input
+          type="text"
+          placeholder="Search for anything"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setShow(true); }}
+          onFocus={() => results.length > 0 && setShow(true)}
+          className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 min-w-0"
+        />
+        {searching && <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />}
       </div>
-
-      {showResults && query.trim().length >= 2 && (
-        <div className="absolute z-[60] w-full mt-1.5 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto">
+      {show && query.trim().length >= 2 && (
+        <div className="absolute z-[60] w-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto">
           {results.length === 0 && !searching && (
-            <div className="p-4 text-center text-sm text-gray-500">
-              No courses found for "{query}"
-            </div>
+            <div className="p-4 text-center text-sm text-gray-500">No courses found for "{query}"</div>
           )}
-          {results.map((course) => (
+          {results.map((c) => (
             <button
-              key={course._id}
-              onClick={() => {
-                setShowResults(false);
-                setQuery('');
-                if (user) navigate('/learner/courses/' + course._id);
-                else navigate('/login');
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors text-left border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+              key={c._id}
+              onClick={() => { setShow(false); setQuery(''); onNavigate?.(); navigate(user ? '/learner/courses/' + c._id : '/login'); }}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors text-left border-b border-gray-100 dark:border-gray-700/50 last:border-0"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 dark:from-blue-500/10 dark:to-purple-500/10 flex items-center justify-center flex-shrink-0">
-                <BookOpen size={14} className="text-blue-600 dark:text-blue-400" />
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center shrink-0">
+                <BookOpen size={16} className="text-purple-600 dark:text-purple-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{course.title}</p>
-                <p className="text-xs text-gray-400 truncate">{course.category} · {course.difficulty} · {course.educator?.name || 'Educator'}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{c.title}</p>
+                <p className="text-xs text-gray-400 truncate">{c.category} · {c.educator?.name || 'Educator'}</p>
               </div>
             </button>
           ))}
@@ -109,240 +94,151 @@ export default function PublicNavbar() {
   const { user } = useAuth();
   const { dark, toggle } = useTheme();
   const location = useLocation();
-  const effectiveRole = user?.role;
+  const role = user?.role;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [tracksOpen, setTracksOpen] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
+  const exploreRef = useRef(null);
+  const exploreTimer = useRef(null);
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (p) => location.pathname === p;
+  const closeMobile = () => setMobileOpen(false);
+
+  const navLink = (to, label) => (
+    <Link to={to} className={`text-sm font-medium transition-colors hover:text-gray-900 dark:hover:text-white ${isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+      {label}
+    </Link>
+  );
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 dark:bg-[#050509]/90 backdrop-blur-2xl border-b border-gray-100/80 dark:border-gray-900/80">
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Logo + brand */}
-        <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 group-hover:shadow-lg group-hover:shadow-blue-500/30 transition-all duration-300">
+    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl border-b border-gray-200/80 dark:border-gray-800/80">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-4">
+
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 shrink-0 group">
+          <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all">
             <GraduationCap size={20} className="text-white" />
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">
-              Personalized Learning
-            </span>
-            <span className="text-[11px] uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">
-              AI CAMPUS
-            </span>
-          </div>
+          <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:block">
+            LearnAI
+          </span>
         </Link>
 
-        {/* Center nav + search (desktop) */}
-        <div className="hidden lg:flex items-center gap-6 flex-1">
-          <div className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-[0.18em]">
-            <span className="w-1 h-1 rounded-full bg-blue-500" />
-            <span>LEARN</span>
-            <span className="w-1 h-1 rounded-full bg-purple-500" />
-            <span>BUILD</span>
-            <span className="w-1 h-1 rounded-full bg-pink-500" />
-            <span>GROW</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              className="relative inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors"
-              onMouseEnter={() => setTracksOpen(true)}
-              onMouseLeave={() => setTracksOpen(false)}
-            >
-              <span>Explore tracks</span>
-              <ChevronDown size={16} />
-              {tracksOpen && (
-                <div className="absolute top-8 left-0 w-72 rounded-xl bg-white dark:bg-[#050509] border border-gray-100 dark:border-gray-800 shadow-xl py-3 px-3">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.18em] mb-2 px-1">
-                    Recommended journeys
-                  </p>
-                  <ul className="space-y-1.5">
-                    {learningTracks.map((track) => (
-                      <li key={track.label}>
-                        <Link
-                          to={track.href}
-                          className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/70 transition-colors"
-                        >
-                          <span>{track.label}</span>
-                          <span className="text-[11px] text-blue-500 dark:text-blue-400">
-                            View path
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </button>
-
-            <Link
-              to="/about"
-              className={`text-sm font-medium transition-colors ${
-                isActive('/about')
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              How it works
-            </Link>
-
-            <Link
-              to="/features"
-              className={`text-sm font-medium transition-colors ${isActive('/features') ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              Features
-            </Link>
-            <Link
-              to="/insights"
-              className={`text-sm font-medium transition-colors ${isActive('/insights') ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              AI insights
-            </Link>
-          </div>
-
-          {/* Desktop search — now functional */}
-          <NavSearch className="flex-1 max-w-md" />
+        {/* Explore Dropdown (desktop) */}
+        <div
+          className="hidden lg:block relative"
+          ref={exploreRef}
+          onMouseEnter={() => { clearTimeout(exploreTimer.current); setExploreOpen(true); }}
+          onMouseLeave={() => { exploreTimer.current = setTimeout(() => setExploreOpen(false), 200); }}
+        >
+          <button className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+            <Compass size={16} /> Explore <ChevronDown size={14} className={`transition-transform ${exploreOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {exploreOpen && (
+            <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-3 animate-fade-in-up">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">Categories</p>
+              {categories.map((cat) => (
+                <Link key={cat.label} to={cat.href} onClick={() => setExploreOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group/item">
+                  <cat.icon size={18} className={cat.color} />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover/item:text-gray-900 dark:group-hover/item:text-white">{cat.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Nav Links (desktop) */}
+        <div className="hidden lg:flex items-center gap-5">
+          {navLink('/features', 'Features')}
+          {navLink('/insights', 'AI Insights')}
+          {user && navLink(`/${role}/courses`, 'My Learning')}
+        </div>
+
+        {/* Search (desktop) */}
+        <NavSearch className="hidden lg:block flex-1 max-w-sm" />
+
         {/* Right actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggle}
-            className="hidden sm:inline-flex p-2 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-900 transition-all"
-            aria-label="Toggle theme"
-          >
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Become Educator CTA */}
+          {(!user || user.role === 'learner') && (
+            <Link to="/become-educator" className="hidden xl:inline-flex text-xs font-semibold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 px-3.5 py-1.5 rounded-full transition-all">
+              Become an Educator
+            </Link>
+          )}
+
+          {/* Theme toggle */}
+          <button onClick={toggle} className="p-2 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" aria-label="Toggle theme">
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
           {user ? (
-            <Link
-              to={'/' + effectiveRole + '/dashboard'}
-              className="hidden sm:inline-flex items-center gap-2 text-xs font-semibold text-blue-50 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-4 py-2 rounded-full shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
-            >
-              <UserCircle2 size={16} />
-              <span>Go to dashboard</span>
+            <Link to={`/${role}/dashboard`}
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-4 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
+              <UserCircle2 size={16} /> Dashboard
             </Link>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
-              >
-                <LogIn size={14} />
-                <span>Sign in</span>
+              <Link to="/login" className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-4 py-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                Log in
               </Link>
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-2 text-xs font-semibold text-blue-50 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-4 py-1.5 rounded-full shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
-              >
-                <span>Start free</span>
+              <Link to="/register"
+                className="text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-5 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
+                Sign up
               </Link>
             </div>
           )}
 
-          {/* Mobile theme + menu */}
-          <button
-            onClick={toggle}
-            className="sm:hidden inline-flex p-2 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-900 transition-all"
-            aria-label="Toggle theme"
-          >
-            {dark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <button
-            className="inline-flex lg:hidden p-2 rounded-full text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-900 transition-all"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle navigation"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          {/* Mobile toggle */}
+          <button className="lg:hidden p-2 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
 
       {/* Mobile sheet */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-gray-100 dark:border-gray-900 bg-white/95 dark:bg-[#050509]/95 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-4 py-3 space-y-4">
-            {/* Mobile search — now functional */}
-            <NavSearch />
+        <div className="lg:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+          <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+            <NavSearch onNavigate={closeMobile} />
 
-            <div className="grid gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-100">
-              <button
-                type="button"
-                className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
-                onClick={() => setTracksOpen((v) => !v)}
-              >
-                <span>Explore tracks</span>
-                <ChevronDown
-                  size={16}
-                  className={tracksOpen ? 'rotate-180 transition-transform' : 'transition-transform'}
-                />
+            <div className="space-y-1">
+              <button onClick={() => setExploreOpen(v => !v)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <span className="flex items-center gap-2"><Compass size={16} /> Explore</span>
+                <ChevronDown size={16} className={`transition-transform ${exploreOpen ? 'rotate-180' : ''}`} />
               </button>
-              {tracksOpen && (
-                <div className="ml-2 space-y-1 text-[13px] text-gray-500 dark:text-gray-400">
-                  {learningTracks.map((track) => (
-                    <Link
-                      key={track.label}
-                      to={track.href}
-                      className="block px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      {track.label}
+              {exploreOpen && (
+                <div className="ml-4 space-y-0.5 pb-2">
+                  {categories.map((cat) => (
+                    <Link key={cat.label} to={cat.href} onClick={closeMobile}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <cat.icon size={16} className={cat.color} /> {cat.label}
                     </Link>
                   ))}
                 </div>
               )}
-
-              <Link
-                to="/about"
-                className="block px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
-                onClick={() => setMobileOpen(false)}
-              >
-                How it works
-              </Link>
-              <Link
-                to="/features"
-                className="block px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
-                onClick={() => setMobileOpen(false)}
-              >
-                Features
-              </Link>
-              <Link
-                to="/insights"
-                className="block px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
-                onClick={() => setMobileOpen(false)}
-              >
-                AI insights
-              </Link>
+              <Link to="/features" onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">Features</Link>
+              <Link to="/insights" onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">AI Insights</Link>
+              {user && <Link to={`/${role}/courses`} onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">My Learning</Link>}
+              {(!user || user.role === 'learner') && (
+                <Link to="/become-educator" onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20">Become an Educator</Link>
+              )}
             </div>
 
-            <div className="pt-2 border-top border-gray-100 dark:border-gray-900 flex items-center justify-between">
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2">
               {user ? (
-                <Link
-                  to={'/' + effectiveRole + '/dashboard'}
-                  className="inline-flex items-center gap-2 text-xs font-semibold text-blue-50 bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 rounded-full shadow-md shadow-blue-500/25"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <UserCircle2 size={16} />
-                  Dashboard
+                <Link to={`/${role}/dashboard`} onClick={closeMobile}
+                  className="flex-1 text-center text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 py-2.5 rounded-full shadow-md">
+                  Go to Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <LogIn size={14} />
-                    Sign in
+                  <Link to="/login" onClick={closeMobile} className="flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 py-2.5 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800">
+                    Log in
                   </Link>
-                  <Link
-                    to="/register"
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-blue-50 bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 rounded-full shadow-md shadow-blue-500/25"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    Start free
+                  <Link to="/register" onClick={closeMobile}
+                    className="flex-1 text-center text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 py-2.5 rounded-full shadow-md">
+                    Sign up
                   </Link>
                 </>
               )}

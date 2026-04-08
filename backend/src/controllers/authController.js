@@ -68,11 +68,15 @@ exports.registerValidation = [
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phone, country, state, city } = req.body;
     const exists = await User.findOne({ email });
     if (exists) throw new AppError('Email already registered', 400);
 
-    const user = await User.create({ name, email, password, role, authProvider: 'local' });
+    const user = await User.create({
+      name, email, password, role, authProvider: 'local',
+      phone: phone || '', country: country || '', state: state || '', city: city || '',
+      profileComplete: !!(phone && country && state && city),
+    });
 
     const tokenId = generateTokenId();
     await registerSession(user, tokenId, req);
@@ -80,7 +84,7 @@ exports.register = async (req, res, next) => {
 
     sendResponse(res, 201, 'Registration successful', {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, profileComplete: user.profileComplete },
     });
   } catch (err) { next(err); }
 };
@@ -184,6 +188,7 @@ exports.googleLogin = async (req, res, next) => {
       user: {
         id: user._id, name: user.name, email: user.email,
         role: user.role, avatar: user.avatar, aiLevel: user.aiLevel,
+        profileComplete: user.profileComplete || false,
       },
       deviceInfo: session.deviceInfo,
     });
@@ -202,6 +207,47 @@ exports.getMe = async (req, res, next) => {
       .populate('enrolledCourses', 'title category thumbnail')
       .populate('assignedLearners', 'name email aiLevel engagementScore averageScore streak');
     sendResponse(res, 200, 'User profile', user);
+  } catch (err) { next(err); }
+};
+
+exports.completeProfile = async (req, res, next) => {
+  try {
+    const { phone, country, state, city } = req.body;
+    if (!phone || !/^\d{10}$/.test(phone)) throw new AppError('Phone must be exactly 10 digits', 400);
+    if (!country) throw new AppError('Country is required', 400);
+    if (!state) throw new AppError('State is required', 400);
+    if (!city) throw new AppError('City is required', 400);
+
+    const user = await User.findByIdAndUpdate(req.user._id, {
+      phone, country, state, city, profileComplete: true,
+    }, { new: true }).select('-password -activeSessions');
+
+    sendResponse(res, 200, 'Profile completed', {
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, profileComplete: true },
+    });
+  } catch (err) { next(err); }
+};
+
+// ── Upgrade learner to educator ──
+exports.upgradeToEducator = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) throw new AppError('User not found', 404);
+    if (user.role === 'educator') throw new AppError('Already an educator', 400);
+    if (user.role === 'admin') throw new AppError('Admins cannot be converted', 400);
+
+    user.role = 'educator';
+    await user.save();
+
+    // Generate new token with updated role
+    const tokenId = generateTokenId();
+    await registerSession(user, tokenId, req);
+    const token = signToken(user._id, user.role, tokenId);
+
+    sendResponse(res, 200, 'Role upgraded to educator', {
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: 'educator' },
+    });
   } catch (err) { next(err); }
 };
 

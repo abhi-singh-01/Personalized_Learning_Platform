@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
-import PublicNavbar from '../../components/layout/PublicNavbar';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -18,6 +18,7 @@ function GoogleIcon({ size = 20 }) {
 }
 
 export default function Login() {
+  usePageTitle('Sign In');
   const [form, setForm] = useState({ email: '', password: '' });
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
@@ -102,12 +103,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-[#0A0A0A]">
-      <PublicNavbar />
 
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* Left panel — animated gradient */}
         <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden items-center justify-center p-16">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 animate-gradient" />
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-violet-600 to-blue-600 animate-gradient" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.12),transparent_50%)]" />
 
           {/* Floating shapes */}
@@ -123,7 +123,7 @@ export default function Login() {
             <h1 className="text-4xl font-extrabold mb-4 leading-tight">
               Welcome Back to
               <br />
-              <span className="text-white/90">Personalized Learning</span>
+              <span className="text-white/90">LearnAI</span>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
               Your AI-powered learning companion. Adaptive quizzes, smart study
@@ -154,11 +154,11 @@ export default function Login() {
           <div className="w-full max-w-md animate-fade-in-up">
             {/* Mobile-only branding */}
             <div className="flex items-center gap-2.5 mb-10 lg:hidden justify-center">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
                 <GraduationCap size={24} className="text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white">
-                Personalized Learning Platform
+                LearnAI
               </span>
             </div>
 
@@ -263,7 +263,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-3 rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
@@ -292,7 +292,7 @@ export default function Login() {
               Don't have an account?{' '}
               <Link
                 to="/register"
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                className="font-semibold text-purple-600 dark:text-purple-400 hover:underline"
               >
                 Sign up for free
               </Link>

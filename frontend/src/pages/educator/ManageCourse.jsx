@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
+import usePageTitle from '../../hooks/usePageTitle';
 import Card from '../../components/ui/Card';
 import Loading from '../../components/ui/Loading';
-import { ArrowLeft, Upload, FileQuestion, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, FileQuestion, Trash2, IndianRupee } from 'lucide-react';
 
 export default function ManageCourse() {
   const { id } = useParams();
   const nav = useNavigate();
   const api = useApi();
+  const isEdit = !!id;
   const [form, setForm] = useState({
     title: '',
     description: '',
     category: '',
     difficulty: 'beginner',
     tags: '',
+    price: 0,
   });
+  usePageTitle(isEdit ? 'Edit Course' : 'New Course');
   const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState([]);
-  const isEdit = !!id;
 
   useEffect(() => {
     if (id) {
@@ -30,6 +33,7 @@ export default function ManageCourse() {
           category: c.category,
           difficulty: c.difficulty,
           tags: (c.tags || []).join(', '),
+          price: c.price || 0,
         });
       });
     }
@@ -42,6 +46,7 @@ export default function ManageCourse() {
     try {
       const body = {
         ...form,
+        price: Number(form.price) || 0,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       };
       if (isEdit) {
@@ -96,6 +101,22 @@ export default function ManageCourse() {
                 <option value="advanced">Advanced</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Price (₹)</label>
+            <div className="relative">
+              <IndianRupee size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className="input-field pl-9"
+                placeholder="0 = Free course"
+                value={form.price}
+                onChange={set('price')}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Set to 0 for a free course. Learners will pay via Razorpay for paid courses.</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5">Tags (comma separated)</label>

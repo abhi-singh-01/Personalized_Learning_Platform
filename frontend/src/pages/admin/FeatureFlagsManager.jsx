@@ -3,6 +3,7 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
 import { ToggleLeft, ToggleRight, Plus, Edit2, Trash2, Zap, Users, Percent } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const DEFAULT_FORM = {
   name: '', description: '', isEnabled: false,
@@ -10,6 +11,7 @@ const DEFAULT_FORM = {
 };
 
 export default function FeatureFlagsManager() {
+  usePageTitle('Feature Flags');
   const api = useApi();
   const [flags, setFlags] = useState([]);
   const [showForm, setShowForm] = useState(false);

@@ -7,8 +7,10 @@ import UserManagement from '../../components/admin/UserManagement';
 import CourseManagement from '../../components/admin/CourseManagement';
 import SystemSettings from '../../components/admin/SystemSettings';
 import PlatformAnalytics from './PlatformAnalytics';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function AdminDashboard() {
+  usePageTitle('Admin Dashboard');
     const api = useApi();
     const [activeTab, setActiveTab] = useState('users');
     const [stats, setStats] = useState({ totalLearners: 0, totalEducators: 0, totalCourses: 0 });

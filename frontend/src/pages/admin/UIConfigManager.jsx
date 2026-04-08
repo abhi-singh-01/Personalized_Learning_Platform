@@ -7,6 +7,7 @@ import {
   Image, MessageSquare, Megaphone, ChevronDown, ChevronUp,
   Monitor, Copy, Search, Filter
 } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const SCREEN_OPTIONS = ['home', 'courses', 'checkout', 'dashboard', 'global'];
 const TYPE_OPTIONS = ['banner', 'carousel', 'popup', 'strip', 'modal', 'section', 'announcement'];
@@ -28,6 +29,7 @@ const DEFAULT_FORM = {
 };
 
 export default function UIConfigManager() {
+  usePageTitle('UI Configuration');
   const api = useApi();
   const [configs, setConfigs] = useState([]);
   const [analytics, setAnalytics] = useState(null);

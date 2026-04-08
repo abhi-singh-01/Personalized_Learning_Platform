@@ -6,8 +6,10 @@ import {
   Radio, Users, Monitor, StopCircle, Eye, Clock, Video,
   AlertTriangle, RefreshCw
 } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function LiveClassMonitor() {
+  usePageTitle('Live Monitor');
   const api = useApi();
   const [classes, setClasses] = useState([]);
   const [statusFilter, setStatusFilter] = useState('live');

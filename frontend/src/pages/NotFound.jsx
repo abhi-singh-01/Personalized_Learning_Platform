@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Home, ArrowLeft, GraduationCap } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 export default function NotFound() {
+  usePageTitle('Page Not Found');
   const { user } = useAuth();
 
   return (

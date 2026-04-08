@@ -8,8 +8,10 @@ import {
   ArrowLeft, MessageSquare, Users, Send, Hand, Video,
   AlertCircle, LogOut
 } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function LiveClassRoom() {
+  usePageTitle('Live Class');
   const { classId } = useParams();
   const api = useApi();
   const socketCtx = useSocket();

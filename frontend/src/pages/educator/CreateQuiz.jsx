@@ -4,8 +4,10 @@ import useApi from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import { ArrowLeft, Plus, Trash2, Brain } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function CreateQuiz() {
+  usePageTitle('Create Quiz');
   const { courseId } = useParams();
   const api = useApi();
   const [quizzes, setQuizzes] = useState([]);

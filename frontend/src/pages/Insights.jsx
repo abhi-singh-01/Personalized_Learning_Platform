@@ -6,6 +6,7 @@ import {
   GraduationCap, ArrowRight, LogIn, Brain, Crosshair, CalendarCheck,
   ChevronDown, ChevronUp, Sparkles, Cpu, Users, BookOpen, Clock, Zap,
 } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 const aiSteps = [
   { num: '01', icon: Brain, title: 'Cognitive profiling', desc: 'PLP observes your quiz responses, time-on-task, and error patterns to build a cognitive model unique to you.' },
@@ -50,6 +51,7 @@ const faqs = [
 ];
 
 export default function Insights() {
+  usePageTitle('Insights');
   const { dark } = useTheme();
   const [activeDemo, setActiveDemo] = useState('twin');
   const [openFaq, setOpenFaq] = useState(null);

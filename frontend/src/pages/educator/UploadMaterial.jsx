@@ -7,8 +7,10 @@ import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, 
 import API from '../../api/axios';
 import JoditEditor from 'jodit-react';
 import { useRef } from 'react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function UploadMaterial() {
+  usePageTitle('Upload Material');
   const { courseId } = useParams();
   const api = useApi();
   const [materials, setMaterials] = useState([]);

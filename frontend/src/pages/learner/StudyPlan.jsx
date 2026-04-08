@@ -5,8 +5,10 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
 import { Brain, Calendar, Clock, Target, Lightbulb } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function StudyPlan() {
+  usePageTitle('AI Study Plan');
   const { user } = useAuth();
   const api = useApi();
   const [searchParams] = useSearchParams();

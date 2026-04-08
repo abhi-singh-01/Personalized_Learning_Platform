@@ -3,8 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import { CheckCircle, XCircle, Sparkles } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function PracticeQuiz() {
+  usePageTitle('Practice Quiz');
     const { courseId } = useParams();
     const api = useApi();
 

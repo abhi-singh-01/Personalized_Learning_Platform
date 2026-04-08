@@ -8,10 +8,12 @@ import {
   Circle, Square, Clock, Save, Download, Maximize, Minimize,
   RotateCcw, CheckCircle, AlertCircle
 } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const RECORDING_STATES = { IDLE: 'idle', RECORDING: 'recording', PAUSED: 'paused', STOPPED: 'stopped', SAVING: 'saving', SAVED: 'saved' };
 
 export default function LiveLecture() {
+  usePageTitle('Live Lecture');
   const { courseId } = useParams();
   const nav = useNavigate();
   const api = useApi();

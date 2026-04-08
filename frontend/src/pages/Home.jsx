@@ -4,412 +4,273 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import {
-  GraduationCap, Brain, BarChart3, Award, LogIn, ArrowRight, Users,
-  BookOpen, Cpu, Star, Sparkles, Target, Rocket, Clock, Layers,
-  Compass, Play, Zap, Shield, CheckCircle2, Search,
+  GraduationCap, Brain, BarChart3, Award, ArrowRight, Users,
+  BookOpen, Star, Sparkles, Target, Clock, Layers, Play, Zap,
+  Shield, CheckCircle2, Search, Code, Database, Briefcase,
+  TrendingUp, Globe, ChevronRight, Quote, Heart, Monitor,
 } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
+/* ── Data ── */
 const stats = [
-  { label: 'Active learners', value: '12,840+', icon: Users },
-  { label: 'Guided pathways', value: '120+', icon: Layers },
-  { label: 'AI study hours / day', value: '38K', icon: Cpu },
-  { label: 'Avg. course rating', value: '4.9/5', icon: Star },
+  { value: '12,840+', label: 'Active Learners', icon: Users },
+  { value: '350+', label: 'Courses', icon: BookOpen },
+  { value: '120+', label: 'Expert Educators', icon: GraduationCap },
+  { value: '4.8/5', label: 'Avg Rating', icon: Star },
 ];
 
-const features = [
-  {
-    icon: Brain,
-    title: 'Adaptive AI Engine',
-    desc: 'Your personal learning twin mirrors how you think, then curates content and questions at your exact level.',
-    color: 'from-blue-500 to-cyan-400',
-    bg: 'bg-blue-50 dark:bg-blue-950/40',
-  },
-  {
-    icon: BarChart3,
-    title: 'Deep Analytics',
-    desc: 'Granular skill maps, weak-spot detection, and readiness scores for exams or interviews.',
-    color: 'from-purple-500 to-pink-400',
-    bg: 'bg-purple-50 dark:bg-purple-950/40',
-  },
-  {
-    icon: Award,
-    title: 'Educator Co-Pilot',
-    desc: 'Let educators generate quizzes, rubrics, and personalized learner feedback with one click.',
-    color: 'from-emerald-500 to-teal-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-  },
-  {
-    icon: Shield,
-    title: 'Smart Study Plans',
-    desc: 'AI-generated weekly schedules that adapt as you progress, keeping you on track for your goals.',
-    color: 'from-orange-500 to-amber-400',
-    bg: 'bg-orange-50 dark:bg-orange-950/40',
-  },
-  {
-    icon: Play,
-    title: 'Live & Recorded Lectures',
-    desc: 'Access all video content — YouTube links, uploaded videos, and recorded live sessions.',
-    color: 'from-red-500 to-rose-400',
-    bg: 'bg-red-50 dark:bg-red-950/40',
-  },
-  {
-    icon: Zap,
-    title: 'Instant AI Quizzes',
-    desc: 'Generate practice quizzes on any topic in seconds with clear, learner-friendly questions.',
-    color: 'from-indigo-500 to-violet-400',
-    bg: 'bg-indigo-50 dark:bg-indigo-950/40',
-  },
+const categories = [
+  { icon: Brain, label: 'Data Science & AI', count: '84 courses', color: 'from-blue-500 to-cyan-400', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+  { icon: Code, label: 'Web Development', count: '120 courses', color: 'from-emerald-500 to-teal-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+  { icon: Database, label: 'Cloud & DevOps', count: '45 courses', color: 'from-purple-500 to-violet-400', bg: 'bg-purple-50 dark:bg-purple-950/30' },
+  { icon: Monitor, label: 'System Design', count: '38 courses', color: 'from-amber-500 to-orange-400', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+  { icon: Briefcase, label: 'Career Prep', count: '56 courses', color: 'from-rose-500 to-pink-400', bg: 'bg-rose-50 dark:bg-rose-950/30' },
+  { icon: BarChart3, label: 'Analytics', count: '32 courses', color: 'from-indigo-500 to-blue-400', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
+  { icon: Shield, label: 'Cybersecurity', count: '28 courses', color: 'from-red-500 to-orange-400', bg: 'bg-red-50 dark:bg-red-950/30' },
+  { icon: Globe, label: 'Digital Marketing', count: '41 courses', color: 'from-teal-500 to-green-400', bg: 'bg-teal-50 dark:bg-teal-950/30' },
 ];
 
-const steps = [
-  { num: '01', title: 'Create your profile', desc: 'Sign up and tell us your goals, timeline, and current level.', icon: Sparkles },
-  { num: '02', title: 'Pick a pathway', desc: 'Choose a guided AI track or enroll in educator-led courses.', icon: Target },
-  { num: '03', title: 'Learn every day', desc: 'Your plan, quizzes, and feedback evolve with you in real-time.', icon: Rocket },
+const featuredCourses = [
+  { id: 1, title: 'Complete Machine Learning Bootcamp', educator: 'Dr. Priya Sharma', rating: 4.9, reviews: 2340, price: 499, originalPrice: 3999, image: '🤖', tag: 'Bestseller', tagColor: 'bg-yellow-100 text-yellow-800' },
+  { id: 2, title: 'Full-Stack React & Node.js Masterclass', educator: 'Arjun Mehta', rating: 4.8, reviews: 1870, price: 599, originalPrice: 4999, image: '⚛️', tag: 'Hot & New', tagColor: 'bg-red-100 text-red-700' },
+  { id: 3, title: 'System Design for Senior Engineers', educator: 'Vikram Patel', rating: 4.9, reviews: 890, price: 799, originalPrice: 5999, image: '🏗️', tag: 'Highest Rated', tagColor: 'bg-emerald-100 text-emerald-700' },
+  { id: 4, title: 'Generative AI & Prompt Engineering', educator: 'Sneha Gupta', rating: 4.7, reviews: 3100, price: 399, originalPrice: 2999, image: '🧠', tag: 'Trending', tagColor: 'bg-purple-100 text-purple-700' },
 ];
 
 const testimonials = [
-  { name: 'Priya M.', role: 'CS Learner', text: 'The AI study plans are incredible — my exam scores jumped 30% in 2 months!', avatar: 'PM' },
-  { name: 'Rahul K.', role: 'Full-Stack Developer', text: 'Best adaptive quizzes I have used. The questions are perfectly matched to my level.', avatar: 'RK' },
-  { name: 'Anita S.', role: 'Educator', text: 'I can create and manage course content effortlessly. My learners love the platform.', avatar: 'AS' },
+  { name: 'Ananya Reddy', role: 'SDE-2 at Google', text: 'The AI-powered study plan literally doubled my learning speed. I cracked my Google interview in 3 months.', avatar: '👩‍💻' },
+  { name: 'Rohit Kumar', role: 'Data Scientist at Amazon', text: 'Best ML course I\'ve taken. The adaptive quizzes found my weak spots and fixed them automatically.', avatar: '👨‍🔬' },
+  { name: 'Meera Joshi', role: 'Full-Stack Developer', text: 'Went from zero coding experience to landing a ₹18 LPA job. The platform made it feel effortless.', avatar: '👩‍🎓' },
 ];
 
+const benefits = [
+  { icon: TrendingUp, title: 'Earn on your terms', desc: 'Set your own prices and earn up to 97% revenue on every sale.' },
+  { icon: Users, title: 'Reach thousands', desc: 'Access our growing community of 12,000+ active learners.' },
+  { icon: Brain, title: 'AI co-pilot', desc: 'Our AI generates quizzes, rubrics, and personalized feedback for you.' },
+  { icon: Globe, title: 'Teach globally', desc: 'Your courses reach students worldwide with built-in translation.' },
+];
+
+function StarRating({ rating }) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-sm font-bold text-gray-900 dark:text-white">{rating}</span>
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map(i => (
+          <Star key={i} size={14} className={i <= Math.floor(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const { user } = useAuth();
-  const { dark } = useTheme();
+  usePageTitle('Home');
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const searchRef = useRef(null);
-  const timerRef = useRef(null);
+  const { user } = useAuth();
+  const [heroSearch, setHeroSearch] = useState('');
 
-  // Debounced search
-  useEffect(() => {
-    if (query.trim().length < 2) { setResults([]); return; }
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch((import.meta.env.VITE_API_URL || '/api') + '/courses/public?search=' + encodeURIComponent(query.trim()));
-        const json = await res.json();
-        setResults(json.data || []);
-        setShowResults(true);
-      } catch { setResults([]); }
-      setSearching(false);
-    }, 350);
-    return () => clearTimeout(timerRef.current);
-  }, [query]);
-
-  // Click outside to close
-  useEffect(() => {
-    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setShowResults(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const handleHeroSearch = (e) => {
+    e.preventDefault();
+    if (heroSearch.trim()) navigate(user ? '/learner/courses' : '/login');
+  };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#050509] overflow-hidden font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-white dark:bg-gray-950 font-sans">
       <PublicNavbar />
 
-      {/* ─── HERO SECTION ─── */}
-      <section className="relative pt-10 pb-12 lg:pt-16 lg:pb-16 px-6 overflow-hidden">
-        {/* Animated mesh background */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-purple-50/50 to-pink-50/80 dark:from-blue-950/30 dark:via-purple-950/20 dark:to-pink-950/30" />
-          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-400/15 dark:bg-blue-500/8 rounded-full blur-[100px] animate-float" />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-400/15 dark:bg-purple-500/8 rounded-full blur-[100px] animate-float-slow" />
-          <div className="absolute top-1/3 right-1/6 w-[400px] h-[400px] bg-pink-400/10 dark:bg-pink-500/5 rounded-full blur-[80px] animate-float" />
-          {/* Grid pattern */}
-          <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{
-            backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
-          }} />
-        </div>
+      {/* ═══════════ HERO ═══════════ */}
+      <section className="relative overflow-hidden">
+        {/* Gradient mesh background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950" />
+        <div className="absolute top-20 -left-20 w-96 h-96 bg-purple-200/30 dark:bg-purple-900/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-200/30 dark:bg-blue-900/10 rounded-full blur-3xl" />
 
-        <div className="relative max-w-7xl mx-auto z-10">
-          <div className="text-center max-w-4xl mx-auto animate-fade-in-up">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 dark:bg-white/5 backdrop-blur-sm mb-8 border border-gray-200/50 dark:border-gray-800/50 shadow-sm">
-              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse" />
-              <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-[0.22em]">
-                AI‑POWERED LEARNING PLATFORM
-              </span>
+        <div className="relative max-w-7xl mx-auto px-4 lg:px-6 py-16 lg:py-24">
+          <div className="max-w-3xl">
+            {/* Trust badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800/50 mb-6">
+              <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
+              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">AI-Powered Learning · Trusted by 12,840+ learners</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-6 leading-[1.05]">
-              Your studies,{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 animate-gradient">
-                reimagined
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-[1.1] mb-6">
+              Learn without limits,{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 dark:from-purple-400 dark:via-violet-400 dark:to-blue-400">
+                grow without boundaries
               </span>
-              <br className="hidden sm:block" />
-              by AI
             </h1>
 
-            <p className="text-lg lg:text-xl text-gray-500 dark:text-gray-400 mb-10 leading-relaxed max-w-2xl mx-auto">
-              Not just courses — a living platform that maps what you know, predicts where you'll struggle,
-              and builds a <span className="font-semibold text-gray-700 dark:text-gray-300">personalized study plan</span> around your goals.
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-xl leading-relaxed">
+              Access 350+ courses taught by industry experts. Our AI adapts to how you learn, finds your weak spots, and builds a personalized path to mastery.
             </p>
 
-            {/* Course Search Bar */}
-            <div ref={searchRef} className="relative max-w-xl mx-auto mb-10">
-              <div className="relative">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            {/* Hero search */}
+            <form onSubmit={handleHeroSearch} className="flex items-center gap-0 max-w-lg mb-6">
+              <div className="flex-1 flex items-center gap-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 border-r-0 rounded-l-full px-5 py-3.5 focus-within:border-purple-400 dark:focus-within:border-purple-500 transition-colors">
+                <Search size={20} className="text-gray-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search courses... e.g. Java, React, Machine Learning"
-                  value={query}
-                  onChange={(e) => { setQuery(e.target.value); setShowResults(true); }}
-                  onFocus={() => results.length > 0 && setShowResults(true)}
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 shadow-lg shadow-gray-200/50 dark:shadow-black/20 placeholder:text-gray-400"
+                  placeholder="What do you want to learn?"
+                  value={heroSearch}
+                  onChange={(e) => setHeroSearch(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white placeholder:text-gray-400"
                 />
-                {searching && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
               </div>
-              {showResults && query.trim().length >= 2 && (
-                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-72 overflow-y-auto animate-fade-in-up">
-                  {results.length === 0 && !searching && (
-                    <div className="p-6 text-center text-sm text-gray-500">
-                      No courses found for "{query}"
-                    </div>
-                  )}
-                  {results.map((course) => (
-                    <button
-                      key={course._id}
-                      onClick={() => {
-                        setShowResults(false);
-                        setQuery('');
-                        if (user) navigate('/learner/courses/' + course._id);
-                        else navigate('/login');
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors text-left border-b border-gray-100 dark:border-gray-700/50 last:border-0"
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 dark:from-blue-500/10 dark:to-purple-500/10 flex items-center justify-center flex-shrink-0">
-                        <BookOpen size={16} className="text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{course.title}</p>
-                        <p className="text-xs text-gray-400 truncate">{course.category} · {course.difficulty} · {course.educator?.name || 'Educator'}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              <button type="submit" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white font-semibold px-7 py-3.5 rounded-r-full transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40">
+                Search
+              </button>
+            </form>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <Link
-                to={user ? '/' + user.role + '/dashboard' : '/register'}
-                className="group inline-flex items-center gap-2.5 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-8 py-3.5 rounded-xl shadow-xl shadow-blue-500/25 hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
-              >
-                {user ? <Compass size={18} /> : <Sparkles size={18} />}
-                <span>{user ? 'Go to Dashboard' : 'Start Free — No Credit Card'}</span>
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              {!user && (
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200 px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 transition-all"
-                >
-                  <LogIn size={16} />
-                  <span>Already have an account? Sign in</span>
+            {/* Popular topics */}
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Popular:</span>
+              {['Python', 'React', 'Machine Learning', 'System Design', 'AWS'].map(t => (
+                <Link key={t} to="/tracks" className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 transition-colors font-medium">
+                  {t}
                 </Link>
-              )}
-            </div>
-
-            {/* Trust indicators */}
-            <div className="flex flex-wrap items-center justify-center gap-4 text-[12px] text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-green-500" /> Free to start</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-green-500" /> AI-powered</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-green-500" /> For learners & educators</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-green-500" /> Adaptive quizzes</span>
+              ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Hero Dashboard Preview */}
-          <div className="mt-16 max-w-5xl mx-auto animate-fade-in-up-delay">
-            <div className="relative">
-              <div className="absolute -inset-3 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-2xl" />
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200/80 dark:border-gray-800/70 bg-white/95 dark:bg-gray-900/80 shadow-2xl backdrop-blur-xl">
-                {/* Window chrome */}
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                    <div className="w-3 h-3 rounded-full bg-green-400" />
+      {/* ═══════════ STATS BAR ═══════════ */}
+      <section className="border-y border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/50">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {stats.map((s) => (
+              <div key={s.label} className="flex items-center gap-3 group">
+                <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform">
+                  <s.icon size={20} className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xl font-extrabold text-gray-900 dark:text-white">{s.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{s.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ CATEGORIES GRID ═══════════ */}
+      <section className="py-16 px-4 lg:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Top Categories</h2>
+              <p className="text-gray-500 dark:text-gray-400">Explore our most popular learning paths</p>
+            </div>
+            <Link to="/tracks" className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300">
+              View all <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categories.map((cat) => (
+              <Link key={cat.label} to="/tracks"
+                className={`${cat.bg} rounded-2xl p-5 border border-transparent hover:border-purple-200 dark:hover:border-purple-800 hover:shadow-lg transition-all duration-300 group`}>
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${cat.color} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+                  <cat.icon size={22} className="text-white" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-0.5">{cat.label}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{cat.count}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ FEATURED COURSES ═══════════ */}
+      <section className="py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-900/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Featured Courses</h2>
+              <p className="text-gray-500 dark:text-gray-400">Hand-picked by our AI and community</p>
+            </div>
+            <Link to={user ? '/learner/courses' : '/register'} className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300">
+              Browse all <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {featuredCourses.map((course) => (
+              <Link key={course.id} to={user ? '/learner/courses' : '/register'}
+                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-xl hover:border-purple-200 dark:hover:border-purple-800 hover:-translate-y-1 transition-all duration-300 group">
+                {/* Image area */}
+                <div className="relative h-36 bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center">
+                  <span className="text-5xl group-hover:scale-110 transition-transform">{course.image}</span>
+                  {course.tag && (
+                    <span className={`absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-md ${course.tagColor}`}>
+                      {course.tag}
+                    </span>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors" />
+                </div>
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1 line-clamp-2 leading-snug">{course.title}</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{course.educator}</p>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <StarRating rating={course.rating} />
+                    <span className="text-xs text-gray-400">({course.reviews.toLocaleString()})</span>
                   </div>
-                  <div className="flex-1 text-center">
-                    <span className="text-[11px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-4 py-1 rounded-md">
-                      personalizedlearning.ai/dashboard
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-extrabold text-gray-900 dark:text-white">₹{course.price}</span>
+                    <span className="text-sm text-gray-400 line-through">₹{course.originalPrice}</span>
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
+                      {Math.round((1 - course.price / course.originalPrice) * 100)}% off
                     </span>
                   </div>
                 </div>
-
-                {/* Dashboard mockup content */}
-                <div className="p-6">
-                  <div className="grid grid-cols-4 gap-4 mb-6">
-                    {[
-                      { label: 'Average Score', value: '87%', color: 'text-blue-600' },
-                      { label: 'Courses', value: '6', color: 'text-purple-600' },
-                      { label: 'Quizzes Done', value: '42', color: 'text-emerald-600' },
-                      { label: 'AI Plans', value: '3', color: 'text-orange-600' },
-                    ].map((s) => (
-                      <div key={s.label} className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-4 text-center">
-                        <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">{s.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-5 text-white">
-                      <p className="text-[11px] uppercase tracking-wider text-white/70 mb-2">Today's AI Focus</p>
-                      <p className="text-sm font-semibold">Complete 2 micro-lessons in Data Structures</p>
-                      <p className="text-xs text-white/60 mt-2">Based on quiz performance analysis</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-5">
-                      <p className="text-[11px] uppercase tracking-wider text-gray-400 mb-2">Confidence Map</p>
-                      <div className="flex items-end gap-2 h-16">
-                        {[60, 85, 40, 70, 90, 55].map((h, i) => (
-                          <div key={i} className="flex-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                            <div
-                              className="rounded-full transition-all duration-700"
-                              style={{ height: `${h}%`, background: `hsl(${200 + i * 25}, 70%, 55%)` }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-2">Web ✓ · Algorithms ↗ · Systems ↗</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Stats Bar ─── */}
-      <section className="relative py-14 px-6 border-y border-gray-100 dark:border-gray-900/50 bg-gray-50/70 dark:bg-gray-950/50">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center group">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 mb-3 group-hover:scale-110 transition-transform duration-300">
-                <s.icon size={22} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-0.5">
-                {s.value}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Features Grid ─── */}
-      <section id="features" className="py-14 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 max-w-2xl mx-auto animate-fade-in-up">
-            <span className="inline-block text-[11px] font-bold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400 mb-3">
-              EVERYTHING YOU NEED
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-4">
-              A platform that learns <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">you</span> back
-            </h2>
-            <p className="text-base text-gray-500 dark:text-gray-400">
-              AI-powered analytics, adaptive quizzes, smart study plans, and educator tools — all in one place.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f, i) => (
-              <div
-                key={f.title}
-                className={`group relative ${f.bg} rounded-2xl p-7 border border-gray-200/50 dark:border-gray-800/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 animate-fade-in-up`}
-                style={{ animationDelay: `${i * 0.08}s` }}
-              >
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                  <f.icon size={22} className="text-white" />
-                </div>
-                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── How It Works ─── */}
-      <section className="py-14 px-6 bg-gray-50/80 dark:bg-gray-950/40">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 animate-fade-in-up">
-            <span className="inline-block text-[11px] font-bold uppercase tracking-[0.25em] text-purple-600 dark:text-purple-400 mb-3">
-              GET STARTED IN MINUTES
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-3">
-              How PLP fits your day
-            </h2>
-            <p className="text-base text-gray-500 dark:text-gray-400">
-              Sign in for 20 minutes and still make meaningful progress.
-            </p>
+      {/* ═══════════ AI FEATURES HIGHLIGHT ═══════════ */}
+      <section className="py-16 px-4 lg:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-3">Why learners choose us</h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">Our AI doesn't just deliver content — it learns how <em>you</em> learn.</p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-10 relative">
-            <div className="hidden md:block absolute top-16 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-blue-300/50 via-purple-300/50 to-pink-300/50 dark:from-blue-700/30 dark:via-purple-700/30 dark:to-pink-700/30" />
-
-            {steps.map((s, i) => (
-              <div
-                key={s.num}
-                className="relative text-center animate-fade-in-up"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              >
-                <div className="relative z-10 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white mb-5 shadow-xl shadow-blue-500/25">
-                  <s.icon size={26} />
-                </div>
-                <div className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-[0.22em] mb-2">
-                  Step {s.num}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{s.title}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Testimonials ─── */}
-      <section className="py-14 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14 animate-fade-in-up">
-            <span className="inline-block text-[11px] font-bold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 mb-3">
-              LOVED BY LEARNERS
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
-              What our users say
-            </h2>
-          </div>
-
           <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div
-                key={t.name}
-                className="bg-white dark:bg-gray-900 rounded-2xl p-7 border border-gray-200/60 dark:border-gray-800/60 shadow-sm hover:shadow-lg transition-all duration-300 animate-fade-in-up"
-                style={{ animationDelay: `${i * 0.1}s` }}
-              >
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-gray-900 dark:text-white">{t.name}</p>
-                    <p className="text-xs text-gray-500">{t.role}</p>
-                  </div>
+            {[
+              { icon: Brain, title: 'Adaptive Learning', desc: 'AI adjusts difficulty in real-time based on your performance, keeping you in the optimal learning zone.', color: 'from-purple-500 to-violet-500' },
+              { icon: Target, title: 'Weak-Spot Detection', desc: 'Our system identifies knowledge gaps and generates targeted drills to close them fast.', color: 'from-blue-500 to-cyan-500' },
+              { icon: Zap, title: 'Instant AI Feedback', desc: 'Get detailed explanations after every quiz. Mistakes become powerful learning moments.', color: 'from-amber-500 to-orange-500' },
+            ].map((f) => (
+              <div key={f.title} className="relative rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-7 hover:shadow-xl hover:border-purple-200 dark:hover:border-purple-800 transition-all group">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform`}>
+                  <f.icon size={26} className="text-white" />
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed italic">
-                  "{t.text}"
-                </p>
-                <div className="flex gap-0.5 mt-4">
-                  {[...Array(5)].map((_, j) => (
-                    <Star key={j} size={14} className="text-amber-400 fill-amber-400" />
-                  ))}
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ TESTIMONIALS ═══════════ */}
+      <section className="py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-900/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-3">What our learners say</h2>
+            <p className="text-gray-500 dark:text-gray-400">Real stories from real people</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t) => (
+              <div key={t.name} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-lg transition-all">
+                <Quote size={24} className="text-purple-300 dark:text-purple-700 mb-4" />
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-5 italic">"{t.text}"</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{t.avatar}</span>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{t.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.role}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -417,102 +278,94 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Bottom CTA ─── */}
-      <section className="py-14 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-12 md:p-16 text-center animate-gradient shadow-2xl">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_60%)]" />
-
-            <div className="relative z-10">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
-                Ready to transform your learning?
-              </h2>
-              <p className="text-base md:text-lg text-white/80 mb-8 max-w-xl mx-auto">
-                Join thousands of learners and educators who use AI to make every study session count.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link
-                  to="/register"
-                  className="inline-flex items-center gap-2 text-base font-bold text-blue-600 bg-white hover:bg-gray-50 px-8 py-3.5 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-0.5"
-                >
-                  <Sparkles size={18} />
-                  Create free account
-                  <ArrowRight size={16} />
+      {/* ═══════════ TEACH ON PLATFORM ═══════════ */}
+      <section className="py-16 px-4 lg:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-900">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(139,92,246,0.15),transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
+            <div className="relative grid lg:grid-cols-2 gap-10 p-10 md:p-14">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 mb-5">
+                  <GraduationCap size={14} className="text-purple-400" />
+                  <span className="text-xs font-semibold text-purple-300 uppercase tracking-wider">For Educators</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 leading-tight">
+                  Teach on our platform
+                </h2>
+                <p className="text-gray-400 mb-8 max-w-md leading-relaxed">
+                  Join thousands of educators earning money and making an impact. Our AI co-pilot handles quiz generation, analytics, and personalized feedback — so you can focus on teaching.
+                </p>
+                <Link to="/become-educator"
+                  className="inline-flex items-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 px-8 py-3.5 rounded-full shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all hover:-translate-y-0.5">
+                  Start Teaching Today <ArrowRight size={18} />
                 </Link>
-                <Link
-                  to="/about"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-white/85 hover:text-white transition-colors"
-                >
-                  Learn how it works
-                  <ArrowRight size={14} />
-                </Link>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {benefits.map((b) => (
+                  <div key={b.title} className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-5 hover:bg-white/10 transition-colors">
+                    <b.icon size={24} className="text-purple-400 mb-3" />
+                    <h4 className="text-sm font-bold text-white mb-1">{b.title}</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">{b.desc}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
-      <footer className="bg-gray-100 dark:bg-gray-950 py-16 px-6 border-t border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
-                <GraduationCap size={18} className="text-white" />
-              </div>
-              <span className="text-lg font-bold text-gray-900 dark:text-white">PLP</span>
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-              An AI-powered campus for learners, educators, and admins who want learning to feel
-              designed — not generic.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-bold mb-4 text-gray-900 dark:text-white text-xs uppercase tracking-[0.22em]">Platform</h4>
-            <ul className="space-y-3 text-sm text-gray-500 dark:text-gray-400">
-              <li><a href="#features" className="hover:text-gray-900 dark:hover:text-white transition-colors">Features</a></li>
-              <li><Link to="/about" className="hover:text-gray-900 dark:hover:text-white transition-colors">How it works</Link></li>
-              <li><Link to="/login" className="hover:text-gray-900 dark:hover:text-white transition-colors">Learner dashboard</Link></li>
-              <li><Link to="/login" className="hover:text-gray-900 dark:hover:text-white transition-colors">Educator workspace</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4 text-gray-900 dark:text-white text-xs uppercase tracking-[0.22em]">Resources</h4>
-            <ul className="space-y-3 text-sm text-gray-500 dark:text-gray-400">
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Product updates</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Help center</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Community</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4 text-gray-900 dark:text-white text-xs uppercase tracking-[0.22em]">Legal</h4>
-            <ul className="space-y-3 text-sm text-gray-500 dark:text-gray-400">
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Privacy policy</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Terms of service</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Cookie settings</a></li>
-            </ul>
+      {/* ═══════════ FINAL CTA ═══════════ */}
+      <section className="py-16 px-4 lg:px-6 bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Start learning today</h2>
+          <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
+            Join 12,840+ learners who are already accelerating their careers with AI-powered learning.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/register"
+              className="inline-flex items-center gap-2 text-base font-semibold text-purple-700 bg-white hover:bg-gray-50 px-8 py-3.5 rounded-full shadow-xl hover:shadow-2xl transition-all hover:-translate-y-0.5">
+              Sign up for free <ArrowRight size={18} />
+            </Link>
+            <Link to="/features"
+              className="inline-flex items-center gap-2 text-base font-semibold text-white/90 border-2 border-white/30 hover:border-white/60 px-8 py-3.5 rounded-full transition-all hover:-translate-y-0.5">
+              Explore features
+            </Link>
           </div>
         </div>
+      </section>
 
-        <div className="max-w-6xl mx-auto mt-12 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <p>&copy; 2026 Personalized Learning Platform. All rights reserved.</p>
-          <div className="flex items-center gap-4 mt-4 md:mt-0">
-            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
-              </svg>
-            </a>
-            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-              </svg>
-            </a>
-            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-              </svg>
-            </a>
+      {/* ═══════════ FOOTER ═══════════ */}
+      <footer className="bg-gray-900 dark:bg-gray-950 pt-14 pb-8 px-4 lg:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-10 mb-12">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
+                  <GraduationCap size={18} className="text-white" />
+                </div>
+                <span className="text-lg font-bold text-white">LearnAI</span>
+              </div>
+              <p className="text-sm text-gray-400 leading-relaxed">AI-powered personalized learning platform trusted by thousands of learners and educators worldwide.</p>
+            </div>
+            {[
+              { title: 'Platform', links: [['Home', '/'], ['Features', '/features'], ['Tracks', '/tracks'], ['AI Insights', '/insights']] },
+              { title: 'Company', links: [['About', '/about'], ['Become an Educator', '/about'], ['Contact', '/about']] },
+              { title: 'Legal', links: [['Privacy Policy', '#'], ['Terms of Service', '#'], ['Cookie Policy', '#']] },
+            ].map((col) => (
+              <div key={col.title}>
+                <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">{col.title}</h4>
+                <ul className="space-y-2.5">
+                  {col.links.map(([label, href]) => (
+                    <li key={label}><Link to={href} className="text-sm text-gray-400 hover:text-white transition-colors">{label}</Link></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-gray-500">&copy; 2026 LearnAI. All rights reserved.</p>
+            <p className="text-xs text-gray-500 flex items-center gap-1">Made with <Heart size={12} className="text-red-500 fill-red-500" /> in India</p>
           </div>
         </div>
       </footer>

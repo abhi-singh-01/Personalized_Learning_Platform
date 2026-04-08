@@ -3,6 +3,7 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
 import { FileText, Filter, Search, User, Calendar, ChevronDown } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const ACTION_ICONS = {
   user_created: '👤', user_deleted: '🗑️', user_role_changed: '🔄',
@@ -13,6 +14,7 @@ const ACTION_ICONS = {
 };
 
 export default function AuditLogs() {
+  usePageTitle('Audit Logs');
   const api = useApi();
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState(null);

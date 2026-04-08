@@ -3,13 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Brain, User, PlusCircle, Users,
   TicketPercent, Radio, IndianRupee, Layout, Zap, FileText,
-  Flag, Monitor, BarChart3
+  Flag, Monitor, BarChart3, CreditCard
 } from 'lucide-react';
 
 const learnerLinks = [
   { to: '/learner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/learner/courses', label: 'Courses', icon: BookOpen },
   { to: '/learner/study-plan', label: 'AI Study Plan', icon: Brain },
+  { to: '/learner/payments', label: 'Payments', icon: CreditCard },
   { to: '/profile', label: 'Profile', icon: User },
 ];
 

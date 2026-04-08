@@ -7,8 +7,10 @@ import {
   Radio, Play, StopCircle, Plus, Clock, Users, Video,
   Calendar, Eye, History, AlertCircle
 } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function LiveClassManager() {
+  usePageTitle('Live Classes');
   const api = useApi();
   const [activeClasses, setActiveClasses] = useState([]);
   const [courses, setCourses] = useState([]);

@@ -13,6 +13,7 @@ import {
   Video, X, ChevronRight, Calendar, Clock, XCircle, CalendarPlus
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const PIE_COLORS = ['#f97316', '#eab308', '#3b82f6', '#22c55e'];
 
@@ -143,6 +144,7 @@ function ScheduleModal({ open, onClose, courses, onSubmit }) {
 }
 
 export default function EducatorDashboard() {
+  usePageTitle('Educator Dashboard');
   const { user } = useAuth();
   const api = useApi();
   const [data, setData] = useState(null);

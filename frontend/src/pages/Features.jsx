@@ -20,6 +20,7 @@ import {
   BookOpen,
   MessageSquare,
 } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 const coreFeatures = [
   {
@@ -145,6 +146,7 @@ const skillBars = [
 ];
 
 export default function Features() {
+  usePageTitle('Features');
   const { dark } = useTheme();
   const [expanded, setExpanded] = useState(null);
 

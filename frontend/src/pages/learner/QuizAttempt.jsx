@@ -4,8 +4,10 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Badge from '../../components/ui/Badge';
 import { CheckCircle, XCircle, ArrowLeft, Trophy, Star, Sparkles } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function QuizAttempt() {
+  usePageTitle('Quiz');
   const { id } = useParams();
   const api = useApi();
 

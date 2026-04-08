@@ -3,8 +3,10 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
 import { DollarSign, TrendingUp, Clock, Calendar, IndianRupee, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import usePageTitle from '../../hooks/usePageTitle';
 
 export default function EarningsDashboard() {
+  usePageTitle('Earnings');
   const api = useApi();
   const [earnings, setEarnings] = useState(null);
 
