@@ -43,3 +43,33 @@ Details: {}
 [2026-04-08T14:21:32.632Z] 400 - `teacher` is not a valid enum value for path `role`.
 Details: {"role":{"name":"ValidatorError","message":"`teacher` is not a valid enum value for path `role`.","properties":{"message":"`teacher` is not a valid enum value for path `role`.","type":"enum","enumValues":["learner","educator","admin"],"path":"role","value":"teacher","length":7},"kind":"enum","path":"role","value":"teacher"}}
 
+[2026-04-08T17:14:03.643Z] 401 - Session expired. You may have been logged out from another device.
+Details: {}
+
+[2026-04-08T17:14:03.690Z] 401 - Session expired. You may have been logged out from another device.
+Details: {}
+
+[2026-04-08T17:14:03.726Z] 401 - Session expired. You may have been logged out from another device.
+Details: {}
+
+[2026-04-08T17:14:03.732Z] 401 - Session expired. You may have been logged out from another device.
+Details: {}
+
+[2026-04-08T17:14:03.896Z] 401 - Authentication required
+Details: {}
+
+[2026-04-08T17:14:03.902Z] 401 - Authentication required
+Details: {}
+
+[2026-04-08T17:14:03.915Z] 401 - Authentication required
+Details: {}
+
+[2026-04-08T17:14:03.909Z] 401 - Authentication required
+Details: {}
+
+[2026-04-08T17:34:45.859Z] 400 - Email already registered
+Details: {}
+
+[2026-04-08T17:35:20.557Z] 400 - Email already registered
+Details: {}
+

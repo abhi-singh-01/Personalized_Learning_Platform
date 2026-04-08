@@ -38,9 +38,9 @@ export default function PlatformAnalytics() {
             >
                 <div className="space-y-8 p-2">
 
-                    <div className="border-b pb-4 mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Platform Analytics Overview</h2>
-                        <p className="text-gray-500">Generated on: {new Date().toLocaleDateString()}</p>
+                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Platform Analytics Overview</h2>
+                        <p className="text-gray-500 dark:text-gray-400">Generated on: {new Date().toLocaleDateString()}</p>
                     </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -52,8 +52,8 @@ export default function PlatformAnalytics() {
 
                     <div className="grid lg:grid-cols-2 gap-6 mt-8">
                         {/* User Growth Trend */}
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                                 <Users size={18} className="text-indigo-500" /> 30-Day User Signups
                             </h3>
                             <div style={{ width: '100%', height: 250 }}>
@@ -75,8 +75,8 @@ export default function PlatformAnalytics() {
                         </div>
 
                         {/* Quiz Activity Trend */}
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                                 <Activity size={18} className="text-green-500" /> Platform Quiz Activity
                             </h3>
                             <div style={{ width: '100%', height: 250 }}>
@@ -94,8 +94,8 @@ export default function PlatformAnalytics() {
 
                         {/* Course Distribution */}
                         {data.courseDistribution && data.courseDistribution.length > 0 && (
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 lg:col-span-2">
-                                <h3 className="text-lg font-bold text-gray-800 mb-4">Course Categories Distribution</h3>
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 lg:col-span-2">
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Course Categories Distribution</h3>
                                 <div style={{ width: '100%', height: 300 }}>
                                     <ResponsiveContainer>
                                         <PieChart>

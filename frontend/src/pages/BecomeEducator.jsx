@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
 import useApi from '../hooks/useApi';
+import { useToast } from '../context/ToastContext';
 import {
   GraduationCap, ArrowRight, Users, Brain, Globe, TrendingUp,
   DollarSign, BarChart3, Video, BookOpen, Star, CheckCircle2,
@@ -44,6 +45,7 @@ export default function BecomeEducator() {
   const { user } = useAuth();
   const api = useApi();
   const nav = useNavigate();
+  const toast = useToast();
   const [upgrading, setUpgrading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -53,14 +55,14 @@ export default function BecomeEducator() {
 
     setUpgrading(true);
     try {
-      // Call backend to upgrade role
       await api.put('/auth/upgrade-to-educator');
+      toast.success('Welcome, Educator! Your account has been upgraded 🎉');
       setShowSuccess(true);
       setTimeout(() => {
         window.location.href = '/educator/dashboard';
       }, 2000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to upgrade. Please try again.');
+      toast.error(err.response?.data?.message || 'Failed to upgrade. Please try again.');
     } finally {
       setUpgrading(false);
     }

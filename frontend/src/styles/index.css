@@ -11,8 +11,51 @@
     text-rendering: optimizeLegibility;
   }
   body {
-    @apply antialiased;
+    @apply antialiased bg-white text-gray-900;
     overflow-x: hidden;
+  }
+
+  /* Dark mode base overrides — ensures ALL pages have proper theme */
+  .dark body,
+  .dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  /* Headings default dark mode */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-white;
+  }
+
+  /* Paragraphs and spans inherit properly in dark mode */
+  .dark p:not([class*="text-"]) {
+    @apply text-gray-300;
+  }
+
+  /* Labels in dark mode */
+  .dark label {
+    @apply text-gray-300;
+  }
+
+  /* Table dark mode defaults */
+  .dark table {
+    @apply text-gray-200;
+  }
+  .dark th {
+    @apply text-gray-300 border-gray-700;
+  }
+  .dark td {
+    @apply border-gray-700;
+  }
+  .dark thead {
+    @apply bg-gray-800;
+  }
+  .dark tbody tr:hover {
+    @apply bg-gray-800/50;
+  }
+
+  /* Select/input dark mode defaults */
+  .dark select, .dark textarea {
+    @apply bg-gray-700 border-gray-600 text-gray-100;
   }
 
   /* Custom scrollbar — thin & sleek */
@@ -291,6 +334,15 @@
   content: '';
   @apply absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full;
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ── Toast animation ── */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 /* ── Reduced motion preferences ── */

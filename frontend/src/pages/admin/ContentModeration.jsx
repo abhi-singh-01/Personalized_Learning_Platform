@@ -38,21 +38,21 @@ export default function ContentModeration() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+      <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
           <Flag className="text-orange-500" /> Content Moderation
         </h1>
-        <p className="text-sm text-gray-500 mt-1">Review and moderate flagged content</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review and moderate flagged content</p>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="text-center">
           <p className="text-2xl font-bold text-orange-500">{reviews.length}</p>
-          <p className="text-xs text-gray-500">Flagged Reviews</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Flagged Reviews</p>
         </Card>
         <Card className="text-center">
           <p className="text-2xl font-bold text-red-500">{reviews.filter(r => !r.isApproved).length}</p>
-          <p className="text-xs text-gray-500">Rejected</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Rejected</p>
         </Card>
       </div>
 
@@ -61,7 +61,7 @@ export default function ContentModeration() {
         {reviews.length === 0 && (
           <Card className="text-center py-8">
             <Check size={40} className="mx-auto text-green-400 mb-3" />
-            <p className="text-gray-500">No flagged content! Everything looks clean.</p>
+            <p className="text-gray-500 dark:text-gray-400">No flagged content! Everything looks clean.</p>
           </Card>
         )}
         {reviews.map(review => (
@@ -71,10 +71,10 @@ export default function ContentModeration() {
                 <div>
                   <div className="flex items-center gap-2">
                     <div className="flex">{renderStars(review.rating)}</div>
-                    <span className="text-sm font-semibold">{review.title || 'No title'}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{review.title || 'No title'}</span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{review.comment}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                  <div className="flex gap-4 mt-2 text-xs text-gray-400 dark:text-gray-500">
                     <span>By: {review.learner?.name || 'Unknown'}</span>
                     <span>Course: {review.course?.title || 'Unknown'}</span>
                     <span>{new Date(review.createdAt).toLocaleDateString()}</span>

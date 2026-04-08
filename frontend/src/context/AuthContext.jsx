@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
   const [sessionWarning, setSessionWarning] = useState(false);
   const idleTimerRef = useRef(null);
   const warningTimerRef = useRef(null);
+  const fetchedRef = useRef(false); // Prevent duplicate /auth/me calls (StrictMode)
 
   // Check if stored token has exceeded max age
   const isTokenExpired = () => {
@@ -22,13 +23,10 @@ export function AuthProvider({ children }) {
   };
 
   const logout = useCallback(async () => {
-    // Remove server-side session (device slot)
     try {
       const token = localStorage.getItem('token');
-      if (token) {
-        await API.post('/auth/logout');
-      }
-    } catch { /* silent — clear local state regardless */ }
+      if (token) await API.post('/auth/logout');
+    } catch { /* silent */ }
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -46,12 +44,10 @@ export function AuthProvider({ children }) {
     clearTimeout(idleTimerRef.current);
     clearTimeout(warningTimerRef.current);
 
-    // Show warning 2 minutes before timeout
     warningTimerRef.current = setTimeout(() => {
       setSessionWarning(true);
     }, SESSION_TIMEOUT_MS - 2 * 60 * 1000);
 
-    // Auto logout after full timeout
     idleTimerRef.current = setTimeout(() => {
       logout();
       window.location.href = '/login?expired=1';
@@ -66,7 +62,7 @@ export function AuthProvider({ children }) {
     const handleActivity = () => resetIdleTimer();
 
     events.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }));
-    resetIdleTimer(); // start the timer
+    resetIdleTimer();
 
     return () => {
       events.forEach((e) => window.removeEventListener(e, handleActivity));
@@ -75,24 +71,30 @@ export function AuthProvider({ children }) {
     };
   }, [user, resetIdleTimer]);
 
-  // Initial load: restore session
+  // Initial load: restore session — runs ONCE even in StrictMode
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const token = localStorage.getItem('token');
     const saved = localStorage.getItem('user');
 
     if (token && saved) {
-      // Check token age
       if (isTokenExpired()) {
         logout();
         setLoading(false);
         return;
       }
 
+      // Immediately restore cached user (prevents blank screen)
       setUser(JSON.parse(saved));
+
+      // Validate with server (single call)
       API.get('/auth/me')
         .then((res) => {
-          setUser(res.data.data);
-          localStorage.setItem('user', JSON.stringify(res.data.data));
+          const freshUser = res.data.data;
+          setUser(freshUser);
+          localStorage.setItem('user', JSON.stringify(freshUser));
         })
         .catch(() => {
           logout();
@@ -101,7 +103,7 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = async (email, password) => {
     const res = await API.post('/auth/login', { email, password });
@@ -135,8 +137,9 @@ export function AuthProvider({ children }) {
 
   const refreshUser = async () => {
     const res = await API.get('/auth/me');
-    setUser(res.data.data);
-    localStorage.setItem('user', JSON.stringify(res.data.data));
+    const freshUser = res.data.data;
+    setUser(freshUser);
+    localStorage.setItem('user', JSON.stringify(freshUser));
   };
 
   const extendSession = () => {

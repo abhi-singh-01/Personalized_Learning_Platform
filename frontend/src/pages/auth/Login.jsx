@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useToast } from '../../context/ToastContext';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -30,15 +31,20 @@ export default function Login() {
   const sessionExpired = searchParams.get('expired') === '1';
   const sessionEvicted = searchParams.get('reason') === 'session_expired';
 
+  const toast = useToast();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
+      toast.success(`Welcome back, ${user.name || 'Learner'}!`);
       nav(`/${user.role}/dashboard`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      const msg = err.response?.data?.message || 'Login failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

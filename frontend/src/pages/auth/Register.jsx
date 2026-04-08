@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, ArrowRight, Phone, MapPin } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useToast } from '../../context/ToastContext';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -77,6 +78,7 @@ export default function Register() {
   const [gLoading, setGLoading] = useState(false);
   const { register, googleLogin } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
 
   const statesForCountry = form.country ? Object.keys(locationData[form.country] || {}) : [];
   const citiesForState = form.country && form.state ? (locationData[form.country]?.[form.state] || []) : [];
@@ -92,9 +94,12 @@ export default function Register() {
     setLoading(true);
     try {
       const user = await register({ ...form, role: 'learner' });
+      toast.success('Account created successfully! Welcome aboard 🎉');
       nav(`/${user.role}/dashboard`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      const msg = err.response?.data?.message || 'Registration failed';
+      setError(msg);
+      toast.error(msg);
     } finally { setLoading(false); }
   };
 
