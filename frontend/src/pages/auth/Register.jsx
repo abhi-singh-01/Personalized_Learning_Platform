@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, ArrowRight, Phone, MapPin } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -71,7 +71,9 @@ function GoogleIcon({ size = 20 }) {
 }
 
 export default function Register() {
-  usePageTitle('Sign Up');
+  const [searchParams] = useSearchParams();
+  const isEducatorFlow = searchParams.get('role') === 'educator';
+  usePageTitle(isEducatorFlow ? 'Educator Sign Up' : 'Sign Up');
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', country: '', state: '', city: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -93,9 +95,10 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const user = await register({ ...form, role: 'learner' });
-      toast.success('Account created successfully! Welcome aboard 🎉');
-      nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
+      const selectedRole = isEducatorFlow ? 'educator' : 'learner';
+      const user = await register({ ...form, role: selectedRole });
+      toast.success(isEducatorFlow ? 'Educator account created! Welcome aboard 🎉' : 'Account created successfully! Welcome aboard 🎉');
+      nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed';
       setError(msg);
@@ -114,8 +117,9 @@ export default function Register() {
         callback: async (response) => {
           setGLoading(true);
           try {
-            const user = await googleLogin(response.credential, 'learner');
-            nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
+            const selectedRole = isEducatorFlow ? 'educator' : 'learner';
+            const user = await googleLogin(response.credential, selectedRole);
+            nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
           } catch (err) {
             setError(err.response?.data?.message || 'Google sign-up failed');
           } finally { setGLoading(false); }
@@ -157,8 +161,18 @@ export default function Register() {
         </Link>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-8">
-          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">Create your account</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Start learning for free — no credit card required</p>
+          {isEducatorFlow && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/40 mb-4">
+              <GraduationCap size={14} className="text-purple-600 dark:text-purple-400" />
+              <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Educator Account</span>
+            </div>
+          )}
+          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">
+            {isEducatorFlow ? 'Create your educator account' : 'Create your account'}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            {isEducatorFlow ? 'Start teaching and earning — free to get started' : 'Start learning for free — no credit card required'}
+          </p>
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
@@ -260,7 +274,7 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-purple-600 dark:text-purple-400 hover:underline">Log in</Link>
+          <Link to={isEducatorFlow ? '/login?role=educator' : '/login'} className="font-semibold text-purple-600 dark:text-purple-400 hover:underline">Log in</Link>
         </p>
       </div>
     </div>

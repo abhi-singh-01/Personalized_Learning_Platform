@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import useApi from '../../hooks/useApi';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
@@ -19,27 +20,48 @@ function GoogleIcon({ size = 20 }) {
 }
 
 export default function Login() {
-  usePageTitle('Sign In');
   const [form, setForm] = useState({ email: '', password: '' });
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
-  const { login, googleLogin } = useAuth();
+  const { login, googleLogin, refreshUser } = useAuth();
+  const api = useApi();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
   const sessionEvicted = searchParams.get('reason') === 'session_expired';
+  const isEducatorFlow = searchParams.get('role') === 'educator';
+  usePageTitle(isEducatorFlow ? 'Educator Sign In' : 'Sign In');
 
   const toast = useToast();
+
+  // Auto-upgrade a learner to educator after login (when coming from Become Educator flow)
+  const upgradeIfNeeded = async (user) => {
+    if (isEducatorFlow && user.role === 'learner') {
+      try {
+        const res = await api.put('/auth/upgrade-to-educator');
+        const { token, user: updatedUser } = res.data.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        await refreshUser();
+        return updatedUser;
+      } catch {
+        // If upgrade fails, continue with learner role
+      }
+    }
+    return user;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
-      toast.success(`Welcome back, ${user.name || 'Learner'}!`);
+      let user = await login(form.email, form.password);
+      user = await upgradeIfNeeded(user);
+      const greeting = isEducatorFlow ? 'Educator' : (user.name || 'Learner');
+      toast.success(`Welcome back, ${greeting}!`);
       nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Login failed';
@@ -67,8 +89,10 @@ export default function Login() {
         callback: async (response) => {
           setGLoading(true);
           try {
-            const user = await googleLogin(response.credential, 'learner');
-            nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
+            const selectedRole = isEducatorFlow ? 'educator' : 'learner';
+            let user = await googleLogin(response.credential, selectedRole);
+            user = await upgradeIfNeeded(user);
+            nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
           } catch (err) {
             setError(err.response?.data?.message || 'Google login failed');
           } finally {
@@ -169,11 +193,19 @@ export default function Login() {
             </div>
 
             <div className="mb-8">
+              {isEducatorFlow && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/40 mb-4">
+                  <GraduationCap size={14} className="text-purple-600 dark:text-purple-400" />
+                  <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Educator Login</span>
+                </div>
+              )}
               <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
-                Sign in
+                {isEducatorFlow ? 'Sign in as Educator' : 'Sign in'}
               </h2>
               <p className="text-gray-500 dark:text-gray-400">
-                Enter your credentials to access your account
+                {isEducatorFlow
+                  ? 'Access your educator dashboard and start teaching'
+                  : 'Enter your credentials to access your account'}
               </p>
             </div>
 
@@ -297,10 +329,10 @@ export default function Login() {
             <p className="text-center text-sm text-gray-500 dark:text-gray-400">
               Don't have an account?{' '}
               <Link
-                to="/register"
+                to={isEducatorFlow ? '/register?role=educator' : '/register'}
                 className="font-semibold text-purple-600 dark:text-purple-400 hover:underline"
               >
-                Sign up for free
+                {isEducatorFlow ? 'Create educator account' : 'Sign up for free'}
               </Link>
             </p>
 
