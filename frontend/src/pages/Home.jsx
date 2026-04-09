@@ -79,57 +79,214 @@ export default function Home() {
       <PublicNavbar />
 
       {/* ═══════════ HERO ═══════════ */}
-      <section className="relative overflow-hidden">
-        {/* Gradient mesh background */}
+      <section className="relative overflow-hidden min-h-[600px] lg:min-h-[680px]">
+        {/* Gradient mesh background — richer, more layered */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950" />
-        <div className="absolute top-20 -left-20 w-96 h-96 bg-purple-200/30 dark:bg-purple-900/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-200/30 dark:bg-blue-900/10 rounded-full blur-3xl" />
+        <div className="absolute top-10 -left-32 w-[500px] h-[500px] bg-purple-200/40 dark:bg-purple-900/20 rounded-full blur-[100px] animate-hero-glow" />
+        <div className="absolute bottom-0 right-10 w-[400px] h-[400px] bg-blue-200/40 dark:bg-blue-900/20 rounded-full blur-[100px] animate-hero-glow" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-100/30 dark:bg-indigo-900/10 rounded-full blur-[120px]" />
+        
+        {/* Subtle dot pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
         <div className="relative max-w-7xl mx-auto px-4 lg:px-6 py-16 lg:py-24">
-          <div className="max-w-3xl">
-            {/* Trust badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800/50 mb-6">
-              <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
-              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">AI-Powered Learning · Trusted by 12,840+ learners</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-[1.1] mb-6">
-              Learn without limits,{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 dark:from-purple-400 dark:via-violet-400 dark:to-blue-400">
-                grow without boundaries
-              </span>
-            </h1>
-
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-xl leading-relaxed">
-              Access 350+ courses taught by industry experts. Our AI adapts to how you learn, finds your weak spots, and builds a personalized path to mastery.
-            </p>
-
-            {/* Hero search */}
-            <form onSubmit={handleHeroSearch} className="flex items-center gap-0 max-w-lg mb-6">
-              <div className="flex-1 flex items-center gap-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 border-r-0 rounded-l-full px-5 py-3.5 focus-within:border-purple-400 dark:focus-within:border-purple-500 transition-colors">
-                <Search size={20} className="text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="What do you want to learn?"
-                  value={heroSearch}
-                  onChange={(e) => setHeroSearch(e.target.value)}
-                  className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white placeholder:text-gray-400"
-                />
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+            
+            {/* ── LEFT COLUMN: Content ── */}
+            <div className="animate-hero-enter-l">
+              {/* Trust badge with subtle bounce */}
+              <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-purple-200/60 dark:border-purple-700/40 shadow-sm shadow-purple-500/10 mb-8 animate-hero-badge">
+                <div className="flex items-center gap-1">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                </div>
+                <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
+                <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 tracking-wide">AI-Powered Learning · Trusted by 12,840+ learners</span>
               </div>
-              <button type="submit" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white font-semibold px-7 py-3.5 rounded-r-full transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40">
-                Search
-              </button>
-            </form>
 
-            {/* Popular topics */}
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">Popular:</span>
-              {['Python', 'React', 'Machine Learning', 'System Design', 'AWS'].map(t => (
-                <Link key={t} to="/tracks" className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 transition-colors font-medium">
-                  {t}
-                </Link>
-              ))}
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-[1.08] mb-6">
+                Learn without limits,{' '}
+                <span className="hero-gradient-text bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 dark:from-purple-400 dark:via-violet-400 dark:to-blue-400">
+                  grow without boundaries
+                </span>
+              </h1>
+
+              <p className="text-lg lg:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-xl leading-relaxed">
+                Access <span className="font-semibold text-gray-900 dark:text-white">350+ courses</span> taught by industry experts. Our AI adapts to how you learn, finds your weak spots, and builds a <span className="font-semibold text-gray-900 dark:text-white">personalized path</span> to mastery.
+              </p>
+
+              {/* Hero search — glassmorphic */}
+              <form onSubmit={handleHeroSearch} className="flex items-center gap-0 max-w-lg mb-8 group">
+                <div className="flex-1 flex items-center gap-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-2 border-gray-200 dark:border-gray-700 border-r-0 rounded-l-2xl px-5 py-4 focus-within:border-purple-400 dark:focus-within:border-purple-500 transition-all shadow-sm group-focus-within:shadow-lg group-focus-within:shadow-purple-500/10">
+                  <Search size={20} className="text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="What do you want to learn?"
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white placeholder:text-gray-400"
+                  />
+                </div>
+                <button type="submit" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white font-semibold px-8 py-4 rounded-r-2xl transition-all shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/40 hover:-translate-y-0.5 active:translate-y-0">
+                  Search
+                </button>
+              </form>
+
+              {/* Popular topics */}
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Popular:</span>
+                {['Python', 'React', 'Machine Learning', 'System Design', 'AWS'].map((t, i) => (
+                  <Link key={t} to="/tracks" className="px-3.5 py-1.5 rounded-full bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 hover:border-purple-200 dark:hover:border-purple-700 transition-all font-medium hover:-translate-y-0.5 shadow-sm" style={{ animationDelay: `${i * 0.1}s` }}>
+                    {t}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Mini social proof */}
+              <div className="flex items-center gap-4 mt-8 pt-6 border-t border-gray-200/50 dark:border-gray-800/50">
+                <div className="flex -space-x-2">
+                  {['👩‍💻', '👨‍🔬', '👩‍🎓', '👨‍💼'].map((emoji, i) => (
+                    <div key={i} className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 border-2 border-white dark:border-gray-900 flex items-center justify-center text-sm shadow-sm">
+                      {emoji}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 ml-1">4.8/5</span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">from 12,840+ happy learners</p>
+                </div>
+              </div>
             </div>
+
+            {/* ── RIGHT COLUMN: Visual Composition ── */}
+            <div className="hidden lg:block animate-hero-enter-r">
+              <div className="relative w-full h-[520px]">
+                {/* Central glowing orb */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 dark:from-purple-500/10 dark:to-blue-500/10 blur-2xl animate-hero-glow" />
+                
+                {/* Orbital ring */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px]">
+                  <div className="w-full h-full rounded-full border border-dashed border-purple-200/50 dark:border-purple-800/30 animate-hero-ring" />
+                  {/* Orbiting dots */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-purple-500 shadow-lg shadow-purple-500/50 animate-hero-dot" />
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50 animate-hero-dot" style={{ animationDelay: '1s' }} />
+                </div>
+                
+                {/* Second orbital ring */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px]">
+                  <div className="w-full h-full rounded-full border border-dotted border-blue-200/30 dark:border-blue-800/20 animate-hero-ring" style={{ animationDirection: 'reverse', animationDuration: '35s' }} />
+                </div>
+
+                {/* Central icon cluster */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-600 to-violet-600 shadow-2xl shadow-purple-500/40 flex items-center justify-center animate-hero-float-2">
+                  <Brain size={40} className="text-white" />
+                </div>
+
+                {/* Floating Card 1 — AI Adaptive */}
+                <div className="absolute top-4 left-6 animate-hero-float-1">
+                  <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-xl shadow-purple-500/10 p-4 w-52">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg">
+                        <Target size={20} className="text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 dark:text-white">AI Adaptive</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">Personalized path</p>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full w-4/5 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full" style={{ animation: 'shimmer 2s linear infinite', backgroundSize: '200% 100%' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating Card 2 — Course Progress */}
+                <div className="absolute top-6 right-0 animate-hero-float-3">
+                  <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-xl shadow-blue-500/10 p-4 w-48">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">Course Progress</p>
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">↑ 12%</span>
+                    </div>
+                    <p className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">78%</p>
+                    <div className="flex gap-1 items-end h-8">
+                      {[12, 18, 14, 22, 20, 10, 8].map((h, i) => (
+                        <div key={i} className={`flex-1 rounded-sm ${i <= 4 ? 'bg-gradient-to-t from-blue-500 to-blue-400' : 'bg-gray-100 dark:bg-gray-700'}`} style={{ height: `${h}px` }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating Card 3 — Live Learners */}
+                <div className="absolute bottom-16 left-0 animate-hero-float-2">
+                  <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-xl shadow-emerald-500/10 p-4 w-52">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
+                          <Users size={20} className="text-white" />
+                        </div>
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-white dark:border-gray-800"></span>
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 dark:text-white">1,247 learners</p>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Online right now</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating Card 4 — Achievement */}
+                <div className="absolute bottom-8 right-4 animate-hero-float-1" style={{ animationDelay: '1.5s' }}>
+                  <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-xl shadow-amber-500/10 p-4 w-44">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                        <Award size={16} className="text-white" />
+                      </div>
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">Achievement</p>
+                    </div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">Completed ML Mastery</p>
+                    <div className="flex items-center gap-1">
+                      {[1,2,3,4,5].map(i => <Star key={i} size={10} className="text-amber-400 fill-amber-400" />)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Small floating icons */}
+                <div className="absolute top-32 left-1/2 animate-hero-float-3" style={{ animationDelay: '0.8s' }}>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 backdrop-blur-sm border border-blue-200/30 dark:border-blue-700/30 flex items-center justify-center">
+                    <Zap size={18} className="text-blue-500" />
+                  </div>
+                </div>
+
+                <div className="absolute bottom-40 right-24 animate-hero-float-1" style={{ animationDelay: '2s' }}>
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 backdrop-blur-sm border border-amber-200/30 dark:border-amber-700/30 flex items-center justify-center">
+                    <Sparkles size={18} className="text-amber-500" />
+                  </div>
+                </div>
+
+                {/* Connecting gradient lines */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20 dark:opacity-10" viewBox="0 0 500 520">
+                  <defs>
+                    <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.1" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="130" y1="80" x2="250" y2="260" stroke="url(#line-grad)" strokeWidth="1" strokeDasharray="4 4" />
+                  <line x1="370" y1="80" x2="250" y2="260" stroke="url(#line-grad)" strokeWidth="1" strokeDasharray="4 4" />
+                  <line x1="130" y1="400" x2="250" y2="260" stroke="url(#line-grad)" strokeWidth="1" strokeDasharray="4 4" />
+                  <line x1="370" y1="440" x2="250" y2="260" stroke="url(#line-grad)" strokeWidth="1" strokeDasharray="4 4" />
+                </svg>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

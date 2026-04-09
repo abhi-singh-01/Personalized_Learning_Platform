@@ -63,11 +63,9 @@ export default function AIChatBot() {
   const inputRef = useRef(null);
   const abortRef = useRef(null);
 
-  // Only show for learners
-  if (!user || user.role !== 'learner') return null;
-
   // ── Detect course context from URL ──
   useEffect(() => {
+    if (!user || user.role !== 'learner') return;
     const match = location.pathname.match(/\/learner\/courses\/([a-f0-9]{24})/);
     if (match) {
       setCourseContext({ id: match[1] });
@@ -81,7 +79,7 @@ export default function AIChatBot() {
     } else {
       setCourseContext(null);
     }
-  }, [location.pathname]);
+  }, [location.pathname, user]);
 
   // ── Load saved messages from sessionStorage ──
   useEffect(() => {
@@ -132,6 +130,9 @@ export default function AIChatBot() {
       loadSuggestions();
     }
   }, [isOpen, loadSuggestions]);
+
+  // ── Only show for learners — MUST be after all hooks ──
+  if (!user || user.role !== 'learner') return null;
 
   // ── Send Message with SSE Streaming ──
   const sendMessage = async (text) => {

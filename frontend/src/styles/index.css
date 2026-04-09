@@ -345,6 +345,82 @@
   animation: slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
+/* ── Hero Section Animations ── */
+@keyframes hero-float-1 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-18px) rotate(2deg); }
+}
+@keyframes hero-float-2 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-14px) rotate(-3deg); }
+}
+@keyframes hero-float-3 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-22px) rotate(4deg); }
+}
+@keyframes hero-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes hero-gradient-text {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes hero-glow-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.05); }
+}
+@keyframes hero-enter-left {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes hero-enter-right {
+  from { opacity: 0; transform: translateX(30px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes hero-badge-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes hero-typing-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+@keyframes hero-counter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-ring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes hero-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%      { transform: scale(1.8); opacity: 1; }
+}
+
+.animate-hero-float-1 { animation: hero-float-1 6s ease-in-out infinite; will-change: transform; }
+.animate-hero-float-2 { animation: hero-float-2 5s ease-in-out 1s infinite; will-change: transform; }
+.animate-hero-float-3 { animation: hero-float-3 7s ease-in-out 0.5s infinite; will-change: transform; }
+.animate-hero-orbit   { animation: hero-orbit 25s linear infinite; }
+.animate-hero-glow    { animation: hero-glow-pulse 4s ease-in-out infinite; }
+.animate-hero-enter-l { animation: hero-enter-left 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-hero-enter-r { animation: hero-enter-right 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
+.animate-hero-badge   { animation: hero-badge-bounce 3s ease-in-out infinite; }
+.animate-hero-cursor  { animation: hero-typing-cursor 1s step-end infinite; }
+.animate-hero-counter { animation: hero-counter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-hero-ring    { animation: hero-ring-spin 20s linear infinite; }
+.animate-hero-dot     { animation: hero-dot-pulse 2s ease-in-out infinite; }
+
+.hero-gradient-text {
+  background-size: 200% 200%;
+  animation: hero-gradient-text 4s ease infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* ── Reduced motion preferences ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
