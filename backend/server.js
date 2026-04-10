@@ -8,6 +8,7 @@ const initializeSocket = require('./src/services/socketService');
 connectDB().then(() => {
   // Create HTTP server from Express app
   const server = http.createServer(app);
+  const port = Number(process.env.PORT || PORT || 5000);
 
   // Initialize Socket.io
   const io = new Server(server, {
@@ -26,8 +27,8 @@ connectDB().then(() => {
   // Initialize socket event handlers
   initializeSocket(io);
 
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
     console.log(`Socket.io ready for connections`);
   });
 });

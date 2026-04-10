@@ -58,6 +58,23 @@ app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 // Basic global rate limit for all API traffic
 app.use('/api', globalLimiter);
 
+// Root + health endpoints (useful for Render uptime checks)
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Backend is running 🚀',
+  });
+});
+
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Webhook endpoint needs raw body for HMAC signature verification
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
   req.rawBody = req.body;
