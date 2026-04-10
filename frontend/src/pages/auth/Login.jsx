@@ -1,12 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 
 function GoogleIcon({ size = 20 }) {
   return (
@@ -24,7 +23,6 @@ export default function Login() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [gLoading, setGLoading] = useState(false);
   const { login, googleLogin, refreshUser } = useAuth();
   const api = useApi();
   const nav = useNavigate();
@@ -37,7 +35,7 @@ export default function Login() {
   const toast = useToast();
 
   // Auto-upgrade a learner to educator after login (when coming from Become Educator flow)
-  const upgradeIfNeeded = async (user) => {
+  const upgradeIfNeeded = useCallback(async (user) => {
     if (isEducatorFlow && user.role === 'learner') {
       try {
         const res = await api.put('/auth/upgrade-to-educator');
@@ -51,7 +49,7 @@ export default function Login() {
       }
     }
     return user;
-  };
+  }, [isEducatorFlow, api, refreshUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,64 +70,18 @@ export default function Login() {
     }
   };
 
-  const googleBtnRef = useRef(null);
-
-  // Initialize Google Sign-In once the GSI script is ready
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
-
-    const initGoogle = () => {
-      if (!window.google?.accounts?.id) {
-        setTimeout(initGoogle, 200);
-        return;
-      }
-
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          setGLoading(true);
-          try {
-            const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-            let user = await googleLogin(response.credential, selectedRole);
-            user = await upgradeIfNeeded(user);
-            nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
-          } catch (err) {
-            setError(err.response?.data?.message || 'Google login failed');
-          } finally {
-            setGLoading(false);
-          }
-        },
-      });
-
-      // Render the native button in a hidden container
-      if (googleBtnRef.current) {
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          width: 300,
-        });
-      }
-    };
-
-    initGoogle();
-  }, [googleLogin, nav]);
-
-  const handleGoogleLogin = useCallback(() => {
-    if (!GOOGLE_CLIENT_ID) {
-      setError('Google Client ID is not configured.');
-      return;
-    }
-    // Click the hidden native Google button to trigger the popup
-    const nativeBtn = googleBtnRef.current?.querySelector('div[role="button"]');
-    if (nativeBtn) {
-      nativeBtn.click();
-    } else {
-      setError('Google Sign-In is still loading. Please try again in a moment.');
-    }
-  }, []);
+  const handleGoogleCredential = useCallback(
+    async (credential) => {
+      setError('');
+      const selectedRole = isEducatorFlow ? 'educator' : 'learner';
+      let user = await googleLogin(credential, selectedRole);
+      user = await upgradeIfNeeded(user);
+      const greeting = isEducatorFlow ? 'Educator' : (user.name || 'Learner');
+      toast.success(`Welcome back, ${greeting}!`);
+      nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+    },
+    [googleLogin, upgradeIfNeeded, isEducatorFlow, nav, toast]
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-[#0A0A0A]">
@@ -231,20 +183,25 @@ export default function Login() {
             )}
 
             {/* Google Sign-In */}
-            <button
-              onClick={handleGoogleLogin}
-              disabled={gLoading}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 mb-5 font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
-            >
-              {gLoading ? (
-                <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Continue with Google
-            </button>
-            {/* Hidden native Google button */}
-            <div ref={googleBtnRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, overflow: 'hidden' }} />
+            <div className="mb-5">
+              <GoogleSignInButton
+                mode="signin"
+                onCredential={handleGoogleCredential}
+                onGsiError={(msg) => setError(msg)}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
+              >
+                {(busy) =>
+                  busy ? (
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <GoogleIcon />
+                      Continue with Google
+                    </>
+                  )
+                }
+              </GoogleSignInButton>
+            </div>
 
             {/* Divider */}
             <div className="flex items-center gap-4 mb-5">

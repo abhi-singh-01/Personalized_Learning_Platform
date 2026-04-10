@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, ArrowRight, Phone, MapPin } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 
 const locationData = {
   India: {
@@ -77,7 +76,6 @@ export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', country: '', state: '', city: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [gLoading, setGLoading] = useState(false);
   const { register, googleLogin } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
@@ -106,39 +104,16 @@ export default function Register() {
     } finally { setLoading(false); }
   };
 
-  const googleBtnRef = useRef(null);
-
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
-    const init = () => {
-      if (!window.google?.accounts?.id) { setTimeout(init, 200); return; }
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          setGLoading(true);
-          try {
-            const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-            const user = await googleLogin(response.credential, selectedRole);
-            nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
-          } catch (err) {
-            setError(err.response?.data?.message || 'Google sign-up failed');
-          } finally { setGLoading(false); }
-        },
-      });
-      if (googleBtnRef.current) {
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, { type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', width: 300 });
-      }
-    };
-    init();
-  }, [googleLogin, nav]);
-
-  const handleGoogleRegister = useCallback(() => {
-    if (!GOOGLE_CLIENT_ID) { setError('Google Client ID is not configured.'); return; }
-    const btn = googleBtnRef.current?.querySelector('div[role="button"]');
-    if (btn) btn.click();
-    else setError('Google Sign-In is still loading. Please try again.');
-  }, []);
+  const handleGoogleCredential = useCallback(
+    async (credential) => {
+      setError('');
+      const selectedRole = isEducatorFlow ? 'educator' : 'learner';
+      const user = await googleLogin(credential, selectedRole);
+      toast.success(isEducatorFlow ? 'Educator account ready — welcome!' : 'Welcome — your account is ready!');
+      nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+    },
+    [googleLogin, isEducatorFlow, nav, toast]
+  );
 
   const updateField = (key, value) => {
     const updates = { ...form, [key]: value };
@@ -181,12 +156,25 @@ export default function Register() {
           )}
 
           {/* Google */}
-          <button onClick={handleGoogleRegister} disabled={gLoading}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50 mb-5">
-            {gLoading ? <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /> : <GoogleIcon />}
-            Sign up with Google
-          </button>
-          <div ref={googleBtnRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, overflow: 'hidden' }} />
+          <div className="mb-5">
+            <GoogleSignInButton
+              mode="signup"
+              onCredential={handleGoogleCredential}
+              onGsiError={(msg) => setError(msg)}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
+            >
+              {(busy) =>
+                busy ? (
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <GoogleIcon />
+                    Sign up with Google
+                  </>
+                )
+              }
+            </GoogleSignInButton>
+          </div>
 
           <div className="flex items-center gap-4 mb-5">
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
