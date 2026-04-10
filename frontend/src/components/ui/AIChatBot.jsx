@@ -134,7 +134,7 @@ export default function AIChatBot() {
   // ── Only show for learners — MUST be after all hooks ──
   if (!user || user.role !== 'learner') return null;
 
-  // ── Send Message with SSE Streaming ──
+  // ── Send Message — tries streaming first, falls back to non-streaming ──
   const sendMessage = async (text) => {
     const msg = (text || input).trim();
     if (!msg || isStreaming) return;
@@ -149,16 +149,18 @@ export default function AIChatBot() {
     setMessages(prev => [...prev, userMsg, botMsg]);
     setIsStreaming(true);
 
+    const body = {
+      message: msg,
+      courseId: courseContext?.id || null,
+      history: messages.slice(-10).map(m => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      })),
+    };
+
     try {
+      // Try SSE streaming first for real-time feel
       const token = localStorage.getItem('token');
-      const body = {
-        message: msg,
-        courseId: courseContext?.id || null,
-        history: messages.slice(-10).map(m => ({
-          role: m.role === 'user' ? 'user' : 'assistant',
-          content: m.content,
-        })),
-      };
 
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || '/api'}/chatbot/stream`,
@@ -173,8 +175,7 @@ export default function AIChatBot() {
       );
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || `Error ${response.status}`);
+        throw new Error(`STREAM_FAILED_${response.status}`);
       }
 
       const reader = response.body.getReader();
@@ -214,7 +215,7 @@ export default function AIChatBot() {
         }
       }
 
-      // Finalize
+      // Finalize streaming message
       setMessages(prev => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
@@ -223,19 +224,36 @@ export default function AIChatBot() {
         }
         return updated;
       });
-    } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
-      // Remove the empty bot message
-      setMessages(prev => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last && last.role === 'bot' && !last.content) {
-          updated.pop();
-        } else if (last && last.role === 'bot') {
-          updated[updated.length - 1] = { ...last, streaming: false };
-        }
-        return updated;
-      });
+    } catch (streamErr) {
+      // ── Fallback: use non-streaming /chatbot/chat endpoint ──
+      try {
+        const res = await API.post('/chatbot/chat', body);
+        const reply = res.data?.data?.reply || res.data?.reply || 'Sorry, I could not generate a response.';
+
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last && last.role === 'bot') {
+            updated[updated.length - 1] = { role: 'bot', content: reply, streaming: false };
+          }
+          return updated;
+        });
+        setError('');
+      } catch (fallbackErr) {
+        const errMsg = fallbackErr?.response?.data?.message || fallbackErr.message || 'Something went wrong. Please try again.';
+        setError(errMsg);
+        // Remove the empty bot message
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last && last.role === 'bot' && !last.content) {
+            updated.pop();
+          } else if (last && last.role === 'bot') {
+            updated[updated.length - 1] = { ...last, streaming: false };
+          }
+          return updated;
+        });
+      }
     } finally {
       setIsStreaming(false);
     }

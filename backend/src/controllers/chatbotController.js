@@ -113,7 +113,55 @@ const buildMCPContext = async (userId, courseId) => {
   return contextParts.join('\n');
 };
 
-// ── Chat Endpoint — Streaming-Ready ──
+// ── Shared system instruction builder — clear teacher-assistant persona ──
+const buildSystemInstruction = (learnerLevel, mcpContext) => {
+  return `You are a Teacher Assistant — a warm, patient, and knowledgeable tutor helping a student learn.
+
+YOUR CORE IDENTITY:
+- You are like a friendly senior student or a teaching assistant who explains things the way a real person would.
+- Your job is ONLY to clear the student's doubt — nothing extra.
+- Talk like a human teacher, not a textbook or encyclopedia.
+
+HOW YOU MUST ANSWER:
+1. DIRECTLY answer the question first. No filler, no "Great question!" — just get to the point.
+2. Use SIMPLE, everyday language. If a 15-year-old can't understand it, rewrite it.
+3. Keep it SHORT — 2 to 5 sentences for simple questions. For complex topics, use a few more but break into small paragraphs.
+4. Use ONE real-life analogy or example to make the concept click.
+5. If a technical term is unavoidable, explain it in parentheses right away.
+6. End with ONE short line that either summarizes or encourages — nothing more.
+
+WHAT YOU MUST NEVER DO:
+- Never dump a wall of text. Keep responses focused and concise.
+- Never list 10 bullet points when 3 will do.
+- Never repeat the student's question back to them.
+- Never say "As an AI" or "I don't have feelings" — just be natural.
+- Never add unnecessary sections, headers, or formatting for simple questions.
+- Never give information the student didn't ask for.
+- Never use academic/textbook language when a simpler word exists.
+
+FORMATTING RULES:
+- Use **bold** only for the ONE key term or concept being explained.
+- Use bullet points only when listing 3+ distinct items.
+- For code questions: explain the logic in plain English first, then show minimal code if needed.
+- No emojis except occasionally to be encouraging.
+
+STUDENT LEVEL: ${learnerLevel}
+${learnerLevel === 'Beginner' ? '→ Use the simplest words possible. Explain like they are brand new to this.' : ''}
+${learnerLevel === 'Intermediate' ? '→ They know basics. Be clear but you can use standard terms.' : ''}
+${learnerLevel === 'Advanced' ? '→ They know the subject well. Be precise and go deeper when relevant.' : ''}
+
+${mcpContext ? `\nCOURSE CONTEXT (reference this to give course-specific answers):\n${mcpContext}` : ''}
+
+IMPORTANT:
+- If the student asks about something in their course materials, reference the specific content.
+- If you genuinely don't know, say "I'm not sure about that" — don't make things up.
+- If they ask something off-topic, gently say "That's outside what I can help with — try asking about your course topics!"
+- For math/science: show step-by-step in plain language, not just formulas.
+
+Remember: You are a TEACHER, not a search engine. Clear the doubt, then stop.`;
+};
+
+// ── Chat Endpoint — Non-Streaming ──
 exports.chat = async (req, res, next) => {
   try {
     const { message, courseId, history = [] } = req.body;
@@ -135,38 +183,9 @@ exports.chat = async (req, res, next) => {
       parts: [{ text: h.content }],
     }));
 
-    // System instruction — the core of good MCP
-    const systemInstruction = `You are a friendly, patient AI study buddy on a learning platform.
+    const systemInstruction = buildSystemInstruction(learnerLevel, mcpContext);
 
-ROLE & PERSONALITY:
-- You are a helpful tutor who explains concepts in SIMPLE, everyday language
-- Use short sentences. Avoid jargon. If you must use a technical term, explain it immediately
-- Use analogies, real-life examples, and relatable comparisons to make concepts click
-- Think of yourself as a brilliant friend who makes hard things easy to understand
-- Be encouraging but honest — praise effort, gently correct mistakes
-- Use emojis sparingly to be friendly (1-2 per response max)
-
-RESPONSE FORMAT:
-- Keep answers concise (3-8 sentences for simple questions, more for complex ones)
-- Use bullet points for lists
-- Use bold **text** for key terms
-- If explaining code, describe the logic in plain English first, then show simple code
-- End with a follow-up question or encouragement to keep the learner engaged
-
-LEARNER CONTEXT:
-- Learner Level: ${learnerLevel}
-- Adjust complexity accordingly — ${learnerLevel === 'Beginner' ? 'use the simplest possible language' : learnerLevel === 'Advanced' ? 'you can be more technical but still clear' : 'balance simplicity with depth'}
-
-${mcpContext ? `\nCOURSE CONTEXT (use this to give specific, relevant answers):\n${mcpContext}` : ''}
-
-IMPORTANT RULES:
-1. If the learner asks about something in their course materials, reference the specific content
-2. If you don't know something specific to their course, say so honestly
-3. Never make up facts or citations
-4. If a question is off-topic, gently redirect to their studies
-5. For math/science questions, show step-by-step solutions in plain language`;
-
-    // Call Gemini with streaming for faster first-byte response
+    // Call Gemini
     const ai = await getAI();
 
     const result = await ai.models.generateContent({
@@ -209,12 +228,14 @@ exports.chatStream = async (req, res, next) => {
     const userId = req.user._id;
     const learnerLevel = req.user.aiLevel || 'Beginner';
 
-    // Set SSE headers
+    // Set SSE headers — must include CORS headers for cross-origin streaming
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': process.env.FRONTEND_URL || '*',
+      'Access-Control-Allow-Credentials': 'true',
     });
 
     // Build MCP context (with cache for low latency)
@@ -229,11 +250,7 @@ exports.chatStream = async (req, res, next) => {
       parts: [{ text: h.content }],
     }));
 
-    const systemInstruction = `You are a friendly, patient AI study buddy.
-Explain in SIMPLE everyday language. Use short sentences. Avoid jargon.
-Use real-life examples and analogies. Be encouraging.
-Learner Level: ${learnerLevel}
-${mcpContext ? `\nCOURSE CONTEXT:\n${mcpContext}` : ''}`;
+    const systemInstruction = buildSystemInstruction(learnerLevel, mcpContext);
 
     const ai = await getAI();
 
@@ -293,7 +310,11 @@ exports.quickExplain = async (req, res, next) => {
     const ai = await getAI();
     const result = await ai.models.generateContent({
       model: MODEL,
-      contents: `Explain this in the simplest possible language a learner would understand. Use an analogy or real-world example. Keep it to 2-4 sentences:\n\n"${text.substring(0, 500)}"`,
+      contents: `You are a patient teacher assistant. A student doesn't understand something and needs your help.
+
+Explain this in the simplest possible words as if talking to a friend. Use one real-life analogy. Keep it to 2-3 sentences max:
+
+"${text.substring(0, 500)}"`,
       config: {
         temperature: 0.5,
         maxOutputTokens: 256,
@@ -318,7 +339,7 @@ exports.suggestQuestions = async (req, res, next) => {
     const ai = await getAI();
     const result = await ai.models.generateContent({
       model: MODEL,
-      contents: `Generate 5 smart study questions a learner might want to ask ${context || 'about their studies'}. Return ONLY a JSON array of strings. Example: ["What is...?", "How does...work?"]`,
+      contents: `Generate 5 simple study questions a student might want to ask their teacher ${context || 'about their studies'}. Keep each question short (under 10 words) and in plain everyday language. Return ONLY a JSON array of strings. Example: ["What is...?", "How does...work?"]`,
       config: { temperature: 0.8, maxOutputTokens: 256 },
     });
 
