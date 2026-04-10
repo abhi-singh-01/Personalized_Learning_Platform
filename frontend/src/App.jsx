@@ -3,49 +3,72 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/auth/ErrorBoundary';
-import AppLayout from './components/layout/AppLayout';
-import Home from './pages/Home';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import CompleteProfile from './pages/auth/CompleteProfile';
-import About from './pages/About';
-import Features from './pages/Features';
-import Tracks from './pages/Tracks';
-import Insights from './pages/Insights';
-import BecomeEducator from './pages/BecomeEducator';
-import LearnerDashboard from './pages/learner/Dashboard';
-import Courses from './pages/learner/Courses';
-import CourseDetail from './pages/learner/CourseDetail';
-import QuizAttempt from './pages/learner/QuizAttempt';
-import PracticeQuiz from './pages/learner/PracticeQuiz';
-import StudyPlan from './pages/learner/StudyPlan';
-import EducatorDashboard from './pages/educator/Dashboard';
-import ManageCourse from './pages/educator/ManageCourse';
-import CreateQuiz from './pages/educator/CreateQuiz';
-import UploadMaterial from './pages/educator/UploadMaterial';
-import LearnerAnalytics from './pages/educator/LearnerAnalytics';
-import LiveLecture from './pages/educator/LiveLecture';
-import EducatorCoupons from './pages/educator/Coupons';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import PlatformAnalytics from './pages/admin/PlatformAnalytics';
-import OffersDashboard from './pages/admin/OffersDashboard';
 
-// New pages — lazy loaded for code splitting
+// ── Only the shell loads eagerly — everything else is lazy ──
+const AppLayout = lazy(() => import('./components/layout/AppLayout'));
+const AIChatBot = lazy(() => import('./components/ui/AIChatBot'));
+
+// ── Public pages ──
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/auth/Login'));
+const Register = lazy(() => import('./pages/auth/Register'));
+const CompleteProfile = lazy(() => import('./pages/auth/CompleteProfile'));
+const About = lazy(() => import('./pages/About'));
+const Features = lazy(() => import('./pages/Features'));
+const Tracks = lazy(() => import('./pages/Tracks'));
+const Insights = lazy(() => import('./pages/Insights'));
+const BecomeEducator = lazy(() => import('./pages/BecomeEducator'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+// ── Learner pages ──
+const LearnerDashboard = lazy(() => import('./pages/learner/Dashboard'));
+const Courses = lazy(() => import('./pages/learner/Courses'));
+const CourseDetail = lazy(() => import('./pages/learner/CourseDetail'));
+const QuizAttempt = lazy(() => import('./pages/learner/QuizAttempt'));
+const PracticeQuiz = lazy(() => import('./pages/learner/PracticeQuiz'));
+const StudyPlan = lazy(() => import('./pages/learner/StudyPlan'));
+const LiveClassRoom = lazy(() => import('./pages/learner/LiveClassRoom'));
+const PaymentHistory = lazy(() => import('./pages/learner/PaymentHistory'));
+
+// ── Educator pages ──
+const EducatorDashboard = lazy(() => import('./pages/educator/Dashboard'));
+const ManageCourse = lazy(() => import('./pages/educator/ManageCourse'));
+const CreateQuiz = lazy(() => import('./pages/educator/CreateQuiz'));
+const UploadMaterial = lazy(() => import('./pages/educator/UploadMaterial'));
+const LearnerAnalytics = lazy(() => import('./pages/educator/LearnerAnalytics'));
+const LiveLecture = lazy(() => import('./pages/educator/LiveLecture'));
+const EducatorCoupons = lazy(() => import('./pages/educator/Coupons'));
+const LiveClassManager = lazy(() => import('./pages/educator/LiveClassManager'));
+const EarningsDashboard = lazy(() => import('./pages/educator/EarningsDashboard'));
+
+// ── Admin pages ──
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const PlatformAnalytics = lazy(() => import('./pages/admin/PlatformAnalytics'));
+const OffersDashboard = lazy(() => import('./pages/admin/OffersDashboard'));
 const UIConfigManager = lazy(() => import('./pages/admin/UIConfigManager'));
 const FeatureFlagsManager = lazy(() => import('./pages/admin/FeatureFlagsManager'));
 const LiveClassMonitor = lazy(() => import('./pages/admin/LiveClassMonitor'));
 const AuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
 const ContentModeration = lazy(() => import('./pages/admin/ContentModeration'));
-const LiveClassManager = lazy(() => import('./pages/educator/LiveClassManager'));
-const EarningsDashboard = lazy(() => import('./pages/educator/EarningsDashboard'));
-const LiveClassRoom = lazy(() => import('./pages/learner/LiveClassRoom'));
-const PaymentHistory = lazy(() => import('./pages/learner/PaymentHistory'));
 
-import AIChatBot from './components/ui/AIChatBot';
+// ── Shared ──
+const Profile = lazy(() => import('./pages/Profile'));
 
-const LazyFallback = () => (
+// ── Full-page loading skeleton ──
+const PageLoader = () => (
+  <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-[#0A0A0A]">
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative">
+        <div className="w-12 h-12 border-4 border-purple-200 dark:border-purple-900 rounded-full" />
+        <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin absolute inset-0" />
+      </div>
+      <p className="text-sm text-gray-400 font-medium animate-pulse">Loading...</p>
+    </div>
+  </div>
+);
+
+// ── Inline route-level loader (smaller, for in-page transitions) ──
+const RouteLoader = () => (
   <div className="flex h-64 items-center justify-center">
     <div className="flex flex-col items-center gap-3">
       <div className="relative">
@@ -62,7 +85,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <Suspense fallback={<LazyFallback />}>
+    <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<Home />} />
@@ -94,7 +117,7 @@ export default function App() {
         <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
 
         {/* Protected pages inside layout */}
-        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AppLayout /></Suspense></ProtectedRoute>}>
           {/* Learner routes */}
           <Route path="/learner/dashboard" element={<ProtectedRoute allowedRoles={['learner']}><LearnerDashboard /></ProtectedRoute>} />
           <Route path="/learner/courses" element={<ProtectedRoute allowedRoles={['learner']}><Courses /></ProtectedRoute>} />
@@ -135,7 +158,9 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
-    <AIChatBot />
+    <Suspense fallback={null}>
+      <AIChatBot />
+    </Suspense>
     </ErrorBoundary>
   );
 }
