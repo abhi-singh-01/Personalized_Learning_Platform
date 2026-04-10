@@ -16,6 +16,9 @@ const HIDDEN_HOST_STYLE = {
   overflow: 'visible',
 };
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 2000;
+
 /**
  * Google Identity Services — custom branded button + hidden native renderButton.
  *
@@ -41,6 +44,7 @@ export default function GoogleSignInButton({
   const [gsiStatus, setGsiStatus] = useState('loading'); // loading | ready | error | no_client
   const [gsiMessage, setGsiMessage] = useState('');
   const [flowPending, setFlowPending] = useState(false);
+  const [initKey, setInitKey] = useState(0); // bump to trigger re-init
 
   useEffect(() => {
     onCredentialRef.current = onCredential;
@@ -58,8 +62,11 @@ export default function GoogleSignInButton({
 
     let cancelled = false;
 
-    (async () => {
+    const initGsi = async (attempt = 0) => {
       try {
+        setGsiStatus('loading');
+        setGsiMessage('');
+
         await loadGoogleIdentityScript();
         if (cancelled) return;
 
@@ -105,12 +112,23 @@ export default function GoogleSignInButton({
         }
       } catch (e) {
         if (cancelled) return;
+
+        // Auto-retry on failure
+        if (attempt < MAX_RETRIES) {
+          console.warn(`[GSI] Attempt ${attempt + 1} failed, retrying in ${RETRY_DELAY_MS}ms…`, e?.message);
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+          if (!cancelled) return initGsi(attempt + 1);
+          return;
+        }
+
         const msg = e?.message || 'Google Sign-In could not start.';
         setGsiStatus('error');
         setGsiMessage(msg);
         onGsiErrorRef.current?.(msg);
       }
-    })();
+    };
+
+    initGsi(0);
 
     return () => {
       cancelled = true;
@@ -120,7 +138,12 @@ export default function GoogleSignInButton({
         /* ignore */
       }
     };
-  }, [mode]);
+  }, [mode, initKey]);
+
+  // Manual retry from error state
+  const retryInit = useCallback(() => {
+    setInitKey((k) => k + 1);
+  }, []);
 
   const triggerNative = useCallback(() => {
     setGsiMessage('');
@@ -181,7 +204,16 @@ export default function GoogleSignInButton({
         </p>
       )}
       {gsiStatus === 'error' && gsiMessage && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{gsiMessage}</p>
+        <div className="mt-2">
+          <p className="text-xs text-red-600 dark:text-red-400">{gsiMessage}</p>
+          <button
+            type="button"
+            onClick={retryInit}
+            className="mt-1 text-xs font-medium text-purple-600 dark:text-purple-400 hover:underline"
+          >
+            ↻ Retry loading Google Sign-In
+          </button>
+        </div>
       )}
     </div>
   );
