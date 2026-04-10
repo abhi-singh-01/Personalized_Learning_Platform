@@ -354,7 +354,7 @@ export default function BecomeEducator() {
                     onClick={ctaLoginAction}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-6 py-3.5 rounded-xl transition-all duration-300"
                   >
-                    Already a member? Log in
+                    Already a member? Sign in
                   </button>
                 )}
               </div>
@@ -730,7 +730,7 @@ export default function BecomeEducator() {
                 onClick={ctaLoginAction}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 hover:text-white border border-white/30 hover:border-white/60 px-6 py-3.5 rounded-xl transition-all duration-300"
               >
-                Already a member? Log in
+                Already a member? Sign in
               </button>
             )}
           </div>

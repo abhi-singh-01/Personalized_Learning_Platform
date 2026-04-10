@@ -262,7 +262,7 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
           Already have an account?{' '}
-          <Link to={isEducatorFlow ? '/login?role=educator' : '/login'} className="font-semibold text-purple-600 dark:text-purple-400 hover:underline">Log in</Link>
+          <Link to={isEducatorFlow ? '/login?role=educator' : '/login'} className="font-semibold text-purple-600 dark:text-purple-400 hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

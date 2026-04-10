@@ -179,7 +179,7 @@ export default function PublicNavbar() {
           ) : (
             <div className="hidden sm:flex items-center gap-2">
               <Link to="/login" className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-4 py-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
-                Log in
+                Sign in
               </Link>
               <Link to="/register"
                 className="text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-5 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
@@ -234,7 +234,7 @@ export default function PublicNavbar() {
               ) : (
                 <>
                   <Link to="/login" onClick={closeMobile} className="flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 py-2.5 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800">
-                    Log in
+                    Sign in
                   </Link>
                   <Link to="/register" onClick={closeMobile}
                     className="flex-1 text-center text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 py-2.5 rounded-full shadow-md">

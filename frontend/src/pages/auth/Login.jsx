@@ -62,7 +62,7 @@ export default function Login() {
       toast.success(`Welcome back, ${greeting}!`);
       nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed';
+      const msg = err.response?.data?.message || 'Sign in failed';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -148,7 +148,7 @@ export default function Login() {
               {isEducatorFlow && (
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/40 mb-4">
                   <GraduationCap size={14} className="text-purple-600 dark:text-purple-400" />
-                  <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Educator Login</span>
+                  <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Educator Sign In</span>
                 </div>
               )}
               <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
