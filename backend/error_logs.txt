@@ -73,3 +73,36 @@ Details: {}
 [2026-04-08T17:35:20.557Z] 400 - Email already registered
 Details: {}
 
+[2026-04-18T06:56:24.433Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T06:57:00.884Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T06:57:33.419Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T06:58:46.702Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T06:59:53.857Z] 400 - Email already registered
+Details: {}
+
+[2026-04-18T07:02:10.559Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T07:03:39.076Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T07:04:37.442Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T07:08:19.624Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T07:09:00.667Z] 401 - Invalid email or password
+Details: {}
+
+[2026-04-18T07:09:33.281Z] 401 - Invalid email or password
+Details: {}
+

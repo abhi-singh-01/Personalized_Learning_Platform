@@ -35,5 +35,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Graphify (code graph output)
+graphify-out/
+
 # Uploads (use cloud storage in production)
 backend/uploads/
