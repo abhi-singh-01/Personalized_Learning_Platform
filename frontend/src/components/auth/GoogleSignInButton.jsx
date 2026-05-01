@@ -3,24 +3,26 @@ import { loadGoogleIdentityScript } from '../../lib/loadGoogleIdentityScript';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-/** Off-screen but sized so Google's iframe/button can mount reliably */
-const HIDDEN_HOST_STYLE = {
-  position: 'fixed',
-  left: '-9999px',
-  top: '0',
-  width: '320px',
-  height: '48px',
-  opacity: 0.02,
-  pointerEvents: 'none',
-  zIndex: -1,
-  overflow: 'visible',
-};
-
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
 
 /**
- * Google Identity Services — custom branded button + hidden native renderButton.
+ * How long (ms) to wait after renderButton for the native div[role="button"]
+ * to appear inside the hidden host element. If it doesn't show up, the
+ * component falls back to google.accounts.id.prompt().
+ */
+const RENDER_WAIT_MS = 1500;
+
+/**
+ * Google Identity Services — custom branded button that works reliably
+ * on all deployments (localhost, Vercel, etc.).
+ *
+ * Strategy:
+ *  1. Initialize GSI + call renderButton in a hidden host.
+ *  2. Wait briefly to see if Google renders div[role="button"].
+ *  3. If yes → clicking our custom button triggers the native one.
+ *  4. If no  → clicking our custom button calls google.accounts.id.prompt()
+ *     which opens the One Tap / account chooser popup programmatically.
  *
  * @param {object} props
  * @param {'signin'|'signup'} props.mode
@@ -45,6 +47,8 @@ export default function GoogleSignInButton({
   const [gsiMessage, setGsiMessage] = useState('');
   const [flowPending, setFlowPending] = useState(false);
   const [initKey, setInitKey] = useState(0); // bump to trigger re-init
+  const hasNativeBtn = useRef(false); // tracks whether renderButton produced a clickable element
+  const gsiInitialized = useRef(false); // tracks whether google.accounts.id.initialize was called
 
   useEffect(() => {
     onCredentialRef.current = onCredential;
@@ -61,6 +65,27 @@ export default function GoogleSignInButton({
     }
 
     let cancelled = false;
+    hasNativeBtn.current = false;
+    gsiInitialized.current = false;
+
+    const handleCredentialResponse = async (response) => {
+      if (!response?.credential) {
+        const msg = 'Google did not return a credential.';
+        setGsiMessage(msg);
+        onGsiErrorRef.current?.(msg);
+        return;
+      }
+      setFlowPending(true);
+      try {
+        await onCredentialRef.current(response.credential);
+      } catch (err) {
+        const msg = err?.response?.data?.message || err?.message || 'Google sign-in failed';
+        setGsiMessage(msg);
+        onGsiErrorRef.current?.(msg);
+      } finally {
+        setFlowPending(false);
+      }
+    };
 
     const initGsi = async (attempt = 0) => {
       try {
@@ -73,26 +98,12 @@ export default function GoogleSignInButton({
         window.google.accounts.id.initialize({
           client_id: CLIENT_ID,
           auto_select: false,
-          callback: async (response) => {
-            if (!response?.credential) {
-              const msg = 'Google did not return a credential.';
-              setGsiMessage(msg);
-              onGsiErrorRef.current?.(msg);
-              return;
-            }
-            setFlowPending(true);
-            try {
-              await onCredentialRef.current(response.credential);
-            } catch (err) {
-              const msg = err?.response?.data?.message || err?.message || 'Google sign-in failed';
-              setGsiMessage(msg);
-              onGsiErrorRef.current?.(msg);
-            } finally {
-              setFlowPending(false);
-            }
-          },
+          cancel_on_tap_outside: true,
+          callback: handleCredentialResponse,
         });
+        gsiInitialized.current = true;
 
+        // Try rendering the native button in a hidden host
         const el = hostRef.current;
         if (el && !cancelled) {
           el.innerHTML = '';
@@ -104,6 +115,19 @@ export default function GoogleSignInButton({
             width: 300,
             locale: typeof navigator !== 'undefined' ? navigator.language : undefined,
           });
+        }
+
+        // Wait briefly for the native button to materialize
+        await new Promise((r) => setTimeout(r, RENDER_WAIT_MS));
+        if (cancelled) return;
+
+        const nativeBtn = hostRef.current?.querySelector('div[role="button"]');
+        hasNativeBtn.current = !!nativeBtn;
+
+        if (hasNativeBtn.current) {
+          console.info('[GSI] Native button rendered successfully.');
+        } else {
+          console.info('[GSI] Native button not rendered — will use prompt() fallback.');
         }
 
         if (!cancelled) {
@@ -164,16 +188,111 @@ export default function GoogleSignInButton({
       onGsiErrorRef.current?.(msg);
       return;
     }
-    const nativeBtn = hostRef.current?.querySelector('div[role="button"]');
-    if (nativeBtn) {
-      nativeBtn.click();
+
+    // Strategy 1: Click the native rendered button if it exists
+    if (hasNativeBtn.current) {
+      const nativeBtn = hostRef.current?.querySelector('div[role="button"]');
+      if (nativeBtn) {
+        nativeBtn.click();
+        return;
+      }
+    }
+
+    // Strategy 2: Use prompt() as fallback — opens Google's account chooser popup
+    if (gsiInitialized.current && window.google?.accounts?.id) {
+      console.info('[GSI] Using prompt() fallback.');
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason();
+            console.warn('[GSI] prompt() not displayed:', reason);
+
+            // If suppressed_by_user or opt_out_or_no_session, open the popup flow via a workaround
+            if (reason === 'opt_out_or_no_session' || reason === 'suppressed_by_user') {
+              // Fall back to rendering a visible button briefly
+              openPopupFallback();
+            } else {
+              setGsiMessage(
+                `Google Sign-In popup was blocked (${reason}). Please allow popups or try a different browser.`
+              );
+            }
+          } else if (notification.isSkippedMoment()) {
+            console.warn('[GSI] prompt() skipped:', notification.getSkippedReason());
+          }
+          // If displayed, the credential callback handles the rest
+        });
+      } catch (err) {
+        console.error('[GSI] prompt() error:', err);
+        setGsiMessage('Could not open Google Sign-In. Please try refreshing the page.');
+      }
       return;
     }
-    const msg =
-      'Google button did not initialize. Refresh the page. If the console shows origin_mismatch, add your exact Vercel URL (https://…, no trailing slash) under Authorized JavaScript origins in Google Cloud Console.';
-    setGsiMessage(msg);
-    onGsiErrorRef.current?.(msg);
+
+    // Last resort error
+    setGsiMessage(
+      'Google Sign-In could not initialize. Please refresh the page and try again.'
+    );
+    onGsiErrorRef.current?.('Google Sign-In could not initialize.');
   }, [gsiStatus]);
+
+  /**
+   * Last-resort fallback: briefly show the hidden host on-screen so Google
+   * will render the button, then auto-click it.
+   */
+  const openPopupFallback = useCallback(() => {
+    const el = hostRef.current;
+    if (!el || !window.google?.accounts?.id) return;
+
+    // Temporarily make the host visible (off-screen won't work, but we can
+    // position it behind a modal overlay)
+    el.style.position = 'fixed';
+    el.style.left = '50%';
+    el.style.top = '50%';
+    el.style.transform = 'translate(-50%, -50%)';
+    el.style.opacity = '1';
+    el.style.zIndex = '99999';
+    el.style.pointerEvents = 'auto';
+
+    // Re-render the button now that the host is visible
+    el.innerHTML = '';
+    window.google.accounts.id.renderButton(el, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: mode === 'signup' ? 'signup_with' : 'continue_with',
+      width: 300,
+    });
+
+    // After a short delay, check if the button appeared and click it
+    setTimeout(() => {
+      const btn = el.querySelector('div[role="button"]');
+      if (btn) {
+        btn.click();
+        // Hide again after click
+        setTimeout(() => {
+          el.style.position = 'fixed';
+          el.style.left = '-9999px';
+          el.style.top = '0';
+          el.style.opacity = '0.02';
+          el.style.zIndex = '-1';
+          el.style.pointerEvents = 'none';
+          el.style.transform = '';
+        }, 500);
+      } else {
+        // If still no button, hide and show error
+        el.style.position = 'fixed';
+        el.style.left = '-9999px';
+        el.style.top = '0';
+        el.style.opacity = '0.02';
+        el.style.zIndex = '-1';
+        el.style.pointerEvents = 'none';
+        el.style.transform = '';
+        setGsiMessage(
+          'Google Sign-In is unavailable. Please check that your origin is authorized in Google Cloud Console.'
+        );
+      }
+    }, 800);
+  }, [mode]);
 
   const busy = flowPending || disabled;
   const buttonDisabled = busy || gsiStatus === 'loading' || gsiStatus === 'no_client';
@@ -191,8 +310,22 @@ export default function GoogleSignInButton({
       >
         {label}
       </button>
-      {/* Hidden native GSI control — must keep non-zero layout box */}
-      <div ref={hostRef} style={HIDDEN_HOST_STYLE} aria-hidden="true" />
+      {/* Hidden native GSI control — kept for the renderButton strategy */}
+      <div
+        ref={hostRef}
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: '0',
+          width: '320px',
+          height: '48px',
+          opacity: 0.02,
+          pointerEvents: 'none',
+          zIndex: -1,
+          overflow: 'visible',
+        }}
+        aria-hidden="true"
+      />
 
       {gsiStatus === 'loading' && (
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Loading Google Sign-In…</p>
@@ -214,6 +347,9 @@ export default function GoogleSignInButton({
             ↻ Retry loading Google Sign-In
           </button>
         </div>
+      )}
+      {gsiStatus === 'ready' && gsiMessage && (
+        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{gsiMessage}</p>
       )}
     </div>
   );
