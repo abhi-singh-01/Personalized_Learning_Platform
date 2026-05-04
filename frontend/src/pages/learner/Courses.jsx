@@ -6,7 +6,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import Loading from '../../components/ui/Loading';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
-import { Search, BookOpen, Users, IndianRupee, CreditCard } from 'lucide-react';
+import { Search, BookOpen, Users, IndianRupee, CreditCard, Tag, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 function formatINR(amount) {
   return Number(amount || 0).toLocaleString('en-IN', {
@@ -24,8 +24,16 @@ export default function Courses() {
   const [paying, setPaying] = useState(null);
   const [feeMap, setFeeMap] = useState({});
   const [message, setMessage] = useState('');
-  const [couponMap, setCouponMap] = useState({});
+  const [messageType, setMessageType] = useState('info');        // 'success' | 'error' | 'info'
+  const [couponInputMap, setCouponInputMap] = useState({});       // text input per course
+  const [appliedCouponMap, setAppliedCouponMap] = useState({});   // applied coupon info per course
+  const [originalFeeMap, setOriginalFeeMap] = useState({});       // fees without coupon (for restore on remove)
   usePageTitle('Courses');
+
+  const showMessage = (text, type = 'info') => {
+    setMessage(text);
+    setMessageType(type);
+  };
 
   useEffect(() => {
     api.get('/courses').then((res) => setCourses(res.data || []));
@@ -59,6 +67,7 @@ export default function Courses() {
         }
       }
       setFeeMap(nextFeeMap);
+      setOriginalFeeMap(nextFeeMap);
     })();
   }, [courses]);
 
@@ -75,6 +84,66 @@ export default function Courses() {
     setEnrolling(null);
   };
 
+  /* ─── Apply coupon preview ─── */
+  const applyCouponPreview = async (courseId) => {
+    // Prevent applying multiple coupons — one per purchase
+    if (appliedCouponMap[courseId]) {
+      showMessage('Only one coupon can be applied per purchase. Remove the current coupon first.', 'error');
+      return;
+    }
+
+    const code = (couponInputMap[courseId] || '').trim();
+    if (!code) {
+      showMessage('Please enter a coupon code first.', 'error');
+      return;
+    }
+    try {
+      const res = await api.get(`/payments/coupons/validate?courseId=${courseId}&code=${encodeURIComponent(code)}`);
+      const breakdown = res.data?.breakdown;
+      const couponInfo = res.data?.coupon;
+
+      if (breakdown) {
+        // Store original fees for restoring when coupon is removed
+        if (!originalFeeMap[courseId]) {
+          setOriginalFeeMap((prev) => ({ ...prev, [courseId]: feeMap[courseId] }));
+        }
+        setFeeMap((prev) => ({ ...prev, [courseId]: breakdown }));
+      }
+
+      // Mark coupon as applied
+      setAppliedCouponMap((prev) => ({
+        ...prev,
+        [courseId]: {
+          code: couponInfo?.code || code.toUpperCase(),
+          discountType: couponInfo?.discountType,
+          discountValue: couponInfo?.discountValue,
+          discount: breakdown?.discount || 0,
+        },
+      }));
+
+      showMessage(`Coupon "${couponInfo?.code || code}" applied successfully!`, 'success');
+    } catch (e) {
+      const errMsg = e.response?.data?.message || 'Invalid or expired coupon.';
+      showMessage(errMsg, 'error');
+    }
+  };
+
+  /* ─── Remove applied coupon ─── */
+  const removeCoupon = (courseId) => {
+    // Restore original fees
+    if (originalFeeMap[courseId]) {
+      setFeeMap((prev) => ({ ...prev, [courseId]: originalFeeMap[courseId] }));
+    }
+    setAppliedCouponMap((prev) => {
+      const next = { ...prev };
+      delete next[courseId];
+      return next;
+    });
+    setCouponInputMap((prev) => ({ ...prev, [courseId]: '' }));
+    showMessage('Coupon removed.', 'info');
+  };
+
+  /* ─── Pay for course ─── */
   const payForCourse = async (course) => {
     setMessage('');
     setPaying(course._id);
@@ -82,9 +151,10 @@ export default function Courses() {
       const scriptReady = !!window.Razorpay;
       if (!scriptReady) throw new Error('Razorpay checkout script not loaded');
 
+      const appliedCoupon = appliedCouponMap[course._id];
       const orderRes = await api.post('/payments/create-order', {
         courseId: course._id,
-        couponCode: couponMap[course._id] || '',
+        couponCode: appliedCoupon?.code || '',
       });
       const orderData = orderRes.data;
 
@@ -92,7 +162,10 @@ export default function Courses() {
         await refreshUser();
         const refreshed = await api.get('/courses');
         setCourses(refreshed.data || []);
-        setMessage('Coupon applied. You have been enrolled with zero payment.');
+        showMessage('Coupon applied. You have been enrolled with zero payment!', 'success');
+        // Clear coupon state for this course
+        setAppliedCouponMap((prev) => { const n = { ...prev }; delete n[course._id]; return n; });
+        setCouponInputMap((prev) => ({ ...prev, [course._id]: '' }));
         setPaying(null);
         return;
       }
@@ -121,9 +194,12 @@ export default function Courses() {
             await refreshUser();
             const refreshed = await api.get('/courses');
             setCourses(refreshed.data || []);
-            setMessage('Payment successful. You are now enrolled in the course.');
+            showMessage('Payment successful! You are now enrolled in the course.', 'success');
+            // Clear coupon state
+            setAppliedCouponMap((prev) => { const n = { ...prev }; delete n[course._id]; return n; });
+            setCouponInputMap((prev) => ({ ...prev, [course._id]: '' }));
           } catch (verifyErr) {
-            setMessage(verifyErr.response?.data?.message || 'Payment verification failed.');
+            showMessage(verifyErr.response?.data?.message || 'Payment verification failed.', 'error');
           } finally {
             setPaying(null);
           }
@@ -131,38 +207,20 @@ export default function Courses() {
         modal: {
           ondismiss: () => {
             setPaying(null);
-            setMessage('Payment cancelled.');
+            showMessage('Payment cancelled.', 'info');
           },
         },
       };
 
       const rz = new window.Razorpay(options);
       rz.on('payment.failed', (resp) => {
-        setMessage(resp?.error?.description || 'Payment failed. Please try again.');
+        showMessage(resp?.error?.description || 'Payment failed. Please try again.', 'error');
         setPaying(null);
       });
       rz.open();
     } catch (e) {
-      setMessage(e.response?.data?.message || e.message || 'Could not initiate payment.');
+      showMessage(e.response?.data?.message || e.message || 'Could not initiate payment.', 'error');
       setPaying(null);
-    }
-  };
-
-  const applyCouponPreview = async (courseId) => {
-    const code = (couponMap[courseId] || '').trim();
-    if (!code) {
-      setMessage('Please enter a coupon code first.');
-      return;
-    }
-    try {
-      const res = await api.get(`/payments/coupons/validate?courseId=${courseId}&code=${encodeURIComponent(code)}`);
-      const breakdown = res.data?.breakdown;
-      if (breakdown) {
-        setFeeMap((prev) => ({ ...prev, [courseId]: breakdown }));
-      }
-      setMessage(`Coupon applied: ${res.data?.coupon?.code}`);
-    } catch (e) {
-      setMessage(e.response?.data?.message || 'Invalid coupon.');
     }
   };
 
@@ -173,6 +231,24 @@ export default function Courses() {
   );
 
   if (api.loading && courses.length === 0) return <Loading />;
+
+  /* ─── Helper to get the effective total for a course ─── */
+  const getEffectiveTotal = (courseId, originalPrice) => {
+    const fees = feeMap[courseId];
+    if (!fees) return originalPrice;
+    const discount = fees.discount || 0;
+    return Math.max(0, fees.totalAmount);
+  };
+
+  /* ─── Message banner styles ─── */
+  const messageBannerClass =
+    messageType === 'success'
+      ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700'
+      : messageType === 'error'
+        ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'
+        : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700';
+
+  const MessageIcon = messageType === 'success' ? CheckCircle : messageType === 'error' ? AlertCircle : AlertCircle;
 
   return (
     <div className="space-y-6">
@@ -191,9 +267,14 @@ export default function Courses() {
           />
         </div>
       </div>
+
       {message && (
-        <div className="card !p-3 text-sm">
-          {message}
+        <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm ${messageBannerClass}`}>
+          <MessageIcon size={16} className="flex-shrink-0" />
+          <span className="flex-1">{message}</span>
+          <button onClick={() => setMessage('')} className="ml-auto hover:opacity-70">
+            <X size={14} />
+          </button>
         </div>
       )}
 
@@ -207,6 +288,9 @@ export default function Courses() {
               const sid = typeof s === 'string' ? s : s._id;
               return sid === userId;
             });
+            const appliedCoupon = appliedCouponMap[course._id];
+            const fees = feeMap[course._id];
+
             return (
               <div key={course._id} className="card flex flex-col">
                 <div className="h-32 rounded-lg bg-gradient-to-br from-primary-400 to-violet-500 mb-4 flex items-center justify-center">
@@ -227,46 +311,77 @@ export default function Courses() {
                   )}
                 </div>
 
-                {course.price > 0 && (
+                {course.price > 0 && !enrolled && (
                   <div className="mb-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 text-xs space-y-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <input
-                        className="input-field !py-2 !text-xs"
-                        placeholder="Have a coupon? Enter code"
-                        value={couponMap[course._id] || ''}
-                        onChange={(e) =>
-                          setCouponMap((prev) => ({ ...prev, [course._id]: e.target.value.toUpperCase() }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        onClick={() => applyCouponPreview(course._id)}
-                        className="btn-secondary !py-2 !px-3 !text-xs"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
-                      <span>Course price</span>
-                      <span className="inline-flex items-center gap-1"><IndianRupee size={12} />{formatINR(feeMap[course._id]?.coursePrice ?? course.price)}</span>
-                    </div>
-                    {!!feeMap[course._id]?.discount && (
-                      <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                        <span>Coupon discount</span>
-                        <span>-{formatINR(feeMap[course._id]?.discount ?? 0)}</span>
+
+                    {/* ── Coupon Input / Applied Tag ── */}
+                    {!appliedCoupon ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          className="input-field !py-2 !text-xs flex-1"
+                          placeholder="Have a coupon? Enter code"
+                          value={couponInputMap[course._id] || ''}
+                          onChange={(e) =>
+                            setCouponInputMap((prev) => ({ ...prev, [course._id]: e.target.value.toUpperCase() }))
+                          }
+                          onKeyDown={(e) => e.key === 'Enter' && applyCouponPreview(course._id)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => applyCouponPreview(course._id)}
+                          className="btn-secondary !py-2 !px-3 !text-xs"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between mb-2 px-2 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700">
+                        <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+                          <Tag size={12} />
+                          <span className="font-semibold">{appliedCoupon.code}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            ({appliedCoupon.discountType === 'percent'
+                              ? `${appliedCoupon.discountValue}% off`
+                              : `₹${appliedCoupon.discountValue} off`})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeCoupon(course._id)}
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-0.5"
+                          title="Remove coupon"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                     )}
+
+                    {/* ── Fee Breakdown ── */}
+                    <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                      <span>Course price</span>
+                      <span className="inline-flex items-center gap-1">
+                        <IndianRupee size={12} />{formatINR(course.price)}
+                      </span>
+                    </div>
+
+                    {!!fees?.discount && appliedCoupon && (
+                      <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                        <span>Coupon discount</span>
+                        <span>-{formatINR(fees.discount)}</span>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between text-gray-500">
                       <span>Platform fee (2%)</span>
-                      <span>{formatINR(feeMap[course._id]?.platformFee ?? 0)}</span>
+                      <span>{formatINR(fees?.platformFee ?? 0)}</span>
                     </div>
                     <div className="flex items-center justify-between text-gray-500">
                       <span>GST on fee (18%)</span>
-                      <span>{formatINR(feeMap[course._id]?.gst ?? 0)}</span>
+                      <span>{formatINR(fees?.gst ?? 0)}</span>
                     </div>
                     <div className="pt-1 mt-1 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between font-semibold text-gray-800 dark:text-gray-100">
                       <span>Total payable</span>
-                      <span>{formatINR(feeMap[course._id]?.totalAmount ?? course.price)}</span>
+                      <span>{formatINR(getEffectiveTotal(course._id, course.price))}</span>
                     </div>
                   </div>
                 )}
@@ -286,7 +401,9 @@ export default function Courses() {
                       className="btn-primary w-full text-sm inline-flex items-center justify-center gap-2"
                     >
                       <CreditCard size={16} />
-                      {paying === course._id ? 'Processing...' : `Pay & Enroll (Rs ${formatINR(feeMap[course._id]?.totalAmount ?? course.price)})`}
+                      {paying === course._id
+                        ? 'Processing...'
+                        : `Pay & Enroll (₹${formatINR(getEffectiveTotal(course._id, course.price))})`}
                     </button>
                   ) : (
                     <button

@@ -9,7 +9,8 @@ const Payment = require('../models/Payment');
 const Payout  = require('../models/Payout');
 const Course  = require('../models/Course');
 const User    = require('../models/User');
-const Coupon  = require('../models/Coupon');
+const Coupon      = require('../models/Coupon');
+const CouponUsage = require('../models/CouponUsage');
 const razorpay = require('../services/razorpayService');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
@@ -65,14 +66,9 @@ async function validateAndComputeDiscount({ couponCode, course, userId }) {
     throw new AppError(`Coupon requires minimum order of Rs ${coupon.minOrderAmount}`, 400);
   }
 
-  const userUsedCount = await Payment.countDocuments({
-    user: userId,
-    'metadata.couponCode': code,
-    status: { $in: ['created', 'captured'] },
-  });
-  if (coupon.perUserLimit > 0 && userUsedCount >= coupon.perUserLimit) {
-    throw new AppError('Coupon usage limit reached for this user', 400);
-  }
+  // Per the business rules, the same user can reuse the same coupon
+  // on separate purchases — no per-user limit enforcement.
+  // Global maxUses is still checked above.
 
   let discount = 0;
   if (coupon.discountType === 'percent') {
@@ -186,7 +182,18 @@ exports.createOrder = async (req, res, next) => {
         await course.save();
       }
       await User.findByIdAndUpdate(req.user._id, { $addToSet: { enrolledCourses: course._id } });
-      if (coupon) await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+      if (coupon) {
+        await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+        await CouponUsage.create({
+          user: req.user._id,
+          coupon: coupon._id,
+          payment: payment._id,
+          course: course._id,
+          couponCode: coupon.code,
+          discountApplied: discount,
+          orderAmount: fees.totalAmount,
+        });
+      }
 
       return sendResponse(res, 200, 'Coupon applied. Enrolled with zero payable amount', {
         orderId: localOrderId,
@@ -267,10 +274,22 @@ exports.verifyPayment = async (req, res, next) => {
     await payment.save();
 
     if (payment.metadata?.couponCode) {
-      await Coupon.findOneAndUpdate(
+      const usedCoupon = await Coupon.findOneAndUpdate(
         { code: payment.metadata.couponCode },
-        { $inc: { usedCount: 1 } }
+        { $inc: { usedCount: 1 } },
+        { new: true }
       );
+      if (usedCoupon) {
+        await CouponUsage.create({
+          user: payment.user,
+          coupon: usedCoupon._id,
+          payment: payment._id,
+          course: payment.course,
+          couponCode: usedCoupon.code,
+          discountApplied: payment.metadata.couponDiscount || 0,
+          orderAmount: payment.totalAmount,
+        });
+      }
     }
 
     // Enroll learner
@@ -690,5 +709,16 @@ exports.getCouponAnalytics = async (req, res, next) => {
     totals.conversionRate = Number(overallConversionRate.toFixed(2));
 
     sendResponse(res, 200, 'Coupon analytics', { totals, coupons: items });
+  } catch (err) { next(err); }
+};
+
+/* ─── 12. Coupon usage history (learner) ─── */
+exports.getCouponUsageHistory = async (req, res, next) => {
+  try {
+    const usages = await CouponUsage.find({ user: req.user._id })
+      .populate('course', 'title thumbnail')
+      .populate('coupon', 'code title discountType discountValue')
+      .sort({ redeemedAt: -1 });
+    sendResponse(res, 200, 'Coupon usage history', usages);
   } catch (err) { next(err); }
 };

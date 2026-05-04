@@ -17,6 +17,7 @@ router.post('/verify',       auth, paymentCtrl.verifyPayment);
 router.get('/history',        auth, paymentCtrl.getHistory);
 router.post('/refund',        auth, refundCtrl.requestRefund);
 router.get('/refund/:id',     auth, refundCtrl.getRefundStatus);
+router.get('/coupons/usage-history', auth, role('learner'), paymentCtrl.getCouponUsageHistory);
 router.get('/coupons/validate', auth, role('learner'), paymentCtrl.validateCoupon);
 
 // Authenticated — educator
