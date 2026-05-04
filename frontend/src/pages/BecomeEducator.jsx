@@ -398,20 +398,22 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           HERO — Udemy Style: Centered text with image
       ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden min-h-[90vh] flex items-center">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(59,130,246,0.08),transparent_60%)]" />
+      <section className="relative overflow-hidden min-h-[92vh] -mt-16 pt-16 flex items-center">
+        {/* Background — seamless blend with navbar */}
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-[#0d0b1a] to-gray-950" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_40%,rgba(139,92,246,0.18),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgba(59,130,246,0.10),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_50%_0%,rgba(139,92,246,0.12),transparent_50%)]" />
 
         {/* Floating decorative elements */}
-        <div className="absolute top-20 left-[10%] w-64 h-64 rounded-full border border-purple-500/10 animate-pulse-ring" />
-        <div className="absolute bottom-20 right-[10%] w-48 h-48 rounded-full border border-blue-500/10 animate-pulse-ring" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-1/3 right-[15%] w-3 h-3 rounded-full bg-purple-500/30 animate-float-edu" />
-        <div className="absolute bottom-1/3 left-[20%] w-2 h-2 rounded-full bg-blue-500/30 animate-float-slow-edu" />
+        <div className="absolute top-24 left-[8%] w-72 h-72 rounded-full border border-purple-500/[0.07] animate-pulse-ring" />
+        <div className="absolute bottom-16 right-[8%] w-56 h-56 rounded-full border border-blue-500/[0.07] animate-pulse-ring" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-1/3 right-[12%] w-2.5 h-2.5 rounded-full bg-purple-400/40 animate-float-edu" />
+        <div className="absolute top-[60%] left-[5%] w-2 h-2 rounded-full bg-violet-400/30 animate-float-slow-edu" />
+        <div className="absolute bottom-[30%] left-[25%] w-1.5 h-1.5 rounded-full bg-blue-400/25 animate-float-edu" style={{ animationDelay: '2s' }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 lg:px-6 py-20 lg:py-24 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28 w-full">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
             {/* Left — Text */}
             <div className="animate-slide-up">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8">
@@ -453,56 +455,65 @@ export default function BecomeEducator() {
               </div>
             </div>
 
-            {/* Right — Hero Image with floating cards */}
+            {/* Right — Hero Visual with glassmorphic floating cards */}
             <div className="relative animate-slide-up-d2 hidden lg:block">
               <div className="relative">
                 {/* Glow behind image */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-blue-600/20 rounded-3xl blur-3xl scale-110" />
+                <div className="absolute -inset-4 bg-gradient-to-br from-purple-600/25 via-violet-500/15 to-blue-600/20 rounded-[2rem] blur-3xl scale-105" />
 
                 {/* Main image */}
-                <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-purple-900/20 ring-1 ring-white/5">
                   <img
                     src="/educator-hero.png"
                     alt="Educator teaching on LearnAI"
                     className="w-full h-auto object-cover"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 via-transparent to-transparent" />
                 </div>
 
-                {/* Floating stat cards */}
-                <div className="absolute -left-8 top-1/4 bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-2xl border border-gray-200 dark:border-gray-800 animate-float-edu">
+                {/* Floating stat cards — glassmorphic style */}
+                <div className="absolute -left-10 top-[22%] rounded-2xl p-4 shadow-2xl animate-float-edu
+                                bg-white/90 dark:bg-white/[0.07] backdrop-blur-xl
+                                border border-white/20 dark:border-white/[0.1]
+                                ring-1 ring-black/5 dark:ring-white/5">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                      <TrendingUp size={20} className="text-emerald-600" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                      <TrendingUp size={20} className="text-white" />
                     </div>
                     <div>
                       <p className="text-lg font-extrabold text-gray-900 dark:text-white">₹4.2L</p>
-                      <p className="text-[11px] text-gray-500">Avg. earnings / 6mo</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Avg. earnings / 6mo</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="absolute -right-6 top-1/3 bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-2xl border border-gray-200 dark:border-gray-800 animate-float-slow-edu">
+                <div className="absolute -right-8 top-[30%] rounded-2xl p-4 shadow-2xl animate-float-slow-edu
+                                bg-white/90 dark:bg-white/[0.07] backdrop-blur-xl
+                                border border-white/20 dark:border-white/[0.1]
+                                ring-1 ring-black/5 dark:ring-white/5">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                      <Users size={20} className="text-purple-600" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                      <Users size={20} className="text-white" />
                     </div>
                     <div>
                       <p className="text-lg font-extrabold text-gray-900 dark:text-white">12,840+</p>
-                      <p className="text-[11px] text-gray-500">Active learners</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Active learners</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="absolute -bottom-4 left-1/4 bg-white dark:bg-gray-900 rounded-2xl p-3 px-4 shadow-2xl border border-gray-200 dark:border-gray-800 animate-float-edu" style={{ animationDelay: '0.5s' }}>
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] text-white font-bold">R</div>
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] text-white font-bold">S</div>
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] text-white font-bold">A</div>
+                <div className="absolute -bottom-5 left-[20%] rounded-2xl py-3 px-4 shadow-2xl animate-float-edu
+                                bg-white/90 dark:bg-white/[0.07] backdrop-blur-xl
+                                border border-white/20 dark:border-white/[0.1]
+                                ring-1 ring-black/5 dark:ring-white/5" style={{ animationDelay: '0.5s' }}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex -space-x-1.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">R</div>
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">S</div>
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">A</div>
                     </div>
-                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">120+ Educators</p>
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200">120+ Educators</p>
                   </div>
                 </div>
               </div>
@@ -514,9 +525,9 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           STATS BAR — Animated counters
       ═══════════════════════════════════════════════════════════ */}
-      <section className="relative -mt-1 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-gray-900">
-        <div className="max-w-6xl mx-auto px-4 py-16 lg:py-20">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+      <section className="relative bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-gray-800/50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 lg:py-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10">
             <StatCounter value="12840" suffix="+" label="Active Learners" icon={Users} />
             <StatCounter value="97" suffix="%" label="Revenue Share" icon={DollarSign} />
             <StatCounter value="120" suffix="+" label="Expert Educators" icon={GraduationCap} />

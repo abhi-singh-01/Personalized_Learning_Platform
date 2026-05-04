@@ -109,8 +109,15 @@ export default function PublicNavbar() {
     </Link>
   );
 
+  // Pages with dark hero backgrounds where navbar should blend seamlessly
+  const isHeroPage = ['/become-educator', '/'].includes(location.pathname);
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl border-b border-gray-200/80 dark:border-gray-800/80">
+    <nav className={`sticky top-0 z-50 backdrop-blur-xl transition-colors duration-300 ${
+      isHeroPage
+        ? 'bg-gray-950/80 border-b border-white/[0.06]'
+        : 'bg-white/95 dark:bg-gray-950/95 border-b border-gray-200/80 dark:border-gray-800/80'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-4">
 
         {/* Logo */}

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
@@ -125,6 +125,15 @@ export default function Login() {
         {/* Right panel — sign-in form */}
         <div className="flex-1 flex items-center justify-center p-8 lg:p-16">
           <div className="w-full max-w-md animate-fade-in-up">
+            {/* Back to Homepage */}
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6 transition-colors group"
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+              Back to Homepage
+            </Link>
+
             {/* Mobile-only branding */}
             <div className="flex items-center gap-2.5 mb-10 lg:hidden justify-center">
               <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
@@ -284,11 +293,15 @@ export default function Login() {
               </Link>
             </p>
 
-            <p className="text-center text-xs text-gray-400 mt-4">
-              <Link to="/about" className="hover:underline">
-                About this project
+            <div className="flex items-center justify-center gap-3 text-xs text-gray-400 mt-4">
+              <Link to="/" className="hover:text-purple-500 hover:underline transition-colors">
+                ← Homepage
               </Link>
-            </p>
+              <span className="text-gray-300 dark:text-gray-600">·</span>
+              <Link to="/about" className="hover:text-purple-500 hover:underline transition-colors">
+                About
+              </Link>
+            </div>
           </div>
         </div>
       </div>
