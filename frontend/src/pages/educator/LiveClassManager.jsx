@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
@@ -223,10 +224,10 @@ export default function LiveClassManager() {
         </div>
       )}
 
-      {/* Quick Start Modal */}
-      {showQuickStart && (
+      {/* Quick Start Modal — portaled to body to avoid transform containment */}
+      {showQuickStart && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-xl font-bold mb-4">Quick Start Live Class</h3>
             <form onSubmit={handleQuickStart} className="space-y-4">
               <div>
@@ -255,7 +256,8 @@ export default function LiveClassManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -124,19 +124,18 @@
 }
 
 /* ── Page Transition Animation ── */
+/* NOTE: This uses opacity-only animation to avoid creating a containing block.
+   CSS transforms on ancestors break `position: fixed` in descendants (modals). */
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 .page-transition {
-  animation: page-enter 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
-  will-change: opacity, transform;
+  animation: page-enter 0.3s ease both;
 }
 
 /* Staggered children animation */
