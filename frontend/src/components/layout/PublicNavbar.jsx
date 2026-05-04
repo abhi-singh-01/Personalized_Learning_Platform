@@ -18,7 +18,7 @@ const categories = [
 ];
 
 /* ── Live search ── */
-function NavSearch({ className = '', onNavigate }) {
+function NavSearch({ className = '', onNavigate, heroMode = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -52,7 +52,11 @@ function NavSearch({ className = '', onNavigate }) {
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <div className="flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 px-4 py-2 focus-within:border-purple-400 dark:focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 dark:focus-within:ring-purple-900/30 transition-all">
+      <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all ${
+        heroMode
+          ? 'border border-white/15 bg-white/[0.07] focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-500/20'
+          : 'border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 focus-within:border-purple-400 dark:focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 dark:focus-within:ring-purple-900/30'
+      }`}>
         <Search size={16} className="text-gray-400 shrink-0" />
         <input
           type="text"
@@ -60,7 +64,11 @@ function NavSearch({ className = '', onNavigate }) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setShow(true); }}
           onFocus={() => results.length > 0 && setShow(true)}
-          className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 min-w-0"
+          className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${
+            heroMode
+              ? 'text-white placeholder:text-gray-400'
+              : 'text-gray-800 dark:text-gray-100 placeholder:text-gray-400'
+          }`}
         />
         {searching && <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />}
       </div>
@@ -104,7 +112,11 @@ export default function PublicNavbar() {
   const closeMobile = () => setMobileOpen(false);
 
   const navLink = (to, label) => (
-    <Link to={to} className={`text-sm font-medium transition-colors hover:text-gray-900 dark:hover:text-white ${isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+    <Link to={to} className={`text-sm font-medium transition-colors hover:text-white ${
+      isHeroPage
+        ? (isActive(to) ? 'text-white' : 'text-gray-300')
+        : (isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400')
+    }`}>
       {label}
     </Link>
   );
@@ -125,7 +137,7 @@ export default function PublicNavbar() {
           <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all">
             <GraduationCap size={20} className="text-white" />
           </div>
-          <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:block">
+          <span className={`text-lg font-bold tracking-tight hidden sm:block ${isHeroPage ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
             LearnAI
           </span>
         </Link>
@@ -137,7 +149,11 @@ export default function PublicNavbar() {
           onMouseEnter={() => { clearTimeout(exploreTimer.current); setExploreOpen(true); }}
           onMouseLeave={() => { exploreTimer.current = setTimeout(() => setExploreOpen(false), 200); }}
         >
-          <button className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+          <button className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg transition-all ${
+            isHeroPage
+              ? 'text-gray-200 hover:text-white hover:bg-white/10'
+              : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+          }`}>
             <Compass size={16} /> Explore <ChevronDown size={14} className={`transition-transform ${exploreOpen ? 'rotate-180' : ''}`} />
           </button>
           {exploreOpen && (
@@ -162,19 +178,23 @@ export default function PublicNavbar() {
         </div>
 
         {/* Search (desktop) */}
-        <NavSearch className="hidden lg:block flex-1 max-w-sm" />
+        <NavSearch className="hidden lg:block flex-1 max-w-sm" heroMode={isHeroPage} />
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
           {/* Become Educator CTA */}
           {(!user || user.role === 'learner') && (
-            <Link to="/become-educator" className="hidden xl:inline-flex text-xs font-semibold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 px-3.5 py-1.5 rounded-full transition-all">
+            <Link to="/become-educator" className={`hidden xl:inline-flex text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all ${
+              isHeroPage
+                ? 'text-purple-300 border border-purple-500/40 hover:bg-purple-500/10'
+                : 'text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+            }`}>
               Become an Educator
             </Link>
           )}
 
           {/* Theme toggle */}
-          <button onClick={toggle} className="p-2 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" aria-label="Toggle theme">
+          <button onClick={toggle} className={`p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`} aria-label="Toggle theme">
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
@@ -185,7 +205,7 @@ export default function PublicNavbar() {
             </Link>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Link to="/login" className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-4 py-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+              <Link to="/login" className={`text-sm font-semibold px-4 py-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:text-white hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                 Sign in
               </Link>
               <Link to="/register"
@@ -196,7 +216,7 @@ export default function PublicNavbar() {
           )}
 
           {/* Mobile toggle */}
-          <button className="lg:hidden p-2 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
+          <button className={`lg:hidden p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`} onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
