@@ -10,7 +10,7 @@ import ReportExporter from '../../components/ui/ReportExporter';
 import { levelColors, riskColors, formatDate } from '../../utils/helpers';
 import {
   Users, BookOpen, FileText, Trophy, PlusCircle, Upload, Brain, AlertTriangle,
-  Video, X, ChevronRight, Calendar, Clock, XCircle, CalendarPlus
+  Video, X, ChevronRight, Calendar, Clock, XCircle, CalendarPlus, BarChart2 as BarChart2Icon
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -327,22 +327,41 @@ export default function EducatorDashboard() {
           <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
             {data.coursePerformance?.length > 0 && (
               <Card>
-                <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Performance</h2>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.coursePerformance}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={dark ? '#374151' : '#e5e7eb'} />
-                    <XAxis dataKey="title" tick={{ fontSize: 11, fill: dark ? '#9ca3af' : '#6b7280' }} axisLine={{ stroke: dark ? '#4b5563' : '#d1d5db' }} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: dark ? '#9ca3af' : '#6b7280' }} axisLine={{ stroke: dark ? '#4b5563' : '#d1d5db' }} tickLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: dark ? '#1f2937' : '#fff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: dark ? '#f3f4f6' : '#111827' }} />
-                    <Bar dataKey="avgScore" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
-                    <defs>
-                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#818cf8" />
-                        <stop offset="100%" stopColor="#6366f1" />
-                      </linearGradient>
-                    </defs>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                    <Trophy size={16} className="text-indigo-500" />
+                  </div>
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Course Performance</h2>
+                </div>
+                {data.coursePerformance.every(c => !c.avgScore || c.avgScore === 0) ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center mb-3">
+                      <BarChart2Icon className="text-gray-300 dark:text-gray-600" size={28} />
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No quiz scores yet</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-[200px]">Scores will appear here once learners start taking quizzes</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={data.coursePerformance} barCategoryGap="25%">
+                      <CartesianGrid strokeDasharray="3 3" stroke={dark ? '#374151' : '#f3f4f6'} vertical={false} />
+                      <XAxis dataKey="title" tick={{ fontSize: 11, fill: dark ? '#9ca3af' : '#6b7280' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: dark ? '#9ca3af' : '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(v) => v + '%'} />
+                      <Tooltip
+                        cursor={{ fill: dark ? 'rgba(75,85,99,0.2)' : 'rgba(99,102,241,0.06)' }}
+                        contentStyle={{ backgroundColor: dark ? '#1f2937' : '#fff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: dark ? '#f3f4f6' : '#111827', fontSize: 13 }}
+                        formatter={(value) => [value + '%', 'Avg Score']}
+                      />
+                      <Bar dataKey="avgScore" fill="url(#barGradient)" radius={[8, 8, 0, 0]} maxBarSize={50} />
+                      <defs>
+                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#a78bfa" />
+                          <stop offset="100%" stopColor="#6366f1" />
+                        </linearGradient>
+                      </defs>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </Card>
             )}
 
