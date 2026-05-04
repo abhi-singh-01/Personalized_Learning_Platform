@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import useApi from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -145,6 +146,7 @@ function ScheduleModal({ open, onClose, courses, onSubmit }) {
 export default function EducatorDashboard() {
   usePageTitle('Educator Dashboard');
   const { user } = useAuth();
+  const { dark } = useTheme();
   const api = useApi();
   const [data, setData] = useState(null);
   const [courses, setCourses] = useState([]);
@@ -215,20 +217,20 @@ export default function EducatorDashboard() {
   return (
     <div className="space-y-6">
       {/* ═══ Hero Header ═══ */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 p-6 md:p-8 text-white shadow-xl shadow-purple-500/15">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 dark:from-indigo-700 dark:via-purple-800 dark:to-violet-900 p-5 sm:p-6 md:p-8 text-white shadow-xl shadow-purple-500/15 dark:shadow-purple-900/30">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjEuNSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvZz48L3N2Zz4=')] opacity-50" />
-        <div className="relative flex items-center justify-between flex-wrap gap-4">
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-sm text-white/70 font-medium mb-1">Welcome back,</p>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{user?.name || 'Educator'} 👋</h1>
-            <p className="text-sm text-white/60 mt-1.5">Here's what's happening with your courses today</p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{user?.name || 'Educator'} 👋</h1>
+            <p className="text-xs sm:text-sm text-white/60 mt-1.5">Here's what's happening with your courses today</p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={openScheduleModal} className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20 transition-all duration-200 hover:-translate-y-0.5">
-              <CalendarPlus size={16} /> Schedule Lecture
+          <div className="flex gap-2 self-start sm:self-auto">
+            <button onClick={openScheduleModal} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20 transition-all duration-200 hover:-translate-y-0.5">
+              <CalendarPlus size={15} /> <span className="hidden xs:inline">Schedule</span> Lecture
             </button>
-            <Link to="/educator/courses/new" className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white text-purple-700 hover:bg-white/90 shadow-lg shadow-black/10 transition-all duration-200 hover:-translate-y-0.5">
-              <PlusCircle size={16} /> New Course
+            <Link to="/educator/courses/new" className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white text-purple-700 hover:bg-white/90 shadow-lg shadow-black/10 transition-all duration-200 hover:-translate-y-0.5">
+              <PlusCircle size={15} /> New Course
             </Link>
           </div>
         </div>
@@ -242,17 +244,17 @@ export default function EducatorDashboard() {
           </h2>
           <div className="space-y-3">
             {upcomingSchedules.map((s) => (
-              <div key={s._id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
-                    <Video size={20} className="text-emerald-500" />
+              <div key={s._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex-shrink-0">
+                    <Video size={18} className="text-emerald-500" />
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm text-gray-900 dark:text-white">{s.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{s.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                       {s.course?.title || 'Course'} · {s.duration} min
                     </p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 dark:text-gray-500">
                       <span className="flex items-center gap-1">
                         <Calendar size={12} /> {new Date(s.scheduledAt).toLocaleDateString()}
                       </span>
@@ -262,15 +264,15 @@ export default function EducatorDashboard() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
                   {s.meetingLink && (
-                    <a href={s.meetingLink} target="_blank" rel="noreferrer" className="text-xs px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                    <a href={s.meetingLink} target="_blank" rel="noreferrer" className="text-xs px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
                       Join Link
                     </a>
                   )}
                   <button
                     onClick={() => setCancelId(s._id)}
-                    className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                    className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                   >
                     Cancel
                   </button>
@@ -289,12 +291,12 @@ export default function EducatorDashboard() {
           </h2>
           <div className="space-y-2">
             {cancelledSchedules.slice(0, 5).map((s) => (
-              <div key={s._id} className="flex items-center justify-between p-3 rounded-lg bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                <div>
-                  <p className="font-medium text-sm text-gray-600 dark:text-gray-300 line-through">{s.title}</p>
-                  <p className="text-xs text-red-500 mt-0.5">Reason: {s.cancelReason}</p>
+              <div key={s._id} className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-2 p-3 rounded-lg bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/30">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm text-gray-600 dark:text-gray-300 line-through truncate">{s.title}</p>
+                  <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">Reason: {s.cancelReason}</p>
                 </div>
-                <span className="text-xs text-gray-400">{new Date(s.scheduledAt).toLocaleDateString()}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{new Date(s.scheduledAt).toLocaleDateString()}</span>
               </div>
             ))}
           </div>
@@ -322,17 +324,23 @@ export default function EducatorDashboard() {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
             {data.coursePerformance?.length > 0 && (
               <Card>
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Performance</h2>
-                <ResponsiveContainer width="100%" height={250}>
+                <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Performance</h2>
+                <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={data.coursePerformance}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="title" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Bar dataKey="avgScore" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={dark ? '#374151' : '#e5e7eb'} />
+                    <XAxis dataKey="title" tick={{ fontSize: 11, fill: dark ? '#9ca3af' : '#6b7280' }} axisLine={{ stroke: dark ? '#4b5563' : '#d1d5db' }} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: dark ? '#9ca3af' : '#6b7280' }} axisLine={{ stroke: dark ? '#4b5563' : '#d1d5db' }} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: dark ? '#1f2937' : '#fff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: dark ? '#f3f4f6' : '#111827' }} />
+                    <Bar dataKey="avgScore" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#818cf8" />
+                        <stop offset="100%" stopColor="#6366f1" />
+                      </linearGradient>
+                    </defs>
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -340,13 +348,13 @@ export default function EducatorDashboard() {
 
             {pieData.some((d) => d.value > 0) && (
               <Card>
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">AI Level Distribution</h2>
-                <ResponsiveContainer width="100%" height={250}>
+                <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-white">AI Level Distribution</h2>
+                <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" label={({ name, value }) => name + ': ' + value}>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" label={({ name, value }) => name + ': ' + value} labelLine={{ stroke: dark ? '#6b7280' : '#9ca3af' }} stroke={dark ? '#1f2937' : '#fff'} strokeWidth={2}>
                       {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={{ backgroundColor: dark ? '#1f2937' : '#fff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: '12px', color: dark ? '#f3f4f6' : '#111827' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </Card>
