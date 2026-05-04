@@ -139,26 +139,151 @@ export default function EducatorCoupons() {
 
       {message && <div className="card !p-3 text-sm">{message}</div>}
 
+      {/* ═══ Create Coupon Form (clean & labeled) ═══ */}
       {showForm && (
-        <form onSubmit={createCoupon} className="card grid md:grid-cols-2 gap-4">
-          <input className="input-field" placeholder="Coupon code (e.g. FEST20)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} required />
-          <input className="input-field" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <select className="input-field" value={form.discountType} onChange={(e) => setForm({ ...form, discountType: e.target.value })}>
-            <option value="percent">Percent</option>
-            <option value="fixed">Fixed</option>
-          </select>
-          <input className="input-field" type="number" min="1" placeholder="Discount value" value={form.discountValue} onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) })} required />
-          <input className="input-field" type="number" min="0" placeholder="Max discount (optional)" value={form.maxDiscount} onChange={(e) => setForm({ ...form, maxDiscount: Number(e.target.value) })} />
-          <input className="input-field" type="number" min="0" placeholder="Min order amount (optional)" value={form.minOrderAmount} onChange={(e) => setForm({ ...form, minOrderAmount: Number(e.target.value) })} />
-          <input className="input-field" type="number" min="0" placeholder="Total usage limit (0 unlimited)" value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: Number(e.target.value) })} />
-          <input className="input-field" type="number" min="1" placeholder="Per user limit" value={form.perUserLimit} onChange={(e) => setForm({ ...form, perUserLimit: Number(e.target.value) })} />
-          <input className="input-field md:col-span-2" type="datetime-local" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} required />
-          <textarea className="input-field md:col-span-2" rows={2} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <button className="btn-primary md:col-span-2" type="submit">Create Coupon</button>
+        <form onSubmit={createCoupon} className="card space-y-5">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Create New Coupon</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Fill in the details below. Fields marked * are required.</p>
+          </div>
+
+          {/* Code & Title */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Coupon Code <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="input-field font-mono uppercase tracking-wider"
+                placeholder="e.g. FEST20"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                required
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Students will enter this code at checkout</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Coupon Title
+              </label>
+              <input
+                className="input-field"
+                placeholder="e.g. Festive Season Sale"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Discount Type & Value */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Discount Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                className="input-field"
+                value={form.discountType}
+                onChange={(e) => setForm({ ...form, discountType: e.target.value })}
+              >
+                <option value="percent">Percentage (%)</option>
+                <option value="fixed">Fixed Amount (₹)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Discount Value <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  className="input-field pr-10"
+                  type="number"
+                  min="1"
+                  placeholder={form.discountType === 'percent' ? 'e.g. 20' : 'e.g. 100'}
+                  value={form.discountValue}
+                  onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) })}
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
+                  {form.discountType === 'percent' ? '%' : '₹'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Expiry Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Expires On <span className="text-red-500">*</span>
+            </label>
+            <input
+              className="input-field sm:max-w-xs"
+              type="datetime-local"
+              value={form.expiresAt}
+              onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+              required
+            />
+          </div>
+
+          {/* Advanced Settings (collapsed by default) */}
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 select-none py-1">
+              <svg className="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              Advanced Settings
+              <span className="text-xs text-gray-400 font-normal">(optional)</span>
+            </summary>
+            <div className="mt-3 pl-6 space-y-4 border-l-2 border-gray-100 dark:border-gray-700">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Max Discount Cap (₹)</label>
+                  <input className="input-field" type="number" min="0" placeholder="0 = no cap"
+                    value={form.maxDiscount} onChange={(e) => setForm({ ...form, maxDiscount: Number(e.target.value) })} />
+                  <p className="text-[11px] text-gray-400 mt-1">For percentage coupons. 0 = no limit.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Min Order Amount (₹)</label>
+                  <input className="input-field" type="number" min="0" placeholder="0 = no minimum"
+                    value={form.minOrderAmount} onChange={(e) => setForm({ ...form, minOrderAmount: Number(e.target.value) })} />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Total Usage Limit</label>
+                  <input className="input-field" type="number" min="0" placeholder="0 = unlimited"
+                    value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: Number(e.target.value) })} />
+                  <p className="text-[11px] text-gray-400 mt-1">How many times this coupon can be used total.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Per Student Limit</label>
+                  <input className="input-field" type="number" min="1"
+                    value={form.perUserLimit} onChange={(e) => setForm({ ...form, perUserLimit: Number(e.target.value) })} />
+                  <p className="text-[11px] text-gray-400 mt-1">Max times each student can use this.</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
+                <textarea className="input-field" rows={2} placeholder="e.g. Special festive discount for all courses"
+                  value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              </div>
+            </div>
+          </details>
+
+          {/* Submit */}
+          <div className="flex items-center gap-3 pt-2">
+            <button className="btn-primary flex items-center gap-2" type="submit">
+              <TicketPercent size={16} />
+              Create Coupon
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+              Cancel
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Coupon lists */}
+      {/* ═══ Active Coupons ═══ */}
       {activeCoupons.length > 0 && (
         <div>
           <div className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -183,21 +308,13 @@ export default function EducatorCoupons() {
                   <Clock3 size={14} /> Expires: {new Date(c.expiresAt).toLocaleString()}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(c)}
-                    className="btn-secondary w-full inline-flex items-center justify-center gap-2"
-                  >
-                    <Pencil size={14} />
-                    Edit
+                  <button type="button" onClick={() => startEdit(c)}
+                    className="btn-secondary w-full inline-flex items-center justify-center gap-2">
+                    <Pencil size={14} /> Edit
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => deactivate(c._id)}
-                    className="btn-secondary w-full inline-flex items-center justify-center gap-2 text-red-600"
-                  >
-                    <Ban size={14} />
-                    Deactivate
+                  <button type="button" onClick={() => deactivate(c._id)}
+                    className="btn-secondary w-full inline-flex items-center justify-center gap-2 text-red-600">
+                    <Ban size={14} /> Deactivate
                   </button>
                 </div>
               </div>
@@ -206,6 +323,7 @@ export default function EducatorCoupons() {
         </div>
       )}
 
+      {/* ═══ Inactive Coupons ═══ */}
       {inactiveCoupons.length > 0 && (
         <div className="mt-6">
           <div className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -230,21 +348,13 @@ export default function EducatorCoupons() {
                   <Clock3 size={14} /> Expires: {new Date(c.expiresAt).toLocaleString()}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(c)}
-                    className="btn-secondary w-full inline-flex items-center justify-center gap-2"
-                  >
-                    <Pencil size={14} />
-                    Edit
+                  <button type="button" onClick={() => startEdit(c)}
+                    className="btn-secondary w-full inline-flex items-center justify-center gap-2">
+                    <Pencil size={14} /> Edit
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => reactivate(c._id)}
-                    className="btn-secondary w-full inline-flex items-center justify-center gap-2 text-emerald-700"
-                  >
-                    <RotateCcw size={14} />
-                    Reactivate
+                  <button type="button" onClick={() => reactivate(c._id)}
+                    className="btn-secondary w-full inline-flex items-center justify-center gap-2 text-emerald-700">
+                    <RotateCcw size={14} /> Reactivate
                   </button>
                 </div>
               </div>
@@ -259,7 +369,7 @@ export default function EducatorCoupons() {
         </div>
       )}
 
-      {/* Edit modal */}
+      {/* ═══ Edit Modal ═══ */}
       {editing && editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -283,94 +393,37 @@ export default function EducatorCoupons() {
 
             <form onSubmit={saveEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  className="input-field"
-                  placeholder="Title"
-                  value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                />
-                <select
-                  className="input-field"
-                  value={editForm.discountType}
-                  onChange={(e) => setEditForm({ ...editForm, discountType: e.target.value })}
-                >
+                <input className="input-field" placeholder="Title" value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+                <select className="input-field" value={editForm.discountType}
+                  onChange={(e) => setEditForm({ ...editForm, discountType: e.target.value })}>
                   <option value="percent">Percent</option>
                   <option value="fixed">Fixed</option>
                 </select>
               </div>
-
-              <textarea
-                className="input-field"
-                rows={2}
-                placeholder="Description (optional)"
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-              />
-
+              <textarea className="input-field" rows={2} placeholder="Description (optional)" value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  className="input-field"
-                  type="number"
-                  min="0"
-                  placeholder="Discount value"
-                  value={editForm.discountValue}
-                  onChange={(e) => setEditForm({ ...editForm, discountValue: e.target.value === '' ? 0 : Number(e.target.value) })}
-                  required
-                />
-                <input
-                  className="input-field"
-                  type="number"
-                  min="0"
-                  placeholder="Max discount (optional)"
-                  value={editForm.maxDiscount}
-                  onChange={(e) => setEditForm({ ...editForm, maxDiscount: e.target.value === '' ? 0 : Number(e.target.value) })}
-                />
+                <input className="input-field" type="number" min="0" placeholder="Discount value" value={editForm.discountValue}
+                  onChange={(e) => setEditForm({ ...editForm, discountValue: e.target.value === '' ? 0 : Number(e.target.value) })} required />
+                <input className="input-field" type="number" min="0" placeholder="Max discount (optional)" value={editForm.maxDiscount}
+                  onChange={(e) => setEditForm({ ...editForm, maxDiscount: e.target.value === '' ? 0 : Number(e.target.value) })} />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  className="input-field"
-                  type="number"
-                  min="0"
-                  placeholder="Min order amount (optional)"
-                  value={editForm.minOrderAmount}
-                  onChange={(e) => setEditForm({ ...editForm, minOrderAmount: e.target.value === '' ? 0 : Number(e.target.value) })}
-                />
-                <input
-                  className="input-field"
-                  type="number"
-                  min="1"
-                  placeholder="Per user limit"
-                  value={editForm.perUserLimit}
-                  onChange={(e) => setEditForm({ ...editForm, perUserLimit: e.target.value === '' ? 1 : Number(e.target.value) })}
-                />
+                <input className="input-field" type="number" min="0" placeholder="Min order amount" value={editForm.minOrderAmount}
+                  onChange={(e) => setEditForm({ ...editForm, minOrderAmount: e.target.value === '' ? 0 : Number(e.target.value) })} />
+                <input className="input-field" type="number" min="1" placeholder="Per user limit" value={editForm.perUserLimit}
+                  onChange={(e) => setEditForm({ ...editForm, perUserLimit: e.target.value === '' ? 1 : Number(e.target.value) })} />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  className="input-field"
-                  type="number"
-                  min="0"
-                  placeholder="Total usage limit (0 unlimited)"
-                  value={editForm.maxUses}
-                  onChange={(e) => setEditForm({ ...editForm, maxUses: e.target.value === '' ? 0 : Number(e.target.value) })}
-                />
-                <input
-                  className="input-field"
-                  type="datetime-local"
-                  value={editForm.expiresAt}
-                  onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
-                  required
-                />
+                <input className="input-field" type="number" min="0" placeholder="Total usage limit (0 unlimited)" value={editForm.maxUses}
+                  onChange={(e) => setEditForm({ ...editForm, maxUses: e.target.value === '' ? 0 : Number(e.target.value) })} />
+                <input className="input-field" type="datetime-local" value={editForm.expiresAt}
+                  onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })} required />
               </div>
-
               <div className="flex gap-2 pt-2">
-                <button type="button" className="btn-secondary flex-1" onClick={() => setEditing(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary flex-1">
-                  Save Changes
-                </button>
+                <button type="button" className="btn-secondary flex-1" onClick={() => setEditing(null)}>Cancel</button>
+                <button type="submit" className="btn-primary flex-1">Save Changes</button>
               </div>
             </form>
           </div>
