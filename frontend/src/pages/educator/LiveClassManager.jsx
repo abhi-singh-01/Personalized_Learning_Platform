@@ -150,7 +150,7 @@ export default function LiveClassManager() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Link to={`/educator/live-room/${cls._id}`}
+                  <Link to={`/educator/courses/${cls.course?._id || cls.course}/live`}
                     className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/20 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
                     <Eye size={14} /> View
                   </Link>
@@ -214,7 +214,7 @@ export default function LiveClassManager() {
                     <span>📈 Peak: {cls.peakAttendance || 0}</span>
                   </div>
                 </div>
-                <Link to={`/educator/live-class/${cls._id}/attendance`}
+                <Link to={`/educator/courses/${cls.course?._id || cls.course}/live`}
                   className="text-sm text-primary-600 hover:underline">
                   View Details →
                 </Link>
