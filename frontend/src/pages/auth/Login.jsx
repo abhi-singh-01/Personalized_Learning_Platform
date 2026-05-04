@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import useApi from '../../hooks/useApi';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
@@ -23,8 +22,7 @@ export default function Login() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, googleLogin, refreshUser } = useAuth();
-  const api = useApi();
+  const { login, googleLogin } = useAuth();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
@@ -34,33 +32,21 @@ export default function Login() {
 
   const toast = useToast();
 
-  // Auto-upgrade a learner to educator after login (when coming from Become Educator flow)
-  const upgradeIfNeeded = useCallback(async (user) => {
-    if (isEducatorFlow && user.role === 'learner') {
-      try {
-        const res = await api.put('/auth/upgrade-to-educator');
-        const { token, user: updatedUser } = res.data.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        await refreshUser();
-        return updatedUser;
-      } catch {
-        // If upgrade fails, continue with learner role
-      }
-    }
-    return user;
-  }, [isEducatorFlow, api, refreshUser]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      let user = await login(form.email, form.password);
-      user = await upgradeIfNeeded(user);
-      const greeting = isEducatorFlow ? 'Educator' : (user.name || 'Learner');
-      toast.success(`Welcome back, ${greeting}!`);
-      nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
+      const user = await login(form.email, form.password);
+      // If user came from educator flow but is a learner, guide them — do NOT auto-upgrade
+      if (isEducatorFlow && user.role === 'learner') {
+        toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
+        nav('/become-educator', { replace: true });
+      } else {
+        const greeting = user.role === 'educator' ? 'Educator' : (user.name || 'Learner');
+        toast.success(`Welcome back, ${greeting}!`);
+        nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
+      }
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
       setError(msg);
@@ -74,13 +60,18 @@ export default function Login() {
     async (credential) => {
       setError('');
       const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-      let user = await googleLogin(credential, selectedRole);
-      user = await upgradeIfNeeded(user);
-      const greeting = isEducatorFlow ? 'Educator' : (user.name || 'Learner');
-      toast.success(`Welcome back, ${greeting}!`);
-      nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+      const user = await googleLogin(credential, selectedRole);
+      // If existing user logged in as learner via educator flow — guide them, don't auto-upgrade
+      if (isEducatorFlow && user.role === 'learner') {
+        toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
+        nav('/become-educator', { replace: true });
+      } else {
+        const greeting = user.role === 'educator' ? 'Educator' : (user.name || 'Learner');
+        toast.success(`Welcome back, ${greeting}!`);
+        nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+      }
     },
-    [googleLogin, upgradeIfNeeded, isEducatorFlow, nav, toast]
+    [googleLogin, isEducatorFlow, nav, toast]
   );
 
   return (

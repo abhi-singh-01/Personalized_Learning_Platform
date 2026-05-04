@@ -83,6 +83,15 @@ const RouteLoader = () => (
 export default function App() {
   const { user, loading } = useAuth();
 
+  // Smart redirect: logged-in user visiting /login?role=educator goes to /become-educator
+  const LoginRedirect = () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('role') === 'educator' && user?.role === 'learner') {
+      return <Navigate to="/become-educator" replace />;
+    }
+    return <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />;
+  };
+
   return (
     <ErrorBoundary>
     <Suspense fallback={<PageLoader />}>
@@ -93,7 +102,7 @@ export default function App() {
           path="/login"
           element={
             !loading && user ? (
-              <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />
+              <LoginRedirect />
             ) : (
               <Login />
             )

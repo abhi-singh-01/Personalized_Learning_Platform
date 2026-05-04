@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const {
-  register, login, googleLogin, getMe, completeProfile, upgradeToEducator,
+  register, login, googleLogin, getMe, completeProfile, switchRole,
   logout, getSessions, revokeSession, revokeAllOtherSessions,
   registerValidation, loginValidation
 } = require('../controllers/authController');
@@ -13,7 +13,7 @@ router.post('/login', authLimiter, loginValidation, validate, login);
 router.post('/google', authLimiter, googleLogin);
 router.get('/me', auth, getMe);
 router.put('/complete-profile', auth, completeProfile);
-router.put('/upgrade-to-educator', auth, upgradeToEducator);
+router.post('/switch-role', auth, switchRole);
 
 // Session management
 router.post('/logout', auth, logout);

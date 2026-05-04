@@ -124,6 +124,7 @@ exports.login = async (req, res, next) => {
       user: {
         id: user._id, name: user.name, email: user.email,
         role: user.role, avatar: user.avatar, aiLevel: user.aiLevel,
+        authProvider: user.authProvider,
       },
       deviceInfo: session.deviceInfo,
     });
@@ -198,6 +199,7 @@ exports.googleLogin = async (req, res, next) => {
         id: user._id, name: user.name, email: user.email,
         role: user.role, avatar: user.avatar, aiLevel: user.aiLevel,
         profileComplete: user.profileComplete || false,
+        authProvider: user.authProvider,
       },
       deviceInfo: session.deviceInfo,
     });
@@ -237,27 +239,79 @@ exports.completeProfile = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Upgrade learner to educator ──
-exports.upgradeToEducator = async (req, res, next) => {
+// ── Switch role (requires explicit confirmation + re-authentication) ──
+exports.switchRole = async (req, res, next) => {
   try {
+    const { targetRole, confirmSwitch, password, idToken } = req.body;
+
+    // 1. Validate target role
+    if (!targetRole || !['learner', 'educator'].includes(targetRole)) {
+      throw new AppError('Invalid target role. Must be "learner" or "educator".', 400);
+    }
+
+    // 2. Fetch current user
     const user = await User.findById(req.user._id);
     if (!user) throw new AppError('User not found', 404);
-    if (user.role === 'educator') throw new AppError('Already an educator', 400);
-    if (user.role === 'admin') throw new AppError('Admins cannot be converted', 400);
 
-    user.role = 'educator';
+    // 3. Check if already that role
+    if (user.role === targetRole) {
+      throw new AppError(`You are already a ${targetRole}`, 400);
+    }
+
+    // 4. Admins cannot switch
+    if (user.role === 'admin') {
+      throw new AppError('Admin accounts cannot switch roles', 400);
+    }
+
+    // 5. Require explicit confirmation flag
+    if (!confirmSwitch) {
+      throw new AppError('Role switch requires explicit confirmation. Set confirmSwitch to true.', 400);
+    }
+
+    // 6. Re-authenticate: password for local users, Google token for Google users
+    if (user.authProvider === 'google' && !user.password) {
+      // Google-only user — verify Google idToken
+      if (!idToken) {
+        throw new AppError('Google re-authentication required to switch roles', 400);
+      }
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (payload.email !== user.email) {
+        throw new AppError('Google account does not match your account email', 401);
+      }
+    } else {
+      // Local user (or Google user who also has a password) — verify password
+      if (!password) {
+        throw new AppError('Password required to confirm role switch', 400);
+      }
+      const valid = await user.comparePassword(password);
+      if (!valid) {
+        throw new AppError('Invalid password. Role switch denied.', 401);
+      }
+    }
+
+    // 7. Perform the role switch
+    user.role = targetRole;
     await user.save();
 
-    // Generate new token with updated role
+    // 8. Generate new token with updated role
     const tokenId = generateTokenId();
     await registerSession(user, tokenId, req);
     const token = signToken(user._id, user.role, tokenId);
 
-    sendResponse(res, 200, 'Role upgraded to educator', {
+    sendResponse(res, 200, `Role switched to ${targetRole}`, {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: 'educator' },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.message?.includes('Token used too late') || err.message?.includes('Invalid token')) {
+      return next(new AppError('Invalid or expired Google token', 401));
+    }
+    next(err);
+  }
 };
 
 // ── Logout (remove session) ──

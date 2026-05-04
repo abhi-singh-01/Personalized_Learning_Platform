@@ -173,6 +173,22 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Switch role with explicit confirmation + re-authentication
+  const switchRole = async (targetRole, { password, idToken } = {}) => {
+    const res = await API.post('/auth/switch-role', {
+      targetRole,
+      confirmSwitch: true,
+      password: password || undefined,
+      idToken: idToken || undefined,
+    });
+    const { token: t, user: u } = res.data.data;
+    localStorage.setItem('token', t);
+    localStorage.setItem('user', JSON.stringify(u));
+    localStorage.setItem('loginTime', Date.now().toString());
+    setUser(u);
+    return u;
+  };
+
   const extendSession = () => {
     localStorage.setItem('loginTime', Date.now().toString());
     resetIdleTimer();
@@ -181,7 +197,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, role, token,
-      login, googleLogin, register, logout, refreshUser,
+      login, googleLogin, register, logout, refreshUser, switchRole,
       sessionWarning, extendSession,
     }}>
       {children}

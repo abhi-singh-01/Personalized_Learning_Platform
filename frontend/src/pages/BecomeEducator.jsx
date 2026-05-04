@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
-import useApi from '../hooks/useApi';
 import { useToast } from '../context/ToastContext';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import {
   GraduationCap, ArrowRight, Users, Brain, Globe, TrendingUp,
   DollarSign, BarChart3, Video, BookOpen, Star, CheckCircle2,
@@ -214,37 +214,52 @@ const faqs = [
 
 export default function BecomeEducator() {
   usePageTitle('Become an Educator — LearnAI');
-  const { user } = useAuth();
-  const api = useApi();
+  const { user, switchRole } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
-  const [upgrading, setUpgrading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [openFAQ, setOpenFAQ] = useState(0);
 
-  const handleUpgradeRole = async () => {
-    if (!user) { nav('/register?role=educator'); return; }
-    if (user.role === 'educator') { nav('/educator/dashboard'); return; }
+  // ── Role Switch Confirmation Modal State ──
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [switchPassword, setSwitchPassword] = useState('');
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
-    setUpgrading(true);
+  const isGoogleUser = user?.authProvider === 'google' && !user?.password;
+
+  const ctaAction = () => {
+    if (!user) nav('/register?role=educator');
+    else if (user.role === 'educator') nav('/educator/dashboard');
+    else {
+      // Show confirmation modal instead of auto-upgrading
+      setSwitchError('');
+      setSwitchPassword('');
+      setShowConfirmModal(true);
+    }
+  };
+
+  const handleConfirmSwitch = async (googleIdToken) => {
+    setSwitchError('');
+    setSwitching(true);
     try {
-      await api.put('/auth/upgrade-to-educator');
-      toast.success('Welcome, Educator! Your account has been upgraded 🎉');
+      const creds = googleIdToken
+        ? { idToken: googleIdToken }
+        : { password: switchPassword };
+      await switchRole('educator', creds);
+      setShowConfirmModal(false);
+      toast.success('Welcome, Educator! Your role has been switched 🎉');
       setShowSuccess(true);
       setTimeout(() => {
         window.location.href = '/educator/dashboard';
       }, 2000);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to upgrade. Please try again.');
+      const msg = err.response?.data?.message || 'Role switch failed. Please try again.';
+      setSwitchError(msg);
+      toast.error(msg);
     } finally {
-      setUpgrading(false);
+      setSwitching(false);
     }
-  };
-
-  const ctaAction = () => {
-    if (!user) nav('/register?role=educator');
-    else if (user.role === 'educator') nav('/educator/dashboard');
-    else handleUpgradeRole();
   };
 
   const ctaLabel = !user
@@ -288,6 +303,84 @@ export default function BecomeEducator() {
       <style>{animCSS}</style>
       <PublicNavbar />
 
+      {/* ═══ Role Switch Confirmation Modal ═══ */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up border border-gray-200 dark:border-gray-800">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-500/30">
+              <Shield size={32} className="text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-center">Confirm Role Switch</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed">
+              You are currently logged in as <span className="font-semibold text-purple-600 dark:text-purple-400">Learner</span>.
+              Do you want to switch to <span className="font-semibold text-purple-600 dark:text-purple-400">Educator</span>?
+            </p>
+
+            {switchError && (
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-4 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                {switchError}
+              </div>
+            )}
+
+            {isGoogleUser ? (
+              /* Google users re-auth via Google */
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Please verify your identity with Google to continue.</p>
+                <GoogleSignInButton
+                  mode="signin"
+                  onCredential={(credential) => handleConfirmSwitch(credential)}
+                  onGsiError={(msg) => setSwitchError(msg)}
+                  disabled={switching}
+                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
+                >
+                  {(busy) =>
+                    busy ? (
+                      <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    ) : (
+                      <>Verify with Google &amp; Switch</>
+                    )
+                  }
+                </GoogleSignInButton>
+              </div>
+            ) : (
+              /* Local users re-auth via password */
+              <form onSubmit={(e) => { e.preventDefault(); handleConfirmSwitch(); }} className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Enter your password to confirm</label>
+                <input
+                  type="password"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
+                  placeholder="Your account password"
+                  value={switchPassword}
+                  onChange={(e) => setSwitchPassword(e.target.value)}
+                  required
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={switching || !switchPassword}
+                  className="w-full mt-4 flex items-center justify-center gap-2 text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {switching ? (
+                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Switching...</>
+                  ) : (
+                    <>Confirm &amp; Switch to Educator</>
+                  )}
+                </button>
+              </form>
+            )}
+
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              disabled={switching}
+              className="w-full text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all disabled:opacity-50"
+            >
+              Cancel — Stay as Learner
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ═══ Success Modal ═══ */}
       {showSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -296,7 +389,7 @@ export default function BecomeEducator() {
               <CheckCircle2 size={40} className="text-white" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome, Educator! 🎉</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Your account has been upgraded. Redirecting to your educator dashboard...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Your role has been switched. Redirecting to your educator dashboard...</p>
             <div className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto" />
           </div>
         </div>
@@ -341,10 +434,10 @@ export default function BecomeEducator() {
               <div className="flex flex-wrap items-center gap-4">
                 <button
                   onClick={ctaAction}
-                  disabled={upgrading}
+                  disabled={switching}
                   className="inline-flex items-center gap-2.5 text-base font-bold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 px-8 py-4 rounded-xl shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {upgrading && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                  {switching && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   {ctaLabel}
                   <ArrowRight size={18} />
                 </button>
@@ -508,7 +601,7 @@ export default function BecomeEducator() {
           <div className="text-center mt-14">
             <button
               onClick={ctaAction}
-              disabled={upgrading}
+              disabled={switching}
               className="inline-flex items-center gap-2.5 text-base font-bold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 px-10 py-4 rounded-xl shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
             >
               {ctaLabel}
@@ -718,7 +811,7 @@ export default function BecomeEducator() {
           <div className="flex flex-wrap items-center justify-center gap-4">
             <button
               onClick={ctaAction}
-              disabled={upgrading}
+              disabled={switching}
               className="inline-flex items-center gap-2.5 text-base font-bold text-purple-700 bg-white hover:bg-gray-50 px-10 py-4 rounded-xl shadow-2xl shadow-black/20 hover:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
             >
               {ctaLabel}
