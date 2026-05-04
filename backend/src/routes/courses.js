@@ -10,6 +10,8 @@ router.get('/:id', auth, c.getById);
 router.post('/', auth, role('educator'), c.create);
 router.put('/:id', auth, role('educator'), c.update);
 router.delete('/:id', auth, role('educator'), c.remove);
+router.post('/:id/duplicate', auth, role('educator'), c.duplicateCourse);
+router.patch('/:id/toggle-publish', auth, role('educator'), c.togglePublish);
 router.post('/:id/enroll', auth, role('learner'), c.enroll);
 
 // Progress

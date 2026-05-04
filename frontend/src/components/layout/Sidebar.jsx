@@ -16,7 +16,7 @@ const learnerLinks = [
 
 const educatorLinks = [
   { to: '/educator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/educator/courses/new', label: 'New Course', icon: PlusCircle },
+  { to: '/educator/courses', label: 'My Courses', icon: BookOpen },
   { to: '/educator/live-classes', label: 'Live Classes', icon: Radio },
   { to: '/educator/coupons', label: 'Coupons', icon: TicketPercent },
   { to: '/educator/earnings', label: 'Earnings', icon: IndianRupee },

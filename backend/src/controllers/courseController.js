@@ -52,6 +52,42 @@ exports.remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.duplicateCourse = async (req, res, next) => {
+  try {
+    const original = await Course.findOne({ _id: req.params.id, educator: req.user._id });
+    if (!original) throw new AppError('Course not found or not authorized', 404);
+    const clone = await Course.create({
+      title: original.title + ' (Copy)',
+      description: original.description,
+      category: original.category,
+      thumbnail: original.thumbnail,
+      educator: req.user._id,
+      difficulty: original.difficulty,
+      tags: original.tags,
+      isPublished: false,
+      price: original.price,
+      currency: original.currency,
+      status: 'draft',
+      shortDescription: original.shortDescription,
+      refundPolicy: original.refundPolicy,
+      maxEnrollments: original.maxEnrollments,
+    });
+    sendResponse(res, 201, 'Course duplicated', clone);
+  } catch (err) { next(err); }
+};
+
+exports.togglePublish = async (req, res, next) => {
+  try {
+    const course = await Course.findOne({ _id: req.params.id, educator: req.user._id });
+    if (!course) throw new AppError('Course not found or not authorized', 404);
+    const isNowPublished = !course.isPublished;
+    course.isPublished = isNowPublished;
+    course.status = isNowPublished ? 'published' : 'draft';
+    await course.save();
+    sendResponse(res, 200, isNowPublished ? 'Course published' : 'Course unpublished', course);
+  } catch (err) { next(err); }
+};
+
 exports.enroll = async (req, res, next) => {
   try {
     const course = await Course.findById(req.params.id);

@@ -32,6 +32,7 @@ const PaymentHistory = lazy(() => import('./pages/learner/PaymentHistory'));
 
 // ── Educator pages ──
 const EducatorDashboard = lazy(() => import('./pages/educator/Dashboard'));
+const MyCourses = lazy(() => import('./pages/educator/MyCourses'));
 const ManageCourse = lazy(() => import('./pages/educator/ManageCourse'));
 const CreateQuiz = lazy(() => import('./pages/educator/CreateQuiz'));
 const UploadMaterial = lazy(() => import('./pages/educator/UploadMaterial'));
@@ -139,6 +140,7 @@ export default function App() {
 
           {/* Educator routes */}
           <Route path="/educator/dashboard" element={<ProtectedRoute allowedRoles={['educator']}><EducatorDashboard /></ProtectedRoute>} />
+          <Route path="/educator/courses" element={<ProtectedRoute allowedRoles={['educator']}><MyCourses /></ProtectedRoute>} />
           <Route path="/educator/courses/new" element={<ProtectedRoute allowedRoles={['educator']}><ManageCourse /></ProtectedRoute>} />
           <Route path="/educator/courses/:id/edit" element={<ProtectedRoute allowedRoles={['educator']}><ManageCourse /></ProtectedRoute>} />
           <Route path="/educator/courses/:courseId/materials" element={<ProtectedRoute allowedRoles={['educator']}><UploadMaterial /></ProtectedRoute>} />

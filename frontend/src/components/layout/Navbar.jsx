@@ -16,7 +16,7 @@ const learnerQuickLinks = [
 ];
 const educatorQuickLinks = [
   { to: '/educator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/educator/courses/new', label: 'Manage Courses', icon: PlusCircle },
+  { to: '/educator/courses', label: 'Manage Courses', icon: PlusCircle },
   { to: '/educator/coupons', label: 'Coupons', icon: TicketPercent },
   { to: '/educator/learners', label: 'Learners', icon: Users },
 ];
