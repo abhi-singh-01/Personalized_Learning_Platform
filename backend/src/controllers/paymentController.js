@@ -202,10 +202,16 @@ exports.createOrder = async (req, res, next) => {
     }
 
     // Create Razorpay order (amount in paise)
+    // Razorpay receipt max length is 40 chars — use truncated IDs + short timestamp
+    const shortCourseId = courseId.toString().slice(-8);
+    const shortUserId   = req.user._id.toString().slice(-8);
+    const shortTs       = Date.now().toString(36);          // base-36 keeps it compact
+    const receipt       = `rcpt_${shortCourseId}_${shortUserId}_${shortTs}`.slice(0, 40);
+
     const order = await razorpay.createOrder(
       Math.round(fees.totalAmount * 100),   // paise
       course.currency || 'INR',
-      `rcpt_${courseId}_${req.user._id}_${Date.now()}`,
+      receipt,
       { courseId: courseId.toString(), userId: req.user._id.toString() }
     );
 

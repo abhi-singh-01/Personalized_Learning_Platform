@@ -20,6 +20,11 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 400;
     message = 'Invalid ID format';
   }
+  // Razorpay SDK errors: { statusCode, error: { description, code } }
+  if (err.error && err.error.description) {
+    statusCode = err.statusCode || 502;
+    message = `Payment gateway error: ${err.error.description}`;
+  }
 
   // Async logging — non-blocking
   const logEntry = `[${new Date().toISOString()}] ${statusCode} - ${message}\nDetails: ${JSON.stringify(err.errors || {})}\n\n`;
