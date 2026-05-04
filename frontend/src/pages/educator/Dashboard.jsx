@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
-import { StatCard } from '../../components/ui/Card';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Loading from '../../components/ui/Loading';
@@ -215,15 +214,23 @@ export default function EducatorDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Educator Dashboard</h1>
-        <div className="flex gap-2">
-          <button onClick={openScheduleModal} className="btn-primary text-sm flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700">
-            <CalendarPlus size={16} /> Schedule Lecture
-          </button>
-          <Link to="/educator/courses/new" className="btn-primary text-sm flex items-center gap-1">
-            <PlusCircle size={16} /> New Course
-          </Link>
+      {/* ═══ Hero Header ═══ */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 p-6 md:p-8 text-white shadow-xl shadow-purple-500/15">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjEuNSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvZz48L3N2Zz4=')] opacity-50" />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-sm text-white/70 font-medium mb-1">Welcome back,</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{user?.name || 'Educator'} 👋</h1>
+            <p className="text-sm text-white/60 mt-1.5">Here's what's happening with your courses today</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={openScheduleModal} className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20 transition-all duration-200 hover:-translate-y-0.5">
+              <CalendarPlus size={16} /> Schedule Lecture
+            </button>
+            <Link to="/educator/courses/new" className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white text-purple-700 hover:bg-white/90 shadow-lg shadow-black/10 transition-all duration-200 hover:-translate-y-0.5">
+              <PlusCircle size={16} /> New Course
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -297,10 +304,22 @@ export default function EducatorDashboard() {
       <ReportExporter title="Analytics & Reports" filename={`Class_Report_${new Date().toISOString().split('T')[0]}.pdf`}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={Users} label="Total Learners" value={data.totalLearners} color="blue" />
-            <StatCard icon={BookOpen} label="Total Courses" value={data.totalCourses} color="primary" />
-            <StatCard icon={FileText} label="Total Materials" value={data.totalMaterials} color="green" />
-            <StatCard icon={Trophy} label="Avg Class Score" value={data.avgClassScore + '%'} color="yellow" />
+            {[
+              { icon: Users, label: 'Total Learners', value: data.totalLearners, gradient: 'from-blue-500 to-cyan-400', shadow: 'shadow-blue-500/20', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+              { icon: BookOpen, label: 'Total Courses', value: data.totalCourses, gradient: 'from-purple-500 to-indigo-400', shadow: 'shadow-purple-500/20', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+              { icon: FileText, label: 'Total Materials', value: data.totalMaterials, gradient: 'from-emerald-500 to-teal-400', shadow: 'shadow-emerald-500/20', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+              { icon: Trophy, label: 'Avg Class Score', value: data.avgClassScore + '%', gradient: 'from-amber-500 to-orange-400', shadow: 'shadow-amber-500/20', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+            ].map((s) => (
+              <div key={s.label} className={`group card hover:shadow-lg ${s.shadow} transition-all duration-300 hover:-translate-y-1 flex items-center gap-4`}>
+                <div className={`p-3 rounded-xl bg-gradient-to-br ${s.gradient} shadow-lg ${s.shadow} transition-transform duration-300 group-hover:scale-110`}>
+                  <s.icon size={22} className="text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{s.label}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{s.value}</p>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
@@ -396,31 +415,29 @@ export default function EducatorDashboard() {
 
       <Card>
         <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Quick Actions</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Link to="/educator/courses/new" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all">
-            <PlusCircle size={20} className="text-primary-600" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">New Course</span>
-          </Link>
-          <Link to="/educator/learners" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all">
-            <Users size={20} className="text-blue-600" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">View Learners</span>
-          </Link>
-          <button onClick={() => openCourseModal('materials', 'Upload Material', Upload)} className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all text-left">
-            <Upload size={20} className="text-green-600" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Upload Material</span>
-          </button>
-          <button onClick={() => openCourseModal('quizzes', 'Generate AI Quiz', Brain)} className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all text-left">
-            <Brain size={20} className="text-violet-600" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Generate AI Quiz</span>
-          </button>
-          <button onClick={() => openCourseModal('live', 'Start Live Lecture', Video)} className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-left">
-            <Video size={20} className="text-red-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Start Live Lecture</span>
-          </button>
-          <button onClick={openScheduleModal} className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all text-left">
-            <CalendarPlus size={20} className="text-emerald-600" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Schedule Lecture</span>
-          </button>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            { action: () => {}, to: '/educator/courses/new', icon: PlusCircle, label: 'New Course', desc: 'Create a new course', gradient: 'from-indigo-500 to-purple-500', shadow: 'shadow-indigo-500/20' },
+            { action: () => {}, to: '/educator/learners', icon: Users, label: 'View Learners', desc: 'Monitor student progress', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/20' },
+            { action: () => openCourseModal('materials', 'Upload Material', Upload), icon: Upload, label: 'Upload Material', desc: 'Add lectures & resources', gradient: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-500/20' },
+            { action: () => openCourseModal('quizzes', 'Generate AI Quiz', Brain), icon: Brain, label: 'AI Quiz Generator', desc: 'Auto-create assessments', gradient: 'from-violet-500 to-purple-500', shadow: 'shadow-violet-500/20' },
+            { action: () => openCourseModal('live', 'Start Live Lecture', Video), icon: Video, label: 'Go Live', desc: 'Start a live session', gradient: 'from-rose-500 to-red-500', shadow: 'shadow-rose-500/20' },
+            { action: openScheduleModal, icon: CalendarPlus, label: 'Schedule Lecture', desc: 'Plan upcoming sessions', gradient: 'from-emerald-500 to-green-500', shadow: 'shadow-emerald-500/20' },
+          ].map((item) => {
+            const Wrapper = item.to ? Link : 'button';
+            const wrapperProps = item.to ? { to: item.to } : { onClick: item.action };
+            return (
+              <Wrapper key={item.label} {...wrapperProps} className="group flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-300 text-left hover:-translate-y-0.5">
+                <div className={`p-2.5 rounded-xl bg-gradient-to-br ${item.gradient} shadow-lg ${item.shadow} transition-transform duration-300 group-hover:scale-110`}>
+                  <item.icon size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+                </div>
+              </Wrapper>
+            );
+          })}
         </div>
       </Card>
 
