@@ -74,7 +74,7 @@ export default function Navbar() {
         </div>
       )}
 
-      <nav className="sticky top-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700">
+      <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700">
         <div className="h-16 px-4 lg:px-6 flex items-center justify-between gap-4 overflow-visible">
           {/* Left: Logo + Brand */}
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
