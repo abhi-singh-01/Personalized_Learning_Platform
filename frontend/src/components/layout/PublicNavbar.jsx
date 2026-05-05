@@ -178,7 +178,7 @@ export default function PublicNavbar() {
         </div>
 
         {/* Search (desktop) */}
-        <NavSearch className="hidden lg:block flex-1 max-w-sm" heroMode={isHeroPage} />
+        <NavSearch className="hidden md:block flex-1 max-w-xs lg:max-w-sm" heroMode={isHeroPage} />
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
@@ -224,7 +224,7 @@ export default function PublicNavbar() {
 
       {/* Mobile sheet */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
             <NavSearch onNavigate={closeMobile} />
 
