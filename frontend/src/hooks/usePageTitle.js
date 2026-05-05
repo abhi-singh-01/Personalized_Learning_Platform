@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 export default function usePageTitle(title) {
   useEffect(() => {
     const prev = document.title;
-    document.title = title ? `${title} — LearnAI` : 'LearnAI — AI-Powered Personalized Learning Platform';
+    document.title = title ? `${title} — PLP` : 'PLP — Personalized Learning Platform';
     return () => { document.title = prev; };
   }, [title]);
 }

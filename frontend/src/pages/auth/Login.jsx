@@ -96,7 +96,7 @@ export default function Login() {
             <h1 className="text-4xl font-extrabold mb-4 leading-tight">
               Welcome Back to
               <br />
-              <span className="text-white/90">LearnAI</span>
+              <span className="text-white/90">PLP</span>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
               Your AI-powered learning companion. Adaptive quizzes, smart study
@@ -140,7 +140,7 @@ export default function Login() {
                 <GraduationCap size={24} className="text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white">
-                LearnAI
+                PLP
               </span>
             </div>
 

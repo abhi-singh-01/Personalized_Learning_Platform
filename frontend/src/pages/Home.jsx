@@ -501,7 +501,7 @@ export default function Home() {
                 <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
                   <GraduationCap size={18} className="text-white" />
                 </div>
-                <span className="text-lg font-bold text-white">LearnAI</span>
+                <span className="text-lg font-bold text-white">PLP</span>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed">AI-powered personalized learning platform trusted by thousands of learners and educators worldwide.</p>
             </div>
@@ -521,7 +521,7 @@ export default function Home() {
             ))}
           </div>
           <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-gray-500">&copy; 2026 LearnAI. All rights reserved.</p>
+            <p className="text-xs text-gray-500">&copy; 2026 PLP. All rights reserved.</p>
             <p className="text-xs text-gray-500 flex items-center gap-1">Made with <Heart size={12} className="text-red-500 fill-red-500" /> in India</p>
           </div>
         </div>

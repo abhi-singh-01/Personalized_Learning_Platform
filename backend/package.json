@@ -1,5 +1,5 @@
 {
-  "name": "learnai-backend",
+  "name": "plp-backend",
   "version": "1.0.0",
   "description": "AI-Powered Personalized Learning Platform API",
   "main": "server.js",

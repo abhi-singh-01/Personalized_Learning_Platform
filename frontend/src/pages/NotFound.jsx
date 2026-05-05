@@ -21,7 +21,7 @@ export default function NotFound() {
           <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
             <GraduationCap size={20} className="text-white" />
           </div>
-          <span className="text-lg font-bold text-gray-900 dark:text-white">LearnAI</span>
+          <span className="text-lg font-bold text-gray-900 dark:text-white">PLP</span>
         </div>
 
         {/* 404 */}

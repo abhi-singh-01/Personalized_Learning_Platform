@@ -213,7 +213,7 @@ const faqs = [
 ];
 
 export default function BecomeEducator() {
-  usePageTitle('Become an Educator — LearnAI');
+  usePageTitle('Become an Educator — PLP');
   const { user, switchRole } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
@@ -430,7 +430,7 @@ export default function BecomeEducator() {
               </h1>
 
               <p className="text-lg lg:text-xl text-gray-400 mb-10 max-w-lg leading-relaxed">
-                Become an instructor and change lives — including your own. Join a community of 120+ educators teaching 12,000+ learners on LearnAI.
+                Become an instructor and change lives — including your own. Join a community of 120+ educators teaching 12,000+ learners on PLP.
               </p>
 
               <div className="flex flex-wrap items-center gap-4">
@@ -465,7 +465,7 @@ export default function BecomeEducator() {
                 <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-purple-900/20 ring-1 ring-white/5">
                   <img
                     src="/educator-hero.png"
-                    alt="Educator teaching on LearnAI"
+                    alt="Educator teaching on PLP"
                     className="w-full h-auto object-cover"
                     loading="eager"
                   />
@@ -727,7 +727,7 @@ export default function BecomeEducator() {
               Hear from our educators
             </h2>
             <p className="text-lg text-gray-500 dark:text-gray-400">
-              Real stories from instructors building successful careers on LearnAI.
+              Real stories from instructors building successful careers on PLP.
             </p>
           </div>
 
@@ -848,7 +848,7 @@ export default function BecomeEducator() {
             <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
               <GraduationCap size={18} className="text-white" />
             </div>
-            <span className="text-sm font-bold text-white">LearnAI</span>
+            <span className="text-sm font-bold text-white">PLP</span>
           </div>
           <div className="flex items-center gap-6 text-xs text-gray-500">
             <Link to="/about" className="hover:text-gray-300 transition-colors">About</Link>
@@ -856,7 +856,7 @@ export default function BecomeEducator() {
             <Link to="/tracks" className="hover:text-gray-300 transition-colors">Tracks</Link>
             <Link to="/insights" className="hover:text-gray-300 transition-colors">Insights</Link>
           </div>
-          <p className="text-xs text-gray-600">&copy; 2026 LearnAI. All rights reserved.</p>
+          <p className="text-xs text-gray-600">&copy; 2026 PLP. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -4,10 +4,10 @@ import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
 
 const developers = [
-  { name: 'Abhishek Mishra', role: 'Full-Stack Lead', desc: 'Architected the system and led integration across all modules.', email: 'abhishek@learnai.dev', initials: 'AM', color: 'from-indigo-500 to-violet-500' },
-  { name: 'Anand Patel', role: 'Backend Developer', desc: 'Built the REST API, database models, and authentication layer.', email: 'anand@learnai.dev', initials: 'AP', color: 'from-emerald-500 to-teal-500' },
-  { name: 'Alok Kumar', role: 'Frontend Developer', desc: 'Designed and implemented the React UI and data visualizations.', email: 'alok@learnai.dev', initials: 'AK', color: 'from-orange-500 to-rose-500' },
-  { name: 'Abhijeet Singh', role: 'AI/ML Engineer', desc: 'Integrated Gemini AI and built the personalization engine.', email: 'abhijeet@learnai.dev', initials: 'AS', color: 'from-cyan-500 to-blue-500' },
+  { name: 'Abhishek Mishra', role: 'Full-Stack Lead', desc: 'Architected the system and led integration across all modules.', email: 'abhishek@plp.dev', initials: 'AM', color: 'from-indigo-500 to-violet-500' },
+  { name: 'Anand Patel', role: 'Backend Developer', desc: 'Built the REST API, database models, and authentication layer.', email: 'anand@plp.dev', initials: 'AP', color: 'from-emerald-500 to-teal-500' },
+  { name: 'Alok Kumar', role: 'Frontend Developer', desc: 'Designed and implemented the React UI and data visualizations.', email: 'alok@plp.dev', initials: 'AK', color: 'from-orange-500 to-rose-500' },
+  { name: 'Abhijeet Singh', role: 'AI/ML Engineer', desc: 'Integrated Gemini AI and built the personalization engine.', email: 'abhijeet@plp.dev', initials: 'AS', color: 'from-cyan-500 to-blue-500' },
 ];
 
 const techStack = ['React.js', 'Node.js', 'Express.js', 'MongoDB', 'Google Gemini AI', 'Tailwind CSS', 'JWT Auth', 'Recharts'];

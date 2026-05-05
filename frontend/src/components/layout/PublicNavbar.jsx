@@ -138,7 +138,7 @@ export default function PublicNavbar() {
             <GraduationCap size={20} className="text-white" />
           </div>
           <span className={`text-lg font-bold tracking-tight hidden sm:block ${isHeroPage ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-            LearnAI
+            PLP
           </span>
         </Link>
 

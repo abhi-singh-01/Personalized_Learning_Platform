@@ -132,7 +132,7 @@ export default function Register() {
           <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all">
             <GraduationCap size={24} className="text-white" />
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">LearnAI</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white">PLP</span>
         </Link>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-8">
