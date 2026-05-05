@@ -75,7 +75,7 @@ export default function Navbar() {
       )}
 
       <nav className="sticky top-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700">
-        <div className="h-16 px-4 lg:px-6 flex items-center justify-between gap-4">
+        <div className="h-16 px-4 lg:px-6 flex items-center justify-between gap-4 overflow-visible">
           {/* Left: Logo + Brand */}
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 group-hover:shadow-lg group-hover:shadow-blue-500/30 transition-all duration-300">
@@ -83,10 +83,10 @@ export default function Navbar() {
             </div>
             <div className="hidden sm:flex flex-col leading-tight">
               <span className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">
-                Personalized Learning
+                PLP
               </span>
               <span className="text-[10px] uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 font-medium">
-                AI CAMPUS
+                LEARNING PLATFORM
               </span>
             </div>
           </Link>

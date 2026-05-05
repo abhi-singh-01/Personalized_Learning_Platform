@@ -130,7 +130,7 @@ export default function PublicNavbar() {
         ? 'bg-gray-950/80 border-b border-white/[0.06]'
         : 'bg-white/95 dark:bg-gray-950/95 border-b border-gray-200/80 dark:border-gray-800/80'
     }`}>
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-4 overflow-visible">
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0 group">
