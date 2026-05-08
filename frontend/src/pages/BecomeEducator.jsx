@@ -399,7 +399,7 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           HERO — Udemy Style: Centered text with image
       ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden min-h-[60vh] sm:min-h-[65vh] lg:min-h-[75vh] -mt-16 pt-16 flex items-center">
+      <section className="relative overflow-hidden -mt-16 pt-16 flex items-center">
         {/* Background — clean white in light, dark in dark mode */}
         <div className="absolute inset-0 bg-white dark:bg-gradient-to-br dark:from-gray-950 dark:via-[#0f1623] dark:to-[#0a0d14]" />
         {/* Subtle warm tints — only visible in light mode as very faint washes */}
