@@ -1,4 +1,4 @@
-const { getAI, MODEL } = require('../services/aiService');
+const { getAI, MODEL, wrapGeminiError } = require('../services/aiService');
 const Course = require('../models/Course');
 const Material = require('../models/Material');
 const Transcript = require('../models/Transcript');
@@ -216,7 +216,11 @@ exports.chat = async (req, res, next) => {
       reply,
       courseId: courseId || null,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    // Catch Gemini region errors and provide a clear message
+    try { wrapGeminiError(err); } catch (wrapped) { return next(wrapped); }
+    next(err);
+  }
 };
 
 // ── Streaming Chat (SSE) for near-zero latency feel ──
@@ -292,9 +296,13 @@ exports.chatStream = async (req, res, next) => {
   } catch (err) {
     // If headers already sent, close stream with error
     if (res.headersSent) {
-      res.write(`data: ${JSON.stringify({ error: err.message, done: true })}\n\n`);
+      const msg = err.message?.includes('User location is not supported')
+        ? 'Gemini AI is not available in this server region. Please ask your admin to change the backend hosting region.'
+        : err.message;
+      res.write(`data: ${JSON.stringify({ error: msg, done: true })}\n\n`);
       res.end();
     } else {
+      try { wrapGeminiError(err); } catch (wrapped) { return next(wrapped); }
       next(err);
     }
   }
@@ -322,7 +330,10 @@ Explain this in the simplest possible words as if talking to a friend. Use one r
     });
 
     sendResponse(res, 200, 'Quick explanation', { explanation: result.text });
-  } catch (err) { next(err); }
+  } catch (err) {
+    try { wrapGeminiError(err); } catch (wrapped) { return next(wrapped); }
+    next(err);
+  }
 };
 
 // ── Suggest Questions — Help learners know what to ask ──
@@ -348,5 +359,8 @@ exports.suggestQuestions = async (req, res, next) => {
     const questions = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 
     sendResponse(res, 200, 'Suggested questions', { questions });
-  } catch (err) { next(err); }
+  } catch (err) {
+    try { wrapGeminiError(err); } catch (wrapped) { return next(wrapped); }
+    next(err);
+  }
 };

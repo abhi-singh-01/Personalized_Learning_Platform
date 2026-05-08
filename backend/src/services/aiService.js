@@ -21,6 +21,45 @@ const getAI = async () => {
 
 const MODEL = 'gemini-2.5-flash';
 
+/**
+ * Helper to detect and re-throw Gemini geographic restriction errors
+ * with a clear, actionable message. Use this in try/catch blocks around
+ * any direct Gemini API call.
+ */
+const wrapGeminiError = (err) => {
+  if (
+    err.message?.includes('User location is not supported') ||
+    (err.status === 400 && err.message?.includes('FAILED_PRECONDITION'))
+  ) {
+    throw new Error(
+      'Gemini AI is not available in the server\'s current region. ' +
+      'Please change your backend hosting region to US (Oregon) or EU (Frankfurt), ' +
+      'or use a VPN/proxy. This is a Google API geographic restriction.'
+    );
+  }
+  throw err;
+};
+
+/**
+ * Wrapper that calls Gemini, parses JSON from the response, and catches
+ * region-specific errors with a user-friendly message.
+ */
+const callGemini = async (prompt) => {
+  const ai = await getAI();
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+    });
+    const text = result.text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI returned invalid format');
+    return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    wrapGeminiError(err);
+  }
+};
+
 const generateStudyPlan = async ({ goal, hoursPerWeek, weeks, level, weakTopics, courseTitle, syllabusContext }) => {
   const syllabusSection = syllabusContext
     ? `\n\nCourse Syllabus (extracted from video lectures):\n${JSON.stringify(syllabusContext, null, 2)}\nUse this syllabus to create a highly specific study plan aligned with the actual course content.`
@@ -59,15 +98,7 @@ Return ONLY valid JSON with this structure:
   "expectedOutcome": "string"
 }`;
 
-  const ai = await getAI();
-  const result = await ai.models.generateContent({
-    model: MODEL,
-    contents: prompt,
-  });
-  const text = result.text;
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI returned invalid format');
-  return JSON.parse(jsonMatch[0]);
+  return callGemini(prompt);
 };
 
 const generateQuiz = async ({ topic, difficulty, numQuestions = 5, courseTitle, previousQuestions = [] }) => {
@@ -103,15 +134,7 @@ Return ONLY valid JSON with this structure:
 
 Generate exactly ${numQuestions} questions. correctAnswer is a 0-based index.`;
 
-  const ai = await getAI();
-  const result = await ai.models.generateContent({
-    model: MODEL,
-    contents: prompt,
-  });
-  const text = result.text;
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI returned invalid format');
-  return JSON.parse(jsonMatch[0]);
+  return callGemini(prompt);
 };
 
 const generateFeedback = async ({ learnerName, level, averageScore, recentScores, weakTopics }) => {
@@ -132,15 +155,7 @@ Return ONLY valid JSON:
   "motivationalMessage": "string"
 }`;
 
-  const ai = await getAI();
-  const result = await ai.models.generateContent({
-    model: MODEL,
-    contents: prompt,
-  });
-  const text = result.text;
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI returned invalid format');
-  return JSON.parse(jsonMatch[0]);
+  return callGemini(prompt);
 };
 
-module.exports = { getAI, MODEL, generateStudyPlan, generateQuiz, generateFeedback };
+module.exports = { getAI, MODEL, callGemini, wrapGeminiError, generateStudyPlan, generateQuiz, generateFeedback };
