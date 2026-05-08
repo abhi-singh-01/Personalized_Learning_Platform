@@ -38,8 +38,12 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
-      // If user came from educator flow but is a learner, guide them — do NOT auto-upgrade
-      if (isEducatorFlow && user.role === 'learner') {
+      // Admin users — redirect to admin dashboard
+      if (user.role === 'admin') {
+        toast.success('Welcome back, Administrator!');
+        nav('/admin/dashboard', { replace: true });
+      } else if (isEducatorFlow && user.role === 'learner') {
+        // If user came from educator flow but is a learner, guide them — do NOT auto-upgrade
         toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
         nav('/become-educator', { replace: true });
       } else {

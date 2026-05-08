@@ -43,6 +43,7 @@ const LiveClassManager = lazy(() => import('./pages/educator/LiveClassManager'))
 const EarningsDashboard = lazy(() => import('./pages/educator/EarningsDashboard'));
 
 // ── Admin pages ──
+const AdminLogin = lazy(() => import('./pages/auth/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const PlatformAnalytics = lazy(() => import('./pages/admin/PlatformAnalytics'));
 const OffersDashboard = lazy(() => import('./pages/admin/OffersDashboard'));
@@ -90,6 +91,9 @@ export default function App() {
     if (params.get('role') === 'educator' && user?.role === 'learner') {
       return <Navigate to="/become-educator" replace />;
     }
+    if (user?.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
     return <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />;
   };
 
@@ -124,6 +128,14 @@ export default function App() {
         <Route path="/tracks" element={<Tracks />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/become-educator" element={<BecomeEducator />} />
+        <Route
+          path="/admin/login"
+          element={
+            !loading && user && user.role === 'admin'
+              ? <Navigate to="/admin/dashboard" replace />
+              : <AdminLogin />
+          }
+        />
         <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
 
         {/* Protected pages inside layout */}
