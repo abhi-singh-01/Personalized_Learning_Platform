@@ -18,7 +18,7 @@ const categories = [
 ];
 
 /* ── Live search ── */
-function NavSearch({ className = '', onNavigate, heroMode = false }) {
+function NavSearch({ className = '', onNavigate }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -34,7 +34,8 @@ function NavSearch({ className = '', onNavigate, heroMode = false }) {
     timer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const r = await fetch('/api/courses/public?search=' + encodeURIComponent(query.trim()));
+        const base = import.meta.env.VITE_API_URL || '/api';
+        const r = await fetch(`${base}/courses/public?search=` + encodeURIComponent(query.trim()));
         const j = await r.json();
         setResults(j.data || []);
         setShow(true);
@@ -52,11 +53,7 @@ function NavSearch({ className = '', onNavigate, heroMode = false }) {
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all ${
-        heroMode
-          ? 'border border-white/15 bg-white/[0.07] focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-500/20'
-          : 'border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 focus-within:border-purple-400 dark:focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 dark:focus-within:ring-purple-900/30'
-      }`}>
+      <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 focus-within:border-purple-400 dark:focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 dark:focus-within:ring-purple-900/30`}>
         <Search size={16} className="text-gray-400 shrink-0" />
         <input
           type="text"
@@ -64,11 +61,7 @@ function NavSearch({ className = '', onNavigate, heroMode = false }) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setShow(true); }}
           onFocus={() => results.length > 0 && setShow(true)}
-          className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${
-            heroMode
-              ? 'text-white placeholder:text-gray-400'
-              : 'text-gray-800 dark:text-gray-100 placeholder:text-gray-400'
-          }`}
+          className="flex-1 bg-transparent border-none outline-none text-sm min-w-0 text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
         />
         {searching && <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />}
       </div>
@@ -113,23 +106,15 @@ export default function PublicNavbar() {
 
   const navLink = (to, label) => (
     <Link to={to} className={`text-sm font-medium transition-colors ${
-      isHeroPage
-        ? (isActive(to) ? 'text-white' : 'text-gray-300 hover:text-white')
-        : (isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white')
+      isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
     }`}>
       {label}
     </Link>
   );
 
-  // Pages with dark hero backgrounds where navbar should blend seamlessly
-  const isHeroPage = ['/'].includes(location.pathname);
 
   return (
-    <nav className={`sticky top-0 z-50 backdrop-blur-xl transition-colors duration-300 ${
-      isHeroPage
-        ? 'bg-gray-950/80 border-b border-white/[0.06]'
-        : 'bg-white/95 dark:bg-gray-950/95 border-b border-gray-200/80 dark:border-gray-800/80'
-    }`}>
+    <nav className="sticky top-0 z-50 backdrop-blur-xl transition-colors duration-300 bg-white/95 dark:bg-gray-950/95 border-b border-gray-200/80 dark:border-gray-800/80">
       <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
 
         {/* Logo */}
@@ -137,7 +122,7 @@ export default function PublicNavbar() {
           <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all">
             <GraduationCap size={20} className="text-white" />
           </div>
-          <span className={`text-lg font-bold tracking-tight hidden sm:block ${isHeroPage ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+          <span className="text-lg font-bold tracking-tight hidden sm:block text-gray-900 dark:text-white">
             PLP
           </span>
         </Link>
@@ -149,11 +134,7 @@ export default function PublicNavbar() {
           onMouseEnter={() => { clearTimeout(exploreTimer.current); setExploreOpen(true); }}
           onMouseLeave={() => { exploreTimer.current = setTimeout(() => setExploreOpen(false), 200); }}
         >
-          <button className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg transition-all ${
-            isHeroPage
-              ? 'text-gray-200 hover:text-white hover:bg-white/10'
-              : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}>
+          <button className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg transition-all text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
             <Compass size={16} /> Explore <ChevronDown size={14} className={`transition-transform ${exploreOpen ? 'rotate-180' : ''}`} />
           </button>
           {exploreOpen && (
@@ -178,23 +159,19 @@ export default function PublicNavbar() {
         </div>
 
         {/* Search (desktop) */}
-        <NavSearch className="hidden lg:block flex-1 max-w-xs lg:max-w-sm" heroMode={isHeroPage} />
+        <NavSearch className="hidden lg:block flex-1 max-w-xs lg:max-w-sm" />
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
           {/* Become Educator CTA */}
           {(!user || user.role === 'learner') && (
-            <Link to="/become-educator" className={`hidden lg:inline-flex text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all ${
-              isHeroPage
-                ? 'text-purple-300 border border-purple-500/40 hover:bg-purple-500/10'
-                : 'text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30'
-            }`}>
+            <Link to="/become-educator" className="hidden lg:inline-flex text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30">
               Become an Educator
             </Link>
           )}
 
           {/* Theme toggle */}
-          <button onClick={toggle} className={`p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`} aria-label="Toggle theme">
+          <button onClick={toggle} className="p-2 rounded-full transition-all text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Toggle theme">
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
@@ -205,18 +182,14 @@ export default function PublicNavbar() {
             </Link>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Link to="/login" className={`text-sm font-semibold px-4 py-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:text-white hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+              <Link to="/login" className={`text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-5 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all`}>
                 Sign in
-              </Link>
-              <Link to="/register"
-                className="text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-5 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
-                Sign up
               </Link>
             </div>
           )}
 
           {/* Mobile toggle */}
-          <button className={`lg:hidden p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`} onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
+          <button className="lg:hidden p-2 rounded-full transition-all text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
@@ -260,12 +233,9 @@ export default function PublicNavbar() {
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" onClick={closeMobile} className="flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 py-2.5 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800">
-                    Sign in
-                  </Link>
-                  <Link to="/register" onClick={closeMobile}
+                  <Link to="/login" onClick={closeMobile}
                     className="flex-1 text-center text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 py-2.5 rounded-full shadow-md">
-                    Sign up
+                    Sign in
                   </Link>
                 </>
               )}
