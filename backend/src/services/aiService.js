@@ -75,6 +75,13 @@ Learner Details:
 - Total Duration: ${weeks} Weeks
 - Weak Topics: ${weakTopics?.join(', ') || 'None identified'}${syllabusSection}
 
+CRITICAL FORMATTING RULES:
+- All string values must be PLAIN TEXT only. No markdown, no **, no ##, no bullet symbols, no emojis, no special formatting characters.
+- Write tips and goals as natural, conversational sentences — like a real tutor speaking to a student. Vary sentence structure.
+- Do NOT start every tip with a bold keyword pattern like "Practice: ...". Just write naturally.
+- Avoid generic AI phrases like "Remember, consistency is key" or "Don't hesitate to ask". Be specific and practical instead.
+- Use double quotes where needed in text. No asterisks or stars ever.
+
 Return ONLY valid JSON with this structure:
 {
   "planTitle": "string",
@@ -111,12 +118,14 @@ const generateQuiz = async ({ topic, difficulty, numQuestions = 5, courseTitle, 
 IMPORTANT RULES FOR QUESTION QUALITY:
 1. Write every question in simple, clear, everyday English that any learner can understand.
 2. Keep each question SHORT — 1 to 2 sentences maximum. Get straight to the point.
-3. DO NOT include code snippets, code blocks, or raw code in questions or options. If a concept involves code, describe it in plain words (e.g., "What happens when a child class defines the same method as its parent class?" instead of embedding a 20-line code block).
+3. DO NOT include code snippets, code blocks, or raw code in questions or options. If a concept involves code, describe it in plain words.
 4. Keep each option SHORT — one brief phrase or sentence. Make options clearly different from each other.
-5. For scenario-based questions, use simple, relatable examples (e.g., "a learner registration system" not "a large-scale enterprise microservices architecture").
+5. For scenario-based questions, use simple, relatable examples.
 6. Write explanations in 1-2 simple sentences that a beginner would understand.
 7. Avoid jargon-heavy, academic, or overly technical language. Prefer plain terms.
-8. Each option should be labeled naturally (no "A.", "B." prefixes — just the text).${previousString}
+8. Each option should be labeled naturally (no "A.", "B." prefixes — just the text).
+9. All text must be PLAIN TEXT only — no markdown, no **, no emojis, no special formatting characters. Use double quotes where needed.
+10. Write like a real teacher would speak, not like a textbook. Vary your phrasing naturally.${previousString}
 
 Return ONLY valid JSON with this structure:
 {
@@ -145,6 +154,8 @@ Level: ${level}
 Average Score: ${averageScore}%
 Recent Scores: ${recentScores?.join(', ') || 'N/A'}
 Weak Areas: ${weakTopics?.join(', ') || 'None identified'}
+
+CRITICAL: All text must be PLAIN TEXT only — no markdown, no **, no ##, no emojis, no special formatting. Write naturally like a real advisor talking to a student. Avoid generic motivational phrases. Be specific and practical.
 
 Return ONLY valid JSON:
 {
