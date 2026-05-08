@@ -112,17 +112,17 @@ export default function PublicNavbar() {
   const closeMobile = () => setMobileOpen(false);
 
   const navLink = (to, label) => (
-    <Link to={to} className={`text-sm font-medium transition-colors hover:text-white ${
+    <Link to={to} className={`text-sm font-medium transition-colors ${
       isHeroPage
-        ? (isActive(to) ? 'text-white' : 'text-gray-300')
-        : (isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400')
+        ? (isActive(to) ? 'text-white' : 'text-gray-300 hover:text-white')
+        : (isActive(to) ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white')
     }`}>
       {label}
     </Link>
   );
 
   // Pages with dark hero backgrounds where navbar should blend seamlessly
-  const isHeroPage = ['/become-educator', '/'].includes(location.pathname);
+  const isHeroPage = ['/'].includes(location.pathname);
 
   return (
     <nav className={`sticky top-0 z-50 backdrop-blur-xl transition-colors duration-300 ${
@@ -130,7 +130,7 @@ export default function PublicNavbar() {
         ? 'bg-gray-950/80 border-b border-white/[0.06]'
         : 'bg-white/95 dark:bg-gray-950/95 border-b border-gray-200/80 dark:border-gray-800/80'
     }`}>
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-4 overflow-visible">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0 group">
@@ -178,13 +178,13 @@ export default function PublicNavbar() {
         </div>
 
         {/* Search (desktop) */}
-        <NavSearch className="hidden md:block flex-1 max-w-xs lg:max-w-sm" heroMode={isHeroPage} />
+        <NavSearch className="hidden lg:block flex-1 max-w-xs lg:max-w-sm" heroMode={isHeroPage} />
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
           {/* Become Educator CTA */}
           {(!user || user.role === 'learner') && (
-            <Link to="/become-educator" className={`hidden xl:inline-flex text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all ${
+            <Link to="/become-educator" className={`hidden lg:inline-flex text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all ${
               isHeroPage
                 ? 'text-purple-300 border border-purple-500/40 hover:bg-purple-500/10'
                 : 'text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30'
@@ -200,11 +200,11 @@ export default function PublicNavbar() {
 
           {user ? (
             <Link to={`/${role}/dashboard`}
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-4 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
+              className="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-4 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
               <UserCircle2 size={16} /> Dashboard
             </Link>
           ) : (
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <Link to="/login" className={`text-sm font-semibold px-4 py-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:text-white hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                 Sign in
               </Link>
@@ -216,7 +216,7 @@ export default function PublicNavbar() {
           )}
 
           {/* Mobile toggle */}
-          <button className={`lg:hidden p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`} onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
+          <button className={`md:hidden p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`} onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
@@ -224,7 +224,7 @@ export default function PublicNavbar() {
 
       {/* Mobile sheet */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <div className="lg:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
             <NavSearch onNavigate={closeMobile} />
 

@@ -841,21 +841,21 @@ export default function BecomeEducator() {
       </section>
 
       {/* ═══ Footer ═══ */}
-      <footer className="bg-gray-950 py-10 px-4">
+      <footer className="bg-gray-100 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 py-10 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-teal-600">
               <GraduationCap size={18} className="text-white" />
             </div>
-            <span className="text-sm font-bold text-white">PLP</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-white">PLP</span>
           </div>
-          <div className="flex items-center gap-6 text-xs text-gray-500">
-            <Link to="/about" className="hover:text-gray-300 transition-colors">About</Link>
-            <Link to="/features" className="hover:text-gray-300 transition-colors">Features</Link>
-            <Link to="/tracks" className="hover:text-gray-300 transition-colors">Tracks</Link>
-            <Link to="/insights" className="hover:text-gray-300 transition-colors">Insights</Link>
+          <div className="flex items-center gap-6 text-xs text-gray-500 dark:text-gray-500">
+            <Link to="/about" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">About</Link>
+            <Link to="/features" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">Features</Link>
+            <Link to="/tracks" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">Tracks</Link>
+            <Link to="/insights" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">Insights</Link>
           </div>
-          <p className="text-xs text-gray-600">&copy; 2026 PLP. All rights reserved.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-600">&copy; 2026 PLP. All rights reserved.</p>
         </div>
       </footer>
     </div>
