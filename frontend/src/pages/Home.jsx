@@ -79,7 +79,7 @@ export default function Home() {
       <PublicNavbar />
 
       {/* ═══════════ HERO ═══════════ */}
-      <section className="relative overflow-hidden min-h-[600px] lg:min-h-[680px]">
+      <section className="relative overflow-hidden min-h-[500px] lg:min-h-[560px]">
         {/* Gradient mesh background — richer, more layered */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950" />
         <div className="absolute top-10 -left-32 w-[500px] h-[500px] bg-purple-200/40 dark:bg-purple-900/20 rounded-full blur-[100px] animate-hero-glow" />
@@ -89,7 +89,7 @@ export default function Home() {
         {/* Subtle dot pattern overlay */}
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 lg:px-6 py-16 lg:py-24">
+        <div className="relative max-w-7xl mx-auto px-4 lg:px-6 py-10 lg:py-16">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
             
             {/* ── LEFT COLUMN: Content ── */}
@@ -311,9 +311,9 @@ export default function Home() {
       </section>
 
       {/* ═══════════ CATEGORIES GRID ═══════════ */}
-      <section className="py-16 px-4 lg:px-6">
+      <section className="py-10 px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-end justify-between mb-10">
+          <div className="flex items-end justify-between mb-7">
             <div>
               <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Top Categories</h2>
               <p className="text-gray-500 dark:text-gray-400">Explore our most popular learning paths</p>
@@ -338,9 +338,9 @@ export default function Home() {
       </section>
 
       {/* ═══════════ FEATURED COURSES ═══════════ */}
-      <section className="py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-900/30">
+      <section className="py-10 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-900/30">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-end justify-between mb-10">
+          <div className="flex items-end justify-between mb-7">
             <div>
               <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Featured Courses</h2>
               <p className="text-gray-500 dark:text-gray-400">Hand-picked by our AI and community</p>
@@ -386,9 +386,9 @@ export default function Home() {
       </section>
 
       {/* ═══════════ AI FEATURES HIGHLIGHT ═══════════ */}
-      <section className="py-16 px-4 lg:px-6">
+      <section className="py-10 px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-3">Why learners choose us</h2>
             <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">Our AI doesn't just deliver content — it learns how <em>you</em> learn.</p>
           </div>
@@ -411,9 +411,9 @@ export default function Home() {
       </section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section className="py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-900/30">
+      <section className="py-10 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-900/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-3">What our learners say</h2>
             <p className="text-gray-500 dark:text-gray-400">Real stories from real people</p>
           </div>
@@ -436,12 +436,12 @@ export default function Home() {
       </section>
 
       {/* ═══════════ TEACH ON PLATFORM ═══════════ */}
-      <section className="py-16 px-4 lg:px-6">
+      <section className="py-10 px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
           <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-900">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(139,92,246,0.15),transparent_60%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
-            <div className="relative grid lg:grid-cols-2 gap-10 p-10 md:p-14">
+            <div className="relative grid lg:grid-cols-2 gap-8 p-8 md:p-10">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 mb-5">
                   <GraduationCap size={14} className="text-purple-400" />
@@ -473,7 +473,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════ FINAL CTA ═══════════ */}
-      <section className="py-16 px-4 lg:px-6 bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600">
+      <section className="py-10 px-4 lg:px-6 bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Start learning today</h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
@@ -493,9 +493,9 @@ export default function Home() {
       </section>
 
       {/* ═══════════ FOOTER ═══════════ */}
-      <footer className="bg-gray-900 dark:bg-gray-950 pt-14 pb-8 px-4 lg:px-6">
+      <footer className="bg-gray-900 dark:bg-gray-950 pt-10 pb-6 px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-10 mb-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">

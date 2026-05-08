@@ -52,8 +52,8 @@ function StatCounter({ value, suffix = '', prefix = '', label, icon: Icon }) {
   const { count, ref } = useCounter(numericPart);
   return (
     <div ref={ref} className="text-center group">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/20 mb-4 group-hover:scale-110 transition-transform duration-300">
-        <Icon size={28} className="text-purple-500" />
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 mb-4 group-hover:scale-110 transition-transform duration-300">
+        <Icon size={28} className="text-amber-500" />
       </div>
       <div className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-1">
         {prefix}{count.toLocaleString()}{suffix}
@@ -71,10 +71,10 @@ function FAQItem({ q, a, isOpen, onToggle }) {
         onClick={onToggle}
         className="w-full flex items-center justify-between py-5 text-left group"
       >
-        <span className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors pr-4">{q}</span>
+        <span className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors pr-4">{q}</span>
         <ChevronDown
           size={20}
-          className={`text-gray-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-purple-500' : ''}`}
+          className={`text-gray-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-teal-500' : ''}`}
         />
       </button>
       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96 opacity-100 pb-5' : 'max-h-0 opacity-0'}`}>
@@ -307,13 +307,13 @@ export default function BecomeEducator() {
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
           <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up border border-gray-200 dark:border-gray-800">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-500/30">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-teal-500/30">
               <Shield size={32} className="text-white" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-center">Confirm Role Switch</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed">
-              You are currently logged in as <span className="font-semibold text-purple-600 dark:text-purple-400">Learner</span>.
-              Do you want to switch to <span className="font-semibold text-purple-600 dark:text-purple-400">Educator</span>?
+              You are currently logged in as <span className="font-semibold text-amber-600 dark:text-amber-400">Learner</span>.
+              Do you want to switch to <span className="font-semibold text-teal-600 dark:text-teal-400">Educator</span>?
             </p>
 
             {switchError && (
@@ -349,7 +349,7 @@ export default function BecomeEducator() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Enter your password to confirm</label>
                 <input
                   type="password"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all text-sm"
                   placeholder="Your account password"
                   value={switchPassword}
                   onChange={(e) => setSwitchPassword(e.target.value)}
@@ -359,7 +359,7 @@ export default function BecomeEducator() {
                 <button
                   type="submit"
                   disabled={switching || !switchPassword}
-                  className="w-full mt-4 flex items-center justify-center gap-2 text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full mt-4 flex items-center justify-center gap-2 text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 py-3 rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {switching ? (
                     <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Switching...</>
@@ -390,7 +390,7 @@ export default function BecomeEducator() {
             </div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome, Educator! 🎉</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Your role has been switched. Redirecting to your educator dashboard...</p>
-            <div className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-3 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto" />
           </div>
         </div>
       )}
@@ -398,38 +398,37 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           HERO — Udemy Style: Centered text with image
       ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden min-h-[92vh] -mt-16 pt-16 flex items-center">
-        {/* Background — seamless blend with navbar */}
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-[#0d0b1a] to-gray-950" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_40%,rgba(139,92,246,0.18),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgba(59,130,246,0.10),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_50%_0%,rgba(139,92,246,0.12),transparent_50%)]" />
+      <section className="relative overflow-hidden min-h-[75vh] -mt-16 pt-16 flex items-center">
+        {/* Background — clean white in light, dark in dark mode */}
+        <div className="absolute inset-0 bg-white dark:bg-gradient-to-br dark:from-gray-950 dark:via-[#0f1623] dark:to-[#0a0d14]" />
+        {/* Subtle warm tints — only visible in light mode as very faint washes */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-50/40 via-transparent to-teal-50/30 dark:from-transparent dark:to-transparent" />
 
         {/* Floating decorative elements */}
-        <div className="absolute top-24 left-[8%] w-72 h-72 rounded-full border border-purple-500/[0.07] animate-pulse-ring" />
-        <div className="absolute bottom-16 right-[8%] w-56 h-56 rounded-full border border-blue-500/[0.07] animate-pulse-ring" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-1/3 right-[12%] w-2.5 h-2.5 rounded-full bg-purple-400/40 animate-float-edu" />
-        <div className="absolute top-[60%] left-[5%] w-2 h-2 rounded-full bg-violet-400/30 animate-float-slow-edu" />
-        <div className="absolute bottom-[30%] left-[25%] w-1.5 h-1.5 rounded-full bg-blue-400/25 animate-float-edu" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-24 left-[8%] w-72 h-72 rounded-full border border-amber-500/10 dark:border-amber-500/[0.07] animate-pulse-ring" />
+        <div className="absolute bottom-16 right-[8%] w-56 h-56 rounded-full border border-teal-500/10 dark:border-teal-500/[0.07] animate-pulse-ring" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-1/3 right-[12%] w-2.5 h-2.5 rounded-full bg-amber-400/30 dark:bg-amber-400/40 animate-float-edu" />
+        <div className="absolute top-[60%] left-[5%] w-2 h-2 rounded-full bg-teal-400/20 dark:bg-teal-400/30 animate-float-slow-edu" />
+        <div className="absolute bottom-[30%] left-[25%] w-1.5 h-1.5 rounded-full bg-orange-400/20 dark:bg-orange-400/25 animate-float-edu" style={{ animationDelay: '2s' }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28 w-full">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 w-full">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
             {/* Left — Text */}
             <div className="animate-slide-up">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8">
-                <Sparkles size={14} className="text-purple-400" />
-                <span className="text-xs font-semibold text-purple-300 uppercase tracking-widest">Become an Educator</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 mb-8">
+                <Sparkles size={14} className="text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-widest">Become an Educator</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-extrabold tracking-tight text-white leading-[1.08] mb-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-[1.08] mb-6">
                 Come teach{' '}
                 <span className="relative">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-violet-400 to-blue-400">with us</span>
-                  <span className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full opacity-50" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-orange-500 to-teal-500 dark:from-amber-400 dark:via-orange-400 dark:to-teal-400">with us</span>
+                  <span className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-teal-500 rounded-full opacity-40 dark:opacity-50" />
                 </span>
               </h1>
 
-              <p className="text-lg lg:text-xl text-gray-400 mb-10 max-w-lg leading-relaxed">
+              <p className="text-lg lg:text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-lg leading-relaxed">
                 Become an instructor and change lives — including your own. Join a community of 120+ educators teaching 12,000+ learners on PLP.
               </p>
 
@@ -437,7 +436,7 @@ export default function BecomeEducator() {
                 <button
                   onClick={ctaAction}
                   disabled={switching}
-                  className="inline-flex items-center gap-2.5 text-base font-bold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 px-8 py-4 rounded-xl shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2.5 text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 px-8 py-4 rounded-xl shadow-2xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {switching && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   {ctaLabel}
@@ -447,7 +446,7 @@ export default function BecomeEducator() {
                 {!user && (
                   <button
                     onClick={ctaLoginAction}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-6 py-3.5 rounded-xl transition-all duration-300"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 px-6 py-3.5 rounded-xl transition-all duration-300"
                   >
                     Already a member? Sign in
                   </button>
@@ -459,17 +458,17 @@ export default function BecomeEducator() {
             <div className="relative animate-slide-up-d2 hidden lg:block">
               <div className="relative">
                 {/* Glow behind image */}
-                <div className="absolute -inset-4 bg-gradient-to-br from-purple-600/25 via-violet-500/15 to-blue-600/20 rounded-[2rem] blur-3xl scale-105" />
+                <div className="absolute -inset-4 bg-gradient-to-br from-amber-600/15 via-orange-500/10 to-teal-600/10 dark:from-amber-600/25 dark:via-orange-500/15 dark:to-teal-600/20 rounded-[2rem] blur-3xl scale-105" />
 
                 {/* Main image */}
-                <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-purple-900/20 ring-1 ring-white/5">
+                <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.08] shadow-2xl shadow-gray-300/30 dark:shadow-purple-900/20 ring-1 ring-gray-200/50 dark:ring-white/5">
                   <img
                     src="/educator-hero.png"
                     alt="Educator teaching on PLP"
                     className="w-full h-auto object-cover"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/50 dark:from-gray-950/70 via-transparent to-transparent" />
                 </div>
 
                 {/* Floating stat cards — glassmorphic style */}
@@ -493,7 +492,7 @@ export default function BecomeEducator() {
                                 border border-white/20 dark:border-white/[0.1]
                                 ring-1 ring-black/5 dark:ring-white/5">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
                       <Users size={20} className="text-white" />
                     </div>
                     <div>
@@ -509,8 +508,8 @@ export default function BecomeEducator() {
                                 ring-1 ring-black/5 dark:ring-white/5" style={{ animationDelay: '0.5s' }}>
                   <div className="flex items-center gap-2.5">
                     <div className="flex -space-x-1.5">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">R</div>
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">S</div>
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">R</div>
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">S</div>
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 border-2 border-white dark:border-gray-900/60 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">A</div>
                     </div>
                     <p className="text-xs font-bold text-gray-700 dark:text-gray-200">120+ Educators</p>
@@ -526,7 +525,7 @@ export default function BecomeEducator() {
           STATS BAR — Animated counters
       ═══════════════════════════════════════════════════════════ */}
       <section className="relative bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-gray-800/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 lg:py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 lg:py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10">
             <StatCounter value="12840" suffix="+" label="Active Learners" icon={Users} />
             <StatCounter value="97" suffix="%" label="Revenue Share" icon={DollarSign} />
@@ -539,9 +538,9 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           REASONS — "So many reasons to start"
       ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-950/50">
+      <section className="py-12 lg:py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-950/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               So many reasons to start
             </h2>
@@ -554,7 +553,7 @@ export default function BecomeEducator() {
             {reasons.map((r, i) => (
               <div
                 key={r.title}
-                className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 hover:shadow-2xl hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-500 group overflow-hidden"
+                className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 hover:shadow-2xl hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-500 group overflow-hidden"
               >
                 {/* Subtle gradient glow on hover */}
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${r.gradient} opacity-0 group-hover:opacity-5 rounded-full blur-2xl transition-opacity duration-500 -translate-y-8 translate-x-8`} />
@@ -573,9 +572,9 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           HOW TO BEGIN — Udemy-style steps
       ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 px-4 lg:px-6">
+      <section className="py-12 lg:py-16 px-4 lg:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               How to begin
             </h2>
@@ -586,14 +585,14 @@ export default function BecomeEducator() {
 
           <div className="grid md:grid-cols-3 gap-0 relative">
             {/* Connecting line */}
-            <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-0.5 bg-gradient-to-r from-purple-300 via-violet-300 to-blue-300 dark:from-purple-700 dark:via-violet-700 dark:to-blue-700 z-0" />
+            <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-0.5 bg-gradient-to-r from-amber-300 via-orange-300 to-teal-300 dark:from-amber-700 dark:via-orange-700 dark:to-teal-700 z-0" />
 
             {howItWorks.map((step, i) => (
               <div key={step.step} className="relative text-center px-6 lg:px-10 mb-10 md:mb-0">
                 {/* Step circle */}
                 <div className="relative z-10 mx-auto mb-6">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border-2 border-purple-200 dark:border-purple-800 flex items-center justify-center mx-auto group hover:scale-105 transition-transform duration-300">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-xl shadow-purple-500/20">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-200 dark:border-amber-800 flex items-center justify-center mx-auto group hover:scale-105 transition-transform duration-300">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-xl shadow-amber-500/20">
                       <step.icon size={32} className="text-white" />
                     </div>
                   </div>
@@ -609,11 +608,11 @@ export default function BecomeEducator() {
             ))}
           </div>
 
-          <div className="text-center mt-14">
+          <div className="text-center mt-10">
             <button
               onClick={ctaAction}
               disabled={switching}
-              className="inline-flex items-center gap-2.5 text-base font-bold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 px-10 py-4 rounded-xl shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
+              className="inline-flex items-center gap-2.5 text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 px-10 py-4 rounded-xl shadow-xl shadow-amber-500/20 hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
             >
               {ctaLabel}
               <ArrowRight size={18} />
@@ -625,13 +624,13 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           EDUCATOR DASHBOARD FEATURES
       ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-950/50">
+      <section className="py-12 lg:py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-950/50">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 mb-6">
-                <Award size={14} className="text-purple-600 dark:text-purple-400" />
-                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Your Dashboard</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-100 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800/40 mb-6">
+                <Award size={14} className="text-teal-600 dark:text-teal-400" />
+                <span className="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Your Dashboard</span>
               </div>
 
               <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
@@ -644,8 +643,8 @@ export default function BecomeEducator() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {features.map(f => (
                   <div key={f.text} className="flex items-start gap-3 group">
-                    <div className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 mt-0.5 shrink-0 group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
-                      <f.icon size={16} className="text-purple-600 dark:text-purple-400" />
+                    <div className="p-1.5 rounded-lg bg-teal-100 dark:bg-teal-900/30 mt-0.5 shrink-0 group-hover:bg-teal-200 dark:group-hover:bg-teal-900/50 transition-colors">
+                      <f.icon size={16} className="text-teal-600 dark:text-teal-400" />
                     </div>
                     <p className="text-sm text-gray-700 dark:text-gray-300 font-medium leading-snug">{f.text}</p>
                   </div>
@@ -655,7 +654,7 @@ export default function BecomeEducator() {
 
             {/* Right — Visual representation */}
             <div className="relative">
-              <div className="bg-gradient-to-br from-purple-100 via-violet-50 to-blue-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 dark:border dark:border-gray-800 rounded-3xl p-8 lg:p-10">
+              <div className="bg-gradient-to-br from-amber-100 via-orange-50 to-teal-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 dark:border dark:border-gray-800 rounded-3xl p-8 lg:p-10">
                 {/* Mini dashboard mockup */}
                 <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                   {/* Title bar */}
@@ -687,7 +686,7 @@ export default function BecomeEducator() {
                         {[40, 55, 35, 70, 60, 85, 75, 90, 65, 80, 95, 88].map((h, i) => (
                           <div
                             key={i}
-                            className="w-4 rounded-t-md bg-gradient-to-t from-purple-500 to-violet-400 transition-all duration-500"
+                            className="w-4 rounded-t-md bg-gradient-to-t from-amber-500 to-orange-400 transition-all duration-500"
                             style={{ height: `${h}%`, animationDelay: `${i * 0.05}s` }}
                           />
                         ))}
@@ -700,7 +699,7 @@ export default function BecomeEducator() {
                       {[
                         { text: 'New enrollment in ML Basics', time: '2m ago', dot: 'bg-emerald-500' },
                         { text: 'Quiz completed by 24 learners', time: '1h ago', dot: 'bg-blue-500' },
-                        { text: 'Live class scheduled', time: '3h ago', dot: 'bg-purple-500' },
+                        { text: 'Live class scheduled', time: '3h ago', dot: 'bg-amber-500' },
                       ].map(a => (
                         <div key={a.text} className="flex items-center gap-2.5 text-xs">
                           <div className={`w-1.5 h-1.5 rounded-full ${a.dot} shrink-0`} />
@@ -720,9 +719,9 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           TESTIMONIALS — Large quote cards (Udemy style)
       ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 px-4 lg:px-6">
+      <section className="py-12 lg:py-16 px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               Hear from our educators
             </h2>
@@ -735,11 +734,11 @@ export default function BecomeEducator() {
             {testimonials.map((t, i) => (
               <div
                 key={t.name}
-                className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 hover:shadow-2xl hover:border-purple-200 dark:hover:border-purple-700 transition-all duration-500 group"
+                className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 hover:shadow-2xl hover:border-teal-200 dark:hover:border-teal-700 transition-all duration-500 group"
               >
                 {/* Quote icon */}
                 <div className="absolute top-6 right-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <Quote size={60} className="text-purple-600" />
+                  <Quote size={60} className="text-teal-600" />
                 </div>
 
                 {/* Stars */}
@@ -754,13 +753,13 @@ export default function BecomeEducator() {
                 </p>
 
                 <div className="flex items-center gap-4 mt-auto">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-violet-100 dark:from-purple-900/30 dark:to-violet-900/30 flex items-center justify-center text-2xl">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center text-2xl">
                     {t.avatar}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900 dark:text-white">{t.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{t.role}</p>
-                    <p className="text-xs text-purple-500 font-semibold">{t.learners}</p>
+                    <p className="text-xs text-teal-500 font-semibold">{t.learners}</p>
                   </div>
                 </div>
               </div>
@@ -772,9 +771,9 @@ export default function BecomeEducator() {
       {/* ═══════════════════════════════════════════════════════════
           FAQ — Accordion
       ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-950/50">
+      <section className="py-12 lg:py-16 px-4 lg:px-6 bg-gray-50/80 dark:bg-gray-950/50">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14">
+          <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               Frequently asked questions
             </h2>
@@ -801,12 +800,12 @@ export default function BecomeEducator() {
           FINAL CTA — Bold gradient banner (Udemy style)
       ═══════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600" />
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500 via-orange-600 to-teal-600" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
         <div className="absolute top-10 right-[10%] w-48 h-48 rounded-full border border-white/10 animate-float-edu" />
         <div className="absolute bottom-10 left-[15%] w-32 h-32 rounded-full border border-white/10 animate-float-slow-edu" />
 
-        <div className="relative max-w-4xl mx-auto text-center px-4 py-20 lg:py-28">
+        <div className="relative max-w-4xl mx-auto text-center px-4 py-14 lg:py-16">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-8">
             <Heart size={14} className="text-white" />
             <span className="text-xs font-semibold text-white/80 uppercase tracking-widest">Join our community</span>
@@ -823,7 +822,7 @@ export default function BecomeEducator() {
             <button
               onClick={ctaAction}
               disabled={switching}
-              className="inline-flex items-center gap-2.5 text-base font-bold text-purple-700 bg-white hover:bg-gray-50 px-10 py-4 rounded-xl shadow-2xl shadow-black/20 hover:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
+              className="inline-flex items-center gap-2.5 text-base font-bold text-amber-700 bg-white hover:bg-gray-50 px-10 py-4 rounded-xl shadow-2xl shadow-black/20 hover:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
             >
               {ctaLabel}
               <ArrowRight size={18} />
@@ -845,7 +844,7 @@ export default function BecomeEducator() {
       <footer className="bg-gray-950 py-10 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-teal-600">
               <GraduationCap size={18} className="text-white" />
             </div>
             <span className="text-sm font-bold text-white">PLP</span>
