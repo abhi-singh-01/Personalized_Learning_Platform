@@ -200,11 +200,11 @@ export default function PublicNavbar() {
 
           {user ? (
             <Link to={`/${role}/dashboard`}
-              className="hidden md:inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-4 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-4 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
               <UserCircle2 size={16} /> Dashboard
             </Link>
           ) : (
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Link to="/login" className={`text-sm font-semibold px-4 py-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:text-white hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                 Sign in
               </Link>
@@ -216,7 +216,7 @@ export default function PublicNavbar() {
           )}
 
           {/* Mobile toggle */}
-          <button className={`md:hidden p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`} onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
+          <button className={`lg:hidden p-2 rounded-full transition-all ${isHeroPage ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`} onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
