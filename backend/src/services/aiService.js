@@ -19,7 +19,7 @@ const getAI = async () => {
   return _ai;
 };
 
-const MODEL = 'gemini-2.5-flash';
+const MODEL = 'gemini-2.0-flash';
 
 /**
  * Helper to detect and re-throw Gemini geographic restriction errors
@@ -50,6 +50,10 @@ const callGemini = async (prompt) => {
     const result = await ai.models.generateContent({
       model: MODEL,
       contents: prompt,
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+      },
     });
     const text = result.text;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
