@@ -15,4 +15,5 @@ module.exports = {
   PLATFORM_FEE_RATE: Number(process.env.PLATFORM_FEE_RATE || 0.02), // 2%
   PLATFORM_GST_RATE: Number(process.env.PLATFORM_GST_RATE || 0.18), // 18% on fee
   PAYOUT_DELAY_DAYS: Number(process.env.PAYOUT_DELAY_DAYS || 5), // 3-7 recommended
+  DUMMY_PAYMENT: process.env.DUMMY_PAYMENT === 'true',
 };

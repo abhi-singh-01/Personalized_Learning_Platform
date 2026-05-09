@@ -14,6 +14,7 @@ router.get('/key', paymentCtrl.getKey);
 // Authenticated — learner
 router.post('/create-order', auth, paymentCtrl.createOrder);
 router.post('/verify',       auth, paymentCtrl.verifyPayment);
+router.post('/dummy-verify', auth, paymentCtrl.dummyVerify);
 router.get('/history',        auth, paymentCtrl.getHistory);
 router.post('/refund',        auth, refundCtrl.requestRefund);
 router.get('/refund/:id',     auth, refundCtrl.getRefundStatus);

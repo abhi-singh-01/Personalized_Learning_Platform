@@ -14,7 +14,7 @@ const CouponUsage = require('../models/CouponUsage');
 const razorpay = require('../services/razorpayService');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
-const { PLATFORM_FEE_RATE, PLATFORM_GST_RATE, PAYOUT_DELAY_DAYS } = require('../config/env');
+const { PLATFORM_FEE_RATE, PLATFORM_GST_RATE, PAYOUT_DELAY_DAYS, DUMMY_PAYMENT } = require('../config/env');
 
 /* ── Fee calculation ── */
 const MIN_PAYOUT_DELAY_DAYS = 3;
@@ -208,6 +208,36 @@ exports.createOrder = async (req, res, next) => {
       });
     }
 
+    /* ── DUMMY PAYMENT MODE ── */
+    if (DUMMY_PAYMENT) {
+      const dummyOrderId = `dummy_order_${courseId}_${req.user._id}_${Date.now()}`;
+      const payment = await Payment.create({
+        user:            req.user._id,
+        course:          course._id,
+        educator:        course.educator._id || course.educator,
+        razorpayOrderId: dummyOrderId,
+        coursePrice:      fees.coursePrice,
+        platformFee:     fees.platformFee,
+        gst:             fees.gst,
+        totalAmount:     fees.totalAmount,
+        currency:        course.currency || 'INR',
+        status:          'created',
+        metadata: coupon ? { couponCode: coupon.code, couponDiscount: discount, isDummy: true } : { isDummy: true },
+      });
+
+      return sendResponse(res, 200, 'Dummy order created', {
+        orderId:    dummyOrderId,
+        paymentId:  payment._id,
+        amount:     fees.totalAmount,
+        currency:   course.currency || 'INR',
+        keyId:      razorpay.getKeyId(),
+        courseName: course.title,
+        breakdown:  { ...fees, discount },
+        coupon: couponData,
+        dummyMode: true,
+      });
+    }
+
     // Create Razorpay order (amount in paise)
     // Razorpay receipt max length is 40 chars — use truncated IDs + short timestamp
     const shortCourseId = courseId.toString().slice(-8);
@@ -246,6 +276,75 @@ exports.createOrder = async (req, res, next) => {
       courseName: course.title,
       breakdown:  { ...fees, discount },
       coupon: couponData,
+    });
+  } catch (err) { next(err); }
+};
+
+/* ─── 2a. Dummy Payment Verify (auto-accept) ─── */
+exports.dummyVerify = async (req, res, next) => {
+  try {
+    if (!DUMMY_PAYMENT) throw new AppError('Dummy payments are not enabled', 403);
+    if (req.user.role !== 'learner') throw new AppError('Only learners can verify course purchases', 403);
+
+    const { orderId } = req.body;
+    if (!orderId) throw new AppError('orderId is required', 400);
+
+    const payment = await Payment.findOne({ razorpayOrderId: orderId });
+    if (!payment) throw new AppError('Payment record not found', 404);
+    if (payment.status === 'captured') throw new AppError('Payment already verified', 400);
+
+    // Auto-capture the payment
+    payment.razorpayPaymentId = `dummy_pay_${Date.now()}`;
+    payment.razorpaySignature = 'dummy_signature';
+    payment.status = 'captured';
+    payment.paidAt = new Date();
+    await payment.save();
+
+    if (payment.metadata?.couponCode) {
+      const usedCoupon = await Coupon.findOneAndUpdate(
+        { code: payment.metadata.couponCode },
+        { $inc: { usedCount: 1 } },
+        { new: true }
+      );
+      if (usedCoupon) {
+        await CouponUsage.create({
+          user: payment.user,
+          coupon: usedCoupon._id,
+          payment: payment._id,
+          course: payment.course,
+          couponCode: usedCoupon.code,
+          discountApplied: payment.metadata.couponDiscount || 0,
+          orderAmount: payment.totalAmount,
+        });
+      }
+    }
+
+    // Enroll learner
+    const course = await Course.findById(payment.course);
+    if (course && !course.learners.includes(payment.user)) {
+      course.learners.push(payment.user);
+      await course.save();
+    }
+    await User.findByIdAndUpdate(payment.user, {
+      $addToSet: { enrolledCourses: payment.course },
+    });
+
+    // Create pending payout
+    const scheduledAt = new Date();
+    scheduledAt.setDate(scheduledAt.getDate() + payoutDelayDays);
+    await Payout.create({
+      payment:     payment._id,
+      educator:    payment.educator,
+      amount:      calculateFees(payment.coursePrice).educatorShare,
+      status:      'pending',
+      scheduledAt,
+      notes: `Dummy payment — scheduled after ${payoutDelayDays} day delay window`,
+    });
+
+    sendResponse(res, 200, 'Dummy payment verified and enrollment complete', {
+      paymentId: payment._id,
+      courseId:   payment.course,
+      status:    'captured',
     });
   } catch (err) { next(err); }
 };

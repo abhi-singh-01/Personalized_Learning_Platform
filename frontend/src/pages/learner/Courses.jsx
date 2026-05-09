@@ -9,6 +9,7 @@ import Badge from '../../components/ui/Badge';
 import {
   Search, BookOpen, Users, IndianRupee, CreditCard,
   Tag, X, CheckCircle, AlertCircle, Sparkles, TicketPercent,
+  QrCode, Smartphone, Shield, Loader2,
 } from 'lucide-react';
 
 function formatINR(amount) {
@@ -146,17 +147,22 @@ export default function Courses() {
     showCouponMsg(courseId, 'Coupon removed.', 'info');
   };
 
+  /* ─── Dummy Payment Modal State ─── */
+  const [dummyModal, setDummyModal] = useState(null); // { stage, orderData, course }
+  const [dummyPayMethod, setDummyPayMethod] = useState('card');
+
   const payForCourse = async (course) => {
     setMessage('');
     setPaying(course._id);
     try {
-      if (!window.Razorpay) throw new Error('Razorpay checkout script not loaded');
       const appliedCoupon = appliedCouponMap[course._id];
       const orderRes = await api.post('/payments/create-order', {
         courseId: course._id,
         couponCode: appliedCoupon?.code || '',
       });
       const orderData = orderRes.data;
+
+      // Zero-payment coupon path
       if (orderData.directEnrolled) {
         await refreshUser();
         setCourses((await api.get('/courses')).data || []);
@@ -166,6 +172,16 @@ export default function Courses() {
         setPaying(null);
         return;
       }
+
+      // ── DUMMY PAYMENT MODE ──
+      if (orderData.dummyMode) {
+        setDummyModal({ stage: 'checkout', orderData, course });
+        setPaying(null);
+        return;
+      }
+
+      // ── REAL RAZORPAY CHECKOUT ──
+      if (!window.Razorpay) throw new Error('Razorpay checkout script not loaded');
       const rz = new window.Razorpay({
         key: orderData.keyId,
         amount: Math.round(Number(orderData.amount || 0) * 100),
@@ -199,6 +215,31 @@ export default function Courses() {
       showMessage(e.response?.data?.message || e.message || 'Could not initiate payment.', 'error');
       setPaying(null);
     }
+  };
+
+  const handleDummyPay = async () => {
+    if (!dummyModal) return;
+    setDummyModal((prev) => ({ ...prev, stage: 'processing' }));
+    // Simulate processing delay
+    await new Promise((r) => setTimeout(r, 2200));
+    try {
+      await api.post('/payments/dummy-verify', { orderId: dummyModal.orderData.orderId });
+      setDummyModal((prev) => ({ ...prev, stage: 'success' }));
+      await refreshUser();
+      setCourses((await api.get('/courses')).data || []);
+      setAppliedCouponMap((p) => { const n = { ...p }; delete n[dummyModal.course._id]; return n; });
+      setCouponInputMap((p) => ({ ...p, [dummyModal.course._id]: '' }));
+    } catch (err) {
+      setDummyModal(null);
+      showMessage(err.response?.data?.message || 'Dummy payment failed.', 'error');
+    }
+  };
+
+  const closeDummyModal = () => {
+    if (dummyModal?.stage === 'success') {
+      showMessage('Payment successful! You are now enrolled.', 'success');
+    }
+    setDummyModal(null);
   };
 
   /* ─── Derived ─── */
@@ -485,6 +526,241 @@ export default function Courses() {
               </div>
             );
           })}
+        </div>
+      )}
+      {/* ── Dummy Razorpay Payment Modal ── */}
+      {dummyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget && dummyModal.stage !== 'processing') closeDummyModal(); }}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Modal */}
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden animate-scale-in" style={{ animation: 'scaleIn 0.3s ease-out' }}>
+
+            {/* ── STAGE: Checkout ── */}
+            {dummyModal.stage === 'checkout' && (
+              <>
+                {/* Razorpay-style header */}
+                <div className="bg-gradient-to-r from-[#072654] to-[#0b3d91] px-6 py-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                          <path d="M22 9.74L14.81 12.48L22 4H18.19L11 11.61L13.41 3.3H9.8L2 22H5.8L10.29 13.73L7.89 22H11.5L18.19 14.39L15.78 22H19.59L22 9.74Z" fill="white"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold text-sm">Personalized Learning Platform</p>
+                        <p className="text-blue-200 text-xs">Order #{dummyModal.orderData.orderId?.slice(-8)}</p>
+                      </div>
+                    </div>
+                    <button onClick={closeDummyModal} className="text-white/60 hover:text-white p-1 rounded transition-colors">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-white">₹{formatINR(dummyModal.orderData.amount)}</span>
+                    <span className="text-blue-200 text-sm ml-1">INR</span>
+                  </div>
+                  <p className="text-blue-200/80 text-xs mt-1">{dummyModal.orderData.courseName}</p>
+                </div>
+
+                {/* Test mode banner */}
+                <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-6 py-2 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Test Mode — No real money will be charged</span>
+                </div>
+
+                {/* Payment methods */}
+                <div className="p-6">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Payment Method</p>
+                  <div className="grid grid-cols-3 gap-2 mb-5">
+                    {[
+                      { key: 'card', label: 'Card', icon: CreditCard },
+                      { key: 'upi', label: 'UPI', icon: Smartphone },
+                      { key: 'qr', label: 'QR Code', icon: QrCode },
+                    ].map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        onClick={() => setDummyPayMethod(key)}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-medium transition-all duration-200 ${
+                          dummyPayMethod === key
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm shadow-blue-500/10'
+                            : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <Icon size={20} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Card details (dummy) */}
+                  {dummyPayMethod === 'card' && (
+                    <div className="space-y-3 animate-slide-up">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Card Number</label>
+                        <div className="relative">
+                          <input
+                            readOnly
+                            value="4111 1111 1111 1111"
+                            className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-700 dark:text-gray-300 cursor-default"
+                          />
+                          <CreditCard size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Expiry</label>
+                          <input readOnly value="12/29" className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-700 dark:text-gray-300 cursor-default" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">CVV</label>
+                          <input readOnly value="•••" className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-700 dark:text-gray-300 cursor-default" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* UPI (dummy) */}
+                  {dummyPayMethod === 'upi' && (
+                    <div className="space-y-3 animate-slide-up">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">UPI ID</label>
+                        <input readOnly value="testuser@razorpay" className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-mono text-gray-700 dark:text-gray-300 cursor-default" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* QR Code (dummy) */}
+                  {dummyPayMethod === 'qr' && (
+                    <div className="flex flex-col items-center gap-3 py-2 animate-slide-up">
+                      <div className="w-40 h-40 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-3 flex items-center justify-center">
+                        {/* Simulated QR pattern */}
+                        <svg viewBox="0 0 100 100" className="w-full h-full">
+                          <rect x="0" y="0" width="100" height="100" fill="white"/>
+                          {/* Corner markers */}
+                          <rect x="5" y="5" width="25" height="25" fill="#072654" rx="3"/>
+                          <rect x="8" y="8" width="19" height="19" fill="white" rx="2"/>
+                          <rect x="11" y="11" width="13" height="13" fill="#072654" rx="1"/>
+                          <rect x="70" y="5" width="25" height="25" fill="#072654" rx="3"/>
+                          <rect x="73" y="8" width="19" height="19" fill="white" rx="2"/>
+                          <rect x="76" y="11" width="13" height="13" fill="#072654" rx="1"/>
+                          <rect x="5" y="70" width="25" height="25" fill="#072654" rx="3"/>
+                          <rect x="8" y="73" width="19" height="19" fill="white" rx="2"/>
+                          <rect x="11" y="76" width="13" height="13" fill="#072654" rx="1"/>
+                          {/* Data cells */}
+                          {[35,40,45,50,55,60].map(x => [5,15,25,35,45,55,65,75,85].map(y => (
+                            Math.random() > 0.4 ? <rect key={`${x}-${y}`} x={x} y={y} width="4" height="4" fill="#072654" rx="0.5" /> : null
+                          )))
+                          }
+                          {[5,15,25,65,75,85].map(x => [35,40,45,50,55,60].map(y => (
+                            Math.random() > 0.4 ? <rect key={`b${x}-${y}`} x={x} y={y} width="4" height="4" fill="#072654" rx="0.5" /> : null
+                          )))
+                          }
+                          <rect x="70" y="70" width="25" height="25" fill="none" stroke="#072654" strokeWidth="2" rx="3"/>
+                          <circle cx="82.5" cy="82.5" r="6" fill="#072654"/>
+                        </svg>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Scan with any UPI app to pay</p>
+                    </div>
+                  )}
+
+                  {/* Pay Button */}
+                  <button
+                    onClick={handleDummyPay}
+                    className="w-full mt-5 py-3 rounded-xl text-sm font-bold text-white
+                               bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] hover:from-[#1d4ed8] hover:to-[#1e40af]
+                               shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30
+                               transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <Shield size={16} />
+                    Pay ₹{formatINR(dummyModal.orderData.amount)}
+                  </button>
+
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <Shield size={12} className="text-gray-400" />
+                    <span className="text-[10px] text-gray-400">Secured by <span className="font-semibold">Razorpay</span></span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── STAGE: Processing ── */}
+            {dummyModal.stage === 'processing' && (
+              <div className="px-6 py-16 flex flex-col items-center gap-5">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-800 rounded-full" />
+                  <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute inset-0" />
+                  <CreditCard size={22} className="absolute inset-0 m-auto text-blue-600" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-gray-900 dark:text-white">Processing Payment</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Please wait while we confirm your payment...</p>
+                </div>
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+
+            {/* ── STAGE: Success ── */}
+            {dummyModal.stage === 'success' && (
+              <div className="px-6 py-12 flex flex-col items-center gap-5">
+                {/* Animated success checkmark */}
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30"
+                       style={{ animation: 'scaleIn 0.5s ease-out' }}>
+                    <CheckCircle size={40} className="text-white" style={{ animation: 'scaleIn 0.6s ease-out 0.2s both' }} />
+                  </div>
+                  {/* Celebration rings */}
+                  <div className="absolute inset-0 w-20 h-20 rounded-full border-4 border-emerald-300/40 animate-ping" />
+                </div>
+
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Payment Successful!</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">You've been enrolled in the course</p>
+                </div>
+
+                {/* Payment summary */}
+                <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Course</span>
+                    <span className="font-medium text-gray-900 dark:text-white truncate max-w-[200px] text-right">{dummyModal.orderData.courseName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Amount Paid</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{formatINR(dummyModal.orderData.amount)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Payment ID</span>
+                    <span className="font-mono text-xs text-gray-500 dark:text-gray-400">dummy_pay_***</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Status</span>
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <CheckCircle size={13} /> Captured
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeDummyModal}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-white
+                             bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700
+                             shadow-lg shadow-emerald-500/25 transition-all duration-200"
+                >
+                  Continue to Course →
+                </button>
+
+                <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                  <Shield size={10} /> Dummy payment — test mode
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
