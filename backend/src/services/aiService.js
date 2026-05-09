@@ -19,7 +19,7 @@ const getAI = async () => {
   return _ai;
 };
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'gemini-2.5-flash';
 
 /**
  * Helper to detect and re-throw Gemini geographic restriction errors
