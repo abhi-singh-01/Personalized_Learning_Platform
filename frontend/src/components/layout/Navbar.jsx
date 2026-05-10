@@ -11,7 +11,8 @@ import { getInitials } from '../../utils/helpers';
 
 const learnerQuickLinks = [
   { to: '/learner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/learner/courses', label: 'Courses', icon: BookOpen },
+  { to: '/learner/my-courses', label: 'My Courses', icon: BookOpen },
+  { to: '/learner/courses', label: 'Explore', icon: GraduationCap },
   { to: '/learner/study-plan', label: 'AI Study Plan', icon: Brain },
 ];
 const educatorQuickLinks = [

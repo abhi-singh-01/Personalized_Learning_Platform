@@ -22,6 +22,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 // ── Learner pages ──
 const LearnerDashboard = lazy(() => import('./pages/learner/Dashboard'));
+const LearnerMyCourses = lazy(() => import('./pages/learner/MyCourses'));
 const Courses = lazy(() => import('./pages/learner/Courses'));
 const CourseDetail = lazy(() => import('./pages/learner/CourseDetail'));
 const QuizAttempt = lazy(() => import('./pages/learner/QuizAttempt'));
@@ -142,6 +143,7 @@ export default function App() {
         <Route element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AppLayout /></Suspense></ProtectedRoute>}>
           {/* Learner routes */}
           <Route path="/learner/dashboard" element={<ProtectedRoute allowedRoles={['learner']}><LearnerDashboard /></ProtectedRoute>} />
+          <Route path="/learner/my-courses" element={<ProtectedRoute allowedRoles={['learner']}><LearnerMyCourses /></ProtectedRoute>} />
           <Route path="/learner/courses" element={<ProtectedRoute allowedRoles={['learner']}><Courses /></ProtectedRoute>} />
           <Route path="/learner/courses/:id" element={<ProtectedRoute allowedRoles={['learner']}><CourseDetail /></ProtectedRoute>} />
           <Route path="/learner/quiz/:id" element={<ProtectedRoute allowedRoles={['learner']}><QuizAttempt /></ProtectedRoute>} />
