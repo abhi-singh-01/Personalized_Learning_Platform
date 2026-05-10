@@ -71,8 +71,7 @@ export default function ReportExporter({ title = "Report", filename = "export.pd
             {/* The actual printable area */}
             <div
                 ref={reportRef}
-                className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm pdf-container"
-                style={{ color: '#000' }} // Force black text for PDF readability
+                className="bg-white dark:bg-gray-800/90 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm pdf-container"
             >
                 {children}
             </div>
