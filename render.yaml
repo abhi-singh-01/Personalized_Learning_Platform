@@ -35,6 +35,9 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
+      # true = learners see "Test pay (mock)" AND "Pay with Razorpay" (when keys above are set). false = gateway only.
+      - key: DUMMY_PAYMENT
+        value: "true"
       - key: PLATFORM_FEE_RATE
         value: "0.02"
       - key: PLATFORM_GST_RATE

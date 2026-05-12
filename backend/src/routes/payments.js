@@ -13,6 +13,7 @@ router.get('/key', paymentCtrl.getKey);
 
 // Authenticated — learner
 router.post('/create-order', auth, paymentCtrl.createOrder);
+router.get('/checkout-options', auth, paymentCtrl.getCheckoutOptions);
 router.post('/verify',       auth, paymentCtrl.verifyPayment);
 router.post('/dummy-verify', auth, paymentCtrl.dummyVerify);
 router.get('/history',        auth, paymentCtrl.getHistory);

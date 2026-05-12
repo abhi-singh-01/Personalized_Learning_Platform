@@ -19,6 +19,8 @@ module.exports = {
   PLATFORM_GST_RATE: Number(process.env.PLATFORM_GST_RATE || 0.18), // 18% on fee
   PAYOUT_DELAY_DAYS: Number(process.env.PAYOUT_DELAY_DAYS || 5), // 3-7 recommended
   FAILED_PAYMENT_RETENTION_HOURS: Math.max(1, Number(process.env.FAILED_PAYMENT_RETENTION_HOURS || 72)),
-  // Mock checkout only when true AND RAZORPAY_KEY_ID/SECRET are unset (see paymentController.createOrder).
+  // When true: learners can use in-app mock checkout (paymentMode=dummy / “Test pay” button).
+  // Can be combined with RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET so UI shows both Razorpay and mock.
+  // When true and Razorpay keys are missing, only mock checkout is available.
   DUMMY_PAYMENT: process.env.DUMMY_PAYMENT === 'true',
 };

@@ -9,7 +9,7 @@ import Badge from '../../components/ui/Badge';
 import {
   Search, BookOpen, Users, IndianRupee, CreditCard,
   Tag, X, CheckCircle, AlertCircle, Sparkles, TicketPercent,
-  QrCode, Smartphone, Shield, Loader2,
+  QrCode, Smartphone, Shield, Loader2, Zap,
 } from 'lucide-react';
 
 function formatINR(amount) {
@@ -34,6 +34,7 @@ export default function Courses() {
   const [originalFeeMap, setOriginalFeeMap] = useState({});
   const [couponMsgMap, setCouponMsgMap] = useState({});
   const lastRazorpayOrderRef = useRef(null);
+  const [checkoutOptions, setCheckoutOptions] = useState({ razorpay: false, dummy: false });
   usePageTitle('Courses');
 
   /* ─── Helpers ─── */
@@ -57,6 +58,18 @@ export default function Courses() {
   useEffect(() => {
     api.get('/courses').then((res) => setCourses(res.data || []));
   }, []);
+
+  // Backend: DUMMY_PAYMENT=true + RAZORPAY_* → both buttons. See backend/.env.example.
+  useEffect(() => {
+    if (user?.role !== 'learner') return;
+    api.get('/payments/checkout-options').then((res) => {
+      const o = res.data || {};
+      setCheckoutOptions({
+        razorpay: Boolean(o.razorpay),
+        dummy: Boolean(o.dummy),
+      });
+    }).catch(() => setCheckoutOptions({ razorpay: false, dummy: false }));
+  }, [user?.role]);
 
   useEffect(() => {
     const loadRazorpayScript = () =>
@@ -152,7 +165,7 @@ export default function Courses() {
   const [dummyModal, setDummyModal] = useState(null); // { stage, orderData, course }
   const [dummyPayMethod, setDummyPayMethod] = useState('card');
 
-  const payForCourse = async (course) => {
+  const payForCourse = async (course, paymentMode = 'razorpay') => {
     setMessage('');
     setPaying(course._id);
     try {
@@ -160,6 +173,7 @@ export default function Courses() {
       const orderRes = await api.post('/payments/create-order', {
         courseId: course._id,
         couponCode: appliedCoupon?.code || '',
+        paymentMode: paymentMode === 'dummy' ? 'dummy' : 'razorpay',
       });
       const orderData = orderRes.data;
 
@@ -293,19 +307,18 @@ export default function Courses() {
             {filtered.length} course{filtered.length !== 1 ? 's' : ''} available
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-2xl leading-relaxed">
-            Paid enrollments use the{' '}
+            Paid courses may offer <strong className="font-medium text-gray-700 dark:text-gray-200">Razorpay</strong> checkout and/or a{' '}
+            <strong className="font-medium text-gray-700 dark:text-gray-200">test (mock)</strong> pay flow when enabled on the server (
+            <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">DUMMY_PAYMENT</code>
+            ). Use Razorpay <strong className="font-medium">Test mode</strong> keys for real gateway demos — see{' '}
             <a
-              href="https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/build-integration"
+              href="https://razorpay.com/docs/payments/payments/test-card-details/"
               className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
               target="_blank"
               rel="noreferrer"
             >
-              Razorpay
-            </a>{' '}
-            checkout when the server has{' '}
-            <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">RAZORPAY_KEY_ID</code> and{' '}
-            <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">RAZORPAY_KEY_SECRET</code>{' '}
-            (enable <strong className="font-medium">Test mode</strong> in the Razorpay dashboard for demos; use Razorpay’s test UPI or card numbers).
+              test payments
+            </a>.
           </p>
         </div>
         <div className="relative w-full sm:w-72">
@@ -535,20 +548,48 @@ export default function Courses() {
                         <BookOpen size={16} /> Continue Learning
                       </Link>
                     ) : course.price > 0 ? (
-                      <button
-                        onClick={() => payForCourse(course)}
-                        disabled={paying === course._id}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold
-                                   bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700
-                                   text-white shadow-md shadow-primary-500/15 hover:shadow-lg hover:shadow-primary-500/25
-                                   disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
-                                   transition-all duration-300 hover:-translate-y-0.5"
-                      >
-                        <CreditCard size={16} />
-                        {paying === course._id
-                          ? 'Processing…'
-                          : `Pay & Enroll — ₹${formatINR(getEffectiveTotal(course._id, course.price))}`}
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        {checkoutOptions.razorpay && (
+                          <button
+                            type="button"
+                            onClick={() => payForCourse(course, 'razorpay')}
+                            disabled={paying === course._id}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold
+                                       bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700
+                                       text-white shadow-md shadow-primary-500/15 hover:shadow-lg hover:shadow-primary-500/25
+                                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
+                                       transition-all duration-300 hover:-translate-y-0.5"
+                          >
+                            <CreditCard size={16} />
+                            {paying === course._id
+                              ? 'Processing…'
+                              : `Pay with Razorpay — ₹${formatINR(getEffectiveTotal(course._id, course.price))}`}
+                          </button>
+                        )}
+                        {checkoutOptions.dummy && (
+                          <button
+                            type="button"
+                            onClick={() => payForCourse(course, 'dummy')}
+                            disabled={paying === course._id}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold
+                                       border-2 border-dashed border-amber-400/80 dark:border-amber-500/50
+                                       bg-amber-50/80 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200
+                                       hover:bg-amber-100/90 dark:hover:bg-amber-900/40
+                                       disabled:opacity-50 disabled:cursor-not-allowed
+                                       transition-all duration-300"
+                          >
+                            <Zap size={16} />
+                            {paying === course._id
+                              ? 'Processing…'
+                              : `Test pay (mock) — ₹${formatINR(getEffectiveTotal(course._id, course.price))}`}
+                          </button>
+                        )}
+                        {!checkoutOptions.razorpay && !checkoutOptions.dummy && (
+                          <p className="text-xs text-center text-red-600 dark:text-red-400 py-2">
+                            Payments are not configured. Ask your administrator to set Razorpay keys and/or enable test checkout.
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <button
                         onClick={() => enroll(course._id)}

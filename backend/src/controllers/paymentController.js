@@ -140,8 +140,11 @@ exports.onboardEducator = async (req, res, next) => {
 exports.createOrder = async (req, res, next) => {
   try {
     if (req.user.role !== 'learner') throw new AppError('Only learners can purchase courses', 403);
-    const { courseId, couponCode } = req.body;
+    const { courseId, couponCode, paymentMode } = req.body;
     if (!courseId) throw new AppError('courseId is required', 400);
+    const mode = String(paymentMode || '').toLowerCase();
+    const explicitDummy = mode === 'dummy' || mode === 'test' || mode === 'mock';
+    const explicitRazorpay = mode === 'razorpay' || mode === 'live' || mode === 'gateway';
 
     const course = await Course.findById(courseId).populate('educator', 'name');
     if (!course) throw new AppError('Course not found', 404);
@@ -219,10 +222,19 @@ exports.createOrder = async (req, res, next) => {
       });
     }
 
-    /* ── MOCK CHECKOUT (no Razorpay keys) ──
-       Only when DUMMY_PAYMENT=true AND keys are missing. If RAZORPAY_KEY_ID/SECRET are set,
-       we always create a real Razorpay order so checkout is the official Razorpay UI (Test or Live). */
-    if (DUMMY_PAYMENT && !isRazorpayConfigured()) {
+    /* ── Mock / test checkout ──
+       - If learner sends paymentMode=dummy (and DUMMY_PAYMENT=true): mock order even when Razorpay keys exist.
+       - Else if DUMMY_PAYMENT=true and Razorpay is not configured: mock order only path.
+       - Default / paymentMode=razorpay: real Razorpay order when keys are set. */
+    const useDummyCheckout =
+      (explicitDummy && DUMMY_PAYMENT) ||
+      (DUMMY_PAYMENT && !isRazorpayConfigured() && !explicitRazorpay);
+
+    if (explicitDummy && !DUMMY_PAYMENT) {
+      throw new AppError('Test (mock) checkout is disabled on this server. Use Razorpay or ask the admin to enable DUMMY_PAYMENT.', 403);
+    }
+
+    if (useDummyCheckout) {
       const dummyOrderId = `dummy_order_${courseId}_${req.user._id}_${Date.now()}`;
       const payment = await Payment.create({
         user:            req.user._id,
@@ -303,6 +315,7 @@ exports.createOrder = async (req, res, next) => {
 /* ─── 2a. Dummy Payment Verify (auto-accept) ─── */
 exports.dummyVerify = async (req, res, next) => {
   try {
+    if (!DUMMY_PAYMENT) throw new AppError('Mock checkout is disabled on this server', 403);
     if (req.user.role !== 'learner') throw new AppError('Only learners can verify course purchases', 403);
 
     const { orderId } = req.body;
@@ -561,6 +574,19 @@ exports.getEarnings = async (req, res, next) => {
 /* ─── 5. Get Razorpay Key (public) ─── */
 exports.getKey = async (req, res) => {
   sendResponse(res, 200, 'Key', { keyId: razorpay.getKeyId() });
+};
+
+/** Learner: which checkout paths the server allows (for UI: Razorpay vs mock). */
+exports.getCheckoutOptions = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'learner') {
+      throw new AppError('Only learners need checkout options', 403);
+    }
+    sendResponse(res, 200, 'Checkout options', {
+      razorpay: isRazorpayConfigured(),
+      dummy: DUMMY_PAYMENT,
+    });
+  } catch (err) { next(err); }
 };
 
 /* ─── 6. Calculate fee preview (no auth needed for display) ─── */
