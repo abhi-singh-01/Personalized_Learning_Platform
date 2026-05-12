@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
@@ -33,6 +33,7 @@ export default function Courses() {
   const [appliedCouponMap, setAppliedCouponMap] = useState({});
   const [originalFeeMap, setOriginalFeeMap] = useState({});
   const [couponMsgMap, setCouponMsgMap] = useState({});
+  const lastRazorpayOrderRef = useRef(null);
   usePageTitle('Courses');
 
   /* ─── Helpers ─── */
@@ -182,6 +183,7 @@ export default function Courses() {
 
       // ── REAL RAZORPAY CHECKOUT ──
       if (!window.Razorpay) throw new Error('Razorpay checkout script not loaded');
+      lastRazorpayOrderRef.current = orderData.orderId;
       const rz = new window.Razorpay({
         key: orderData.keyId,
         amount: Math.round(Number(orderData.amount || 0) * 100),
@@ -209,10 +211,35 @@ export default function Courses() {
         },
         modal: { ondismiss: () => { setPaying(null); showMessage('Payment cancelled.', 'info'); } },
       });
-      rz.on('payment.failed', (r) => { showMessage(r?.error?.description || 'Payment failed.', 'error'); setPaying(null); });
+      rz.on('payment.failed', async (r) => {
+        const err = r?.error || {};
+        try {
+          await api.post('/payments/report-failure', {
+            razorpayOrderId: lastRazorpayOrderRef.current,
+            error: {
+              code: err.code,
+              description: err.description || err.message || 'Payment failed',
+              reason: err.reason,
+              source: 'razorpay_checkout',
+              metadata: err.metadata,
+              payment_id: err.metadata?.payment_id,
+            },
+          });
+        } catch {
+          /* still show user-facing message */
+        }
+        showMessage(err.description || err.message || 'Payment failed.', 'error');
+        setPaying(null);
+      });
+      setPaying(null);
       rz.open();
     } catch (e) {
-      showMessage(e.response?.data?.message || e.message || 'Could not initiate payment.', 'error');
+      const base = e.response?.data?.message || e.message || 'Could not initiate payment.';
+      const netHint =
+        import.meta.env.PROD && !e.response
+          ? ' If this persists, set VITE_API_URL on Vercel to your Render API (…/api) and FRONTEND_URL on Render to your Vercel URL (see README).'
+          : '';
+      showMessage(base + netHint, 'error');
       setPaying(null);
     }
   };
@@ -264,6 +291,21 @@ export default function Courses() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {filtered.length} course{filtered.length !== 1 ? 's' : ''} available
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-2xl leading-relaxed">
+            Paid enrollments use the{' '}
+            <a
+              href="https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/build-integration"
+              className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Razorpay
+            </a>{' '}
+            checkout when the server has{' '}
+            <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">RAZORPAY_KEY_ID</code> and{' '}
+            <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">RAZORPAY_KEY_SECRET</code>{' '}
+            (enable <strong className="font-medium">Test mode</strong> in the Razorpay dashboard for demos; use Razorpay’s test UPI or card numbers).
           </p>
         </div>
         <div className="relative w-full sm:w-72">

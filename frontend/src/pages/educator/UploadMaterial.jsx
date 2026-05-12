@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
 import Loading from '../../components/ui/Loading';
 import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, X } from 'lucide-react';
 import API from '../../api/axios';
-import JoditEditor from 'jodit-react';
-import { useRef } from 'react';
 import usePageTitle from '../../hooks/usePageTitle';
+
+const JoditEditor = lazy(() => import('jodit-react'));
 
 export default function UploadMaterial() {
   usePageTitle('Upload Material');
@@ -203,14 +203,22 @@ export default function UploadMaterial() {
           {form.type === 'article' && (
             <div className="pb-10">
               <label className="block text-sm font-medium mb-1.5">Article Content</label>
-              <div className="bg-white dark:bg-gray-800 rounded-lg text-black">
-                <JoditEditor
-                  ref={editor}
-                  value={form.content}
-                  config={{ placeholder: 'Start writing your rich course content here...' }}
-                  onBlur={newContent => setForm({ ...form, content: newContent })}
-                  onChange={() => { }}
-                />
+              <div className="bg-white dark:bg-gray-800 rounded-lg text-black min-h-[320px]">
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-80 text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-600 rounded-lg">
+                      Loading editor…
+                    </div>
+                  }
+                >
+                  <JoditEditor
+                    ref={editor}
+                    value={form.content}
+                    config={{ placeholder: 'Start writing your rich course content here...' }}
+                    onBlur={(newContent) => setForm({ ...form, content: newContent })}
+                    onChange={() => {}}
+                  />
+                </Suspense>
               </div>
             </div>
           )}

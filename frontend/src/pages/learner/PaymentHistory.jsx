@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import useApi from '../../hooks/useApi';
 import usePageTitle from '../../hooks/usePageTitle';
 import Card from '../../components/ui/Card';
 import Loading from '../../components/ui/Loading';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
 import {
   CreditCard, IndianRupee, Calendar, Clock, RotateCcw, CheckCircle2,
-  XCircle, AlertCircle, BookOpen, Receipt,
+  XCircle, AlertCircle, BookOpen, Receipt, Copy, MessageSquare,
 } from 'lucide-react';
 
 function formatINR(amount) {
@@ -45,6 +46,47 @@ export default function PaymentHistory() {
   const [refunding, setRefunding] = useState(null);
   const [message, setMessage] = useState('');
   const [summary, setSummary] = useState({ total: 0, count: 0 });
+  const [queryModal, setQueryModal] = useState(null);
+  const [queryText, setQueryText] = useState('');
+  const [querySubmitting, setQuerySubmitting] = useState(false);
+
+  const copyField = async (label, value) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(String(value));
+      setMessage(`${label} copied to clipboard.`);
+      setTimeout(() => setMessage(''), 2500);
+    } catch {
+      setMessage('Could not copy — select and copy manually.');
+    }
+  };
+
+  const formatCountdown = (iso) => {
+    if (!iso) return '';
+    const ms = new Date(iso).getTime() - Date.now();
+    if (ms <= 0) return 'May be removed on next cleanup run';
+    const h = Math.floor(ms / (1000 * 60 * 60));
+    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${h}h ${m}m`;
+  };
+
+  const submitRaiseQuery = async () => {
+    if (!queryModal) return;
+    setQuerySubmitting(true);
+    try {
+      await api.post('/payments/raise-query', {
+        paymentId: queryModal._id,
+        message: queryText.trim() || 'I need help with this failed payment.',
+      });
+      setMessage('Support query recorded. This failed payment will stay in your history.');
+      setQueryModal(null);
+      setQueryText('');
+      loadPayments();
+    } catch (e) {
+      setMessage(e.response?.data?.message || 'Could not submit query.');
+    }
+    setQuerySubmitting(false);
+  };
 
   useEffect(() => {
     loadPayments();
@@ -155,8 +197,10 @@ export default function PaymentHistory() {
                 {payments.map((p) => {
                   const config = statusConfig[p.status] || statusConfig.created;
                   const StatusIcon = config.icon;
+                  const snap = p.supportSnapshot || {};
                   return (
-                    <tr key={p._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                    <Fragment key={p._id}>
+                    <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center flex-shrink-0">
@@ -206,6 +250,17 @@ export default function PaymentHistory() {
                             <RotateCcw size={13} />
                             {refunding === p._id ? 'Processing...' : 'Refund'}
                           </button>
+                        ) : p.status === 'failed' && !p.paymentQueryRaisedAt ? (
+                          <button
+                            type="button"
+                            onClick={() => { setQueryModal(p); setQueryText(''); }}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            <MessageSquare size={13} />
+                            Raise query
+                          </button>
+                        ) : p.status === 'failed' && p.paymentQueryRaisedAt ? (
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Query logged</span>
                         ) : p.status === 'refunded' ? (
                           <span className="text-xs text-gray-400">Refunded</span>
                         ) : (
@@ -213,6 +268,57 @@ export default function PaymentHistory() {
                         )}
                       </td>
                     </tr>
+                    {p.status === 'failed' && (
+                      <tr className="bg-red-50/40 dark:bg-red-950/20">
+                        <td colSpan={5} className="px-5 py-4 text-xs text-gray-700 dark:text-gray-300">
+                          <p className="font-semibold text-red-700 dark:text-red-300 mb-2 flex flex-wrap items-center gap-2">
+                            Details for Razorpay / bank support
+                            {p.paymentQueryRaisedAt ? (
+                              <Badge variant="primary">Kept — query raised</Badge>
+                            ) : p.autoDeleteAt ? (
+                              <span className="font-normal text-gray-600 dark:text-gray-400">
+                                Auto-removed in ~{formatCountdown(p.autoDeleteAt)} if no query
+                              </span>
+                            ) : null}
+                          </p>
+                          <div className="grid sm:grid-cols-2 gap-2 mb-2">
+                            {[
+                              ['Order ID', snap.razorpayOrderId || p.razorpayOrderId],
+                              ['Payment ID', snap.razorpayPaymentId || p.razorpayPaymentId || '—'],
+                              ['Amount', `${snap.currency || p.currency || 'INR'} ${formatINR(snap.totalAmount ?? p.totalAmount)}`],
+                              ['Course', snap.courseTitle || p.course?.title],
+                              ['Educator', snap.educatorName || p.educator?.name],
+                              ['Your email (at failure)', snap.learnerEmail || '—'],
+                            ].map(([label, val]) => (
+                              <div key={label} className="flex items-start justify-between gap-2 bg-white/60 dark:bg-gray-900/40 rounded-lg px-2 py-1.5 border border-red-100/80 dark:border-red-900/40">
+                                <div className="min-w-0">
+                                  <span className="text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
+                                  <p className="font-mono text-[11px] break-all">{val || '—'}</p>
+                                </div>
+                                {val && val !== '—' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => copyField(label, val)}
+                                    className="p-1 rounded text-gray-500 hover:text-primary-600"
+                                    title="Copy"
+                                  >
+                                    <Copy size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {p.failureDetails && (p.failureDetails.description || p.failureDetails.code) && (
+                            <p className="text-[11px] text-red-600/90 dark:text-red-400/90">
+                              Gateway: {p.failureDetails.code && `${p.failureDetails.code} — `}
+                              {p.failureDetails.description}
+                              {p.failureDetails.reason && ` (${p.failureDetails.reason})`}
+                            </p>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -229,6 +335,39 @@ export default function PaymentHistory() {
           Refunds are processed to your original payment method and may take 5-7 business days.
         </p>
       </div>
+
+      <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+        <p className="text-xs text-gray-700 dark:text-gray-300 font-medium mb-1">Failed payments</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+          Failed attempts show order and payment IDs you can share with support or Razorpay.
+          If you do not use <strong className="font-medium">Raise query</strong>, the row is removed automatically after{' '}
+          {payments[0]?.retentionHours || 72} hours (no dispute logged). Raising a query keeps the record.
+        </p>
+      </div>
+
+      <Modal
+        open={!!queryModal}
+        onClose={() => !querySubmitting && setQueryModal(null)}
+        title="Raise payment query"
+      >
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Tell us briefly what went wrong. This flags the failed payment so it is not auto-deleted.
+        </p>
+        <textarea
+          className="input-field min-h-[100px] text-sm mb-4"
+          placeholder="e.g. Card was charged but course did not unlock…"
+          value={queryText}
+          onChange={(e) => setQueryText(e.target.value)}
+        />
+        <div className="flex gap-2 justify-end">
+          <button type="button" className="btn-secondary" disabled={querySubmitting} onClick={() => setQueryModal(null)}>
+            Cancel
+          </button>
+          <button type="button" className="btn-primary" disabled={querySubmitting} onClick={submitRaiseQuery}>
+            {querySubmitting ? 'Submitting…' : 'Submit query'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -24,10 +24,20 @@ const paymentSchema = new mongoose.Schema({
   },
   paidAt: { type: Date },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+  /** Failed / abandoned checkout — retention & support */
+  failedAt: { type: Date },
+  failureDetails: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  /** Denormalised facts for support / Razorpay tickets (copied at failure time) */
+  supportSnapshot: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  /** If set, failed payment row is kept (not auto-deleted after retention window) */
+  paymentQueryRaisedAt: { type: Date },
+  paymentQueryMessage: { type: String, default: '' },
 }, { timestamps: true });
 
 paymentSchema.index({ user: 1 });
 paymentSchema.index({ educator: 1 });
 paymentSchema.index({ course: 1, user: 1 });
+paymentSchema.index({ status: 1, failedAt: 1, paymentQueryRaisedAt: 1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

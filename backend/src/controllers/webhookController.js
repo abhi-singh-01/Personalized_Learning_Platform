@@ -6,6 +6,7 @@ const Payment = require('../models/Payment');
 const Refund  = require('../models/Refund');
 const Payout = require('../models/Payout');
 const razorpay = require('../services/razorpayService');
+const { buildSupportSnapshot } = require('../utils/paymentFailure');
 
 exports.handleWebhook = async (req, res) => {
   try {
@@ -33,18 +34,29 @@ exports.handleWebhook = async (req, res) => {
       }
 
       case 'payment.failed': {
-        const orderId = payload.payment?.entity?.order_id;
-        if (orderId) {
-          await Payment.findOneAndUpdate(
-            { razorpayOrderId: orderId },
-            {
-              status: 'failed',
-              metadata: {
-                failureReason: payload.payment?.entity?.error_description || 'payment_failed',
-              },
-            }
-          );
-        }
+        const entity = payload.payment?.entity;
+        const orderId = entity?.order_id;
+        if (!orderId) break;
+
+        const p = await Payment.findOne({ razorpayOrderId: orderId });
+        if (!p || p.status === 'captured') break;
+
+        p.status = 'failed';
+        p.failedAt = new Date();
+        p.failureDetails = {
+          code: entity?.error_code || '',
+          description: entity?.error_description || 'payment_failed',
+          reason: entity?.error_reason || '',
+          source: 'razorpay_webhook',
+        };
+        if (entity?.id) p.razorpayPaymentId = entity.id;
+        p.metadata = {
+          ...(p.metadata && typeof p.metadata === 'object' ? p.metadata : {}),
+          webhookEvent: 'payment.failed',
+          lastWebhookAt: new Date().toISOString(),
+        };
+        p.supportSnapshot = await buildSupportSnapshot(p);
+        await p.save();
         break;
       }
 

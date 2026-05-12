@@ -1,6 +1,4 @@
 import { useState, useRef } from 'react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { Download } from 'lucide-react';
 
 export default function ReportExporter({ title = "Report", filename = "export.pdf", children }) {
@@ -14,6 +12,11 @@ export default function ReportExporter({ title = "Report", filename = "export.pd
         try {
             // Small timeout to ensure any re-renders or loaders are cleared
             await new Promise(resolve => setTimeout(resolve, 300));
+
+            const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+                import('html2canvas'),
+                import('jspdf'),
+            ]);
 
             const canvas = await html2canvas(reportRef.current, {
                 scale: 2, // Higher scale for better resolution

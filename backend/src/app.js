@@ -3,7 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
-const { FRONTEND_URL, NODE_ENV } = require('./config/env');
+const { NODE_ENV } = require('./config/env');
+const { isOriginAllowed } = require('./config/corsOrigins');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const maintenance = require('./middleware/maintenance');
@@ -31,6 +32,7 @@ const auditLogRoutes = require('./routes/audit-logs');
 const chatbotRoutes = require('./routes/chatbot');
 
 const startPayoutCron = require('./services/payoutCron');
+const startFailedPaymentRetentionCron = require('./services/failedPaymentRetentionCron');
 
 const app = express();
 
@@ -43,8 +45,23 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://ui-avatars.com", "https://*.googleusercontent.com"],
       mediaSrc: ["'self'", "blob:", "http://localhost:5000"],
-      frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com", "https://api.razorpay.com", "https://checkout.razorpay.com"],
-      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "https://accounts.google.com", "https://lumberjack.razorpay.com", "https://api.razorpay.com"],
+      frameSrc: [
+        "'self'",
+        'https://www.youtube.com',
+        'https://youtube.com',
+        'https://www.youtube-nocookie.com',
+        'https://api.razorpay.com',
+        'https://checkout.razorpay.com',
+        'https://*.razorpay.com',
+      ],
+      connectSrc: [
+        "'self'",
+        'https://generativelanguage.googleapis.com',
+        'https://accounts.google.com',
+        'https://lumberjack.razorpay.com',
+        'https://api.razorpay.com',
+        'https://*.razorpay.com',
+      ],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -52,8 +69,16 @@ app.use(helmet({
   crossOriginOpenerPolicy: false,
 }));
 
-// CORS: only allow the configured frontend origin
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+// CORS: FRONTEND_URL may be comma-separated; optional Vercel preview wildcard (see corsOrigins.js)
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (isOriginAllowed(origin)) return callback(null, true);
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 
 // Basic global rate limit for all API traffic
 app.use('/api', globalLimiter);
@@ -86,9 +111,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (NODE_ENV === 'development') app.use(morgan('dev'));
 app.use('/uploads', (req, res, next) => {
-  // Allow only the frontend to load uploaded assets cross-origin
-  if (FRONTEND_URL) {
-    res.setHeader('Access-Control-Allow-Origin', FRONTEND_URL);
+  const origin = req.headers.origin;
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
@@ -122,5 +148,6 @@ app.use(errorHandler);
 
 // Start payout cron job
 startPayoutCron();
+startFailedPaymentRetentionCron();
 
 module.exports = app;

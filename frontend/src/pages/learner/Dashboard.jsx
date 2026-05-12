@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
@@ -21,15 +21,7 @@ import {
   Video,
   XCircle,
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+const LearnerScoreLineChart = lazy(() => import('../../components/charts/LearnerScoreLineChart'));
 
 export default function LearnerDashboard() {
   const { user } = useAuth();
@@ -132,21 +124,15 @@ export default function LearnerDashboard() {
           {chartData.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Performance Trend</h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={{ fill: '#6366f1' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense
+                fallback={
+                  <div className="h-[250px] flex items-center justify-center text-sm text-gray-500 dark:text-gray-400 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                    Loading chart…
+                  </div>
+                }
+              >
+                <LearnerScoreLineChart data={chartData} />
+              </Suspense>
             </div>
           )}
 

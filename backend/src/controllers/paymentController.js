@@ -14,7 +14,18 @@ const CouponUsage = require('../models/CouponUsage');
 const razorpay = require('../services/razorpayService');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
-const { PLATFORM_FEE_RATE, PLATFORM_GST_RATE, PAYOUT_DELAY_DAYS, DUMMY_PAYMENT } = require('../config/env');
+const {
+  PLATFORM_FEE_RATE,
+  PLATFORM_GST_RATE,
+  PAYOUT_DELAY_DAYS,
+  DUMMY_PAYMENT,
+  RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET,
+  FAILED_PAYMENT_RETENTION_HOURS,
+} = require('../config/env');
+const { buildSupportSnapshot } = require('../utils/paymentFailure');
+
+const isRazorpayConfigured = () => Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
 
 /* ── Fee calculation ── */
 const MIN_PAYOUT_DELAY_DAYS = 3;
@@ -208,8 +219,10 @@ exports.createOrder = async (req, res, next) => {
       });
     }
 
-    /* ── DUMMY PAYMENT MODE ── */
-    if (DUMMY_PAYMENT) {
+    /* ── MOCK CHECKOUT (no Razorpay keys) ──
+       Only when DUMMY_PAYMENT=true AND keys are missing. If RAZORPAY_KEY_ID/SECRET are set,
+       we always create a real Razorpay order so checkout is the official Razorpay UI (Test or Live). */
+    if (DUMMY_PAYMENT && !isRazorpayConfigured()) {
       const dummyOrderId = `dummy_order_${courseId}_${req.user._id}_${Date.now()}`;
       const payment = await Payment.create({
         user:            req.user._id,
@@ -236,6 +249,13 @@ exports.createOrder = async (req, res, next) => {
         coupon: couponData,
         dummyMode: true,
       });
+    }
+
+    if (!isRazorpayConfigured()) {
+      throw new AppError(
+        'Razorpay is not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (use Test mode keys from https://dashboard.razorpay.com for examiner demos), or set DUMMY_PAYMENT=true in .env to use the built-in mock checkout without Razorpay.',
+        503
+      );
     }
 
     // Create Razorpay order (amount in paise)
@@ -283,11 +303,16 @@ exports.createOrder = async (req, res, next) => {
 /* ─── 2a. Dummy Payment Verify (auto-accept) ─── */
 exports.dummyVerify = async (req, res, next) => {
   try {
-    if (!DUMMY_PAYMENT) throw new AppError('Dummy payments are not enabled', 403);
     if (req.user.role !== 'learner') throw new AppError('Only learners can verify course purchases', 403);
 
     const { orderId } = req.body;
     if (!orderId) throw new AppError('orderId is required', 400);
+    if (!String(orderId).startsWith('dummy_order_')) {
+      throw new AppError(
+        'This endpoint is only for the built-in mock checkout. Complete a real payment in the Razorpay window; the app verifies it automatically.',
+        400
+      );
+    }
 
     const payment = await Payment.findOne({ razorpayOrderId: orderId });
     if (!payment) throw new AppError('Payment record not found', 404);
@@ -427,8 +452,83 @@ exports.getHistory = async (req, res, next) => {
     const payments = await Payment.find({ user: req.user._id })
       .populate('course', 'title thumbnail')
       .populate('educator', 'name')
-      .sort({ createdAt: -1 });
-    sendResponse(res, 200, 'Payment history', payments);
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const retentionMs = FAILED_PAYMENT_RETENTION_HOURS * 60 * 60 * 1000;
+    const enriched = payments.map((p) => {
+      if (p.status === 'failed' && p.failedAt && !p.paymentQueryRaisedAt) {
+        const autoDeleteAt = new Date(new Date(p.failedAt).getTime() + retentionMs).toISOString();
+        return { ...p, autoDeleteAt, retentionHours: FAILED_PAYMENT_RETENTION_HOURS };
+      }
+      return { ...p, retentionHours: FAILED_PAYMENT_RETENTION_HOURS };
+    });
+
+    sendResponse(res, 200, 'Payment history', enriched);
+  } catch (err) { next(err); }
+};
+
+/** Learner reports Razorpay checkout failure (client-side payment.failed or abandoned flow). */
+exports.reportFailure = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'learner') throw new AppError('Only learners can report payment failures', 403);
+    const { razorpayOrderId, error } = req.body;
+    if (!razorpayOrderId) throw new AppError('razorpayOrderId is required', 400);
+
+    const payment = await Payment.findOne({ razorpayOrderId, user: req.user._id });
+    if (!payment) throw new AppError('Payment record not found', 404);
+    if (payment.status === 'captured') throw new AppError('This payment already completed successfully', 400);
+    if (payment.status === 'failed') {
+      return sendResponse(res, 200, 'Failure already recorded', {
+        paymentId: payment._id,
+        supportSnapshot: payment.supportSnapshot,
+        retentionHours: FAILED_PAYMENT_RETENTION_HOURS,
+      });
+    }
+
+    payment.status = 'failed';
+    payment.failedAt = new Date();
+    payment.failureDetails = {
+      code: error?.code || '',
+      description: error?.description || error?.message || 'Payment failed',
+      reason: error?.reason || '',
+      source: error?.source || 'razorpay_checkout',
+    };
+    if (error?.metadata?.payment_id) payment.razorpayPaymentId = String(error.metadata.payment_id);
+    else if (error?.payment_id) payment.razorpayPaymentId = String(error.payment_id);
+    payment.supportSnapshot = await buildSupportSnapshot(payment);
+    await payment.save();
+
+    sendResponse(res, 200, 'Failure recorded', {
+      paymentId: payment._id,
+      supportSnapshot: payment.supportSnapshot,
+      retentionHours: FAILED_PAYMENT_RETENTION_HOURS,
+    });
+  } catch (err) { next(err); }
+};
+
+/** Learner flags a failed payment for support — row is kept past auto-delete window. */
+exports.raisePaymentQuery = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'learner') throw new AppError('Only learners can raise payment queries', 403);
+    const { paymentId, message } = req.body;
+    if (!paymentId) throw new AppError('paymentId is required', 400);
+
+    const payment = await Payment.findOne({ _id: paymentId, user: req.user._id });
+    if (!payment) throw new AppError('Payment not found', 404);
+    if (payment.status !== 'failed') throw new AppError('Only failed payments can be flagged for support', 400);
+    if (payment.paymentQueryRaisedAt) throw new AppError('A support query was already raised for this payment', 400);
+
+    payment.paymentQueryRaisedAt = new Date();
+    payment.paymentQueryMessage = String(message || '').trim().slice(0, 2000);
+    if (!payment.supportSnapshot) {
+      payment.supportSnapshot = await buildSupportSnapshot(payment);
+    }
+    await payment.save();
+
+    sendResponse(res, 200, 'Support query recorded. This payment will be kept in your history.', {
+      paymentId: payment._id,
+    });
   } catch (err) { next(err); }
 };
 

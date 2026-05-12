@@ -224,6 +224,41 @@ All protected routes require a `Bearer <token>` Authorization header.
 
 ---
 
+## Payments (Razorpay)
+
+For **examiner or demo presentations**, use Razorpay’s **Test mode** keys so learners see the **real Razorpay checkout** (not the built-in mock modal):
+
+1. In the [Razorpay Dashboard](https://dashboard.razorpay.com/), switch to **Test mode** and copy **Key ID** and **Key Secret**.
+2. Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in the backend `.env` (or your host’s environment). Test keys usually start with `rzp_test_`.
+3. Leave `DUMMY_PAYMENT` unset or set it to `false`. If both keys are present, the API always creates a real Razorpay order and the frontend opens the official Razorpay widget; after success, `POST /api/payments/verify` runs as usual.
+4. Complete payment using [Razorpay’s test methods](https://razorpay.com/docs/payments/payments/test-card-details/) (test cards, UPI, etc.).
+
+**Mock checkout (no Razorpay account):** set `DUMMY_PAYMENT=true` in `.env` **and** omit Razorpay keys. The app uses a local “dummy” order and `POST /api/payments/dummy-verify` instead.
+
+### Vercel (frontend) + Render (API) — checklist
+
+If checkout or login “does nothing” or the browser console shows **CORS** / **failed to fetch**:
+
+1. **Vercel → Environment variables (Production & Preview)**  
+   Set **`VITE_API_URL`** to your Render API base **including `/api`**, for example:  
+   `https://YOUR-SERVICE.onrender.com/api`  
+   Then **redeploy** the frontend (Vite bakes this in at build time).
+
+2. **Render → Environment**  
+   Set **`FRONTEND_URL`** to your exact Vercel origin(s), **comma-separated** if you use both production and preview URLs, for example:  
+   `https://your-app.vercel.app,https://your-app-git-main-xxx.vercel.app`  
+   No trailing slash. Must match what the browser sends as the `Origin` header.
+
+3. **Optional:** `CORS_ALLOW_VERCEL_PREVIEWS=true` on Render allows **any** `https://*.vercel.app` origin (convenient for demos; less strict than an explicit list).
+
+4. On Render, set **`RAZORPAY_KEY_ID`** and **`RAZORPAY_KEY_SECRET`** (Test mode keys for demos). Do **not** set `DUMMY_PAYMENT=true` if you want the real Razorpay window.
+
+5. Complete a test payment using [Razorpay test instruments](https://razorpay.com/docs/payments/payments/test-card-details/); success runs **`POST /api/payments/verify`** and enrolls the learner.
+
+**Failed payments (learner history):** Failed attempts store a **support snapshot** (order id, payment id, amount, course, educator, email). Rows are **deleted automatically** after **`FAILED_PAYMENT_RETENTION_HOURS`** (default **72**) unless the learner uses **Raise query** in Payments — then the record is kept.
+
+---
+
 ## 🤖 AI Features (Powered by Google Gemini)
 
 All AI features use the `gemini-2.5-flash` model and are togglable by the admin.

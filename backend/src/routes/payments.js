@@ -16,6 +16,8 @@ router.post('/create-order', auth, paymentCtrl.createOrder);
 router.post('/verify',       auth, paymentCtrl.verifyPayment);
 router.post('/dummy-verify', auth, paymentCtrl.dummyVerify);
 router.get('/history',        auth, paymentCtrl.getHistory);
+router.post('/report-failure', auth, paymentCtrl.reportFailure);
+router.post('/raise-query',   auth, paymentCtrl.raisePaymentQuery);
 router.post('/refund',        auth, refundCtrl.requestRefund);
 router.get('/refund/:id',     auth, refundCtrl.getRefundStatus);
 router.get('/coupons/usage-history', auth, role('learner'), paymentCtrl.getCouponUsageHistory);

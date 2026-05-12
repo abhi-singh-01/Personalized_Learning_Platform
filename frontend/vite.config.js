@@ -9,8 +9,8 @@ export default defineConfig({
     target: 'es2020',
     // Enable CSS code splitting
     cssCodeSplit: true,
-    // Increase chunk size warning limit (we control splitting manually)
-    chunkSizeWarningLimit: 600,
+    // Jodit + PDF stacks are legitimately large even when split out; default 500kb is too noisy.
+    chunkSizeWarningLimit: 1024,
     rollupOptions: {
       output: {
         // Smart chunk splitting — separates vendor libs from app code
@@ -23,10 +23,8 @@ export default defineConfig({
           if (id.includes('node_modules/react-router')) {
             return 'router';
           }
-          // Charting library — heavy, only needed on dashboards
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
-            return 'charts';
-          }
+          // Recharts/d3: no forced vendor chunk — stays inside each lazy chart route so
+          // learners never download admin/educator chart code and vice versa.
           // Rich text editor — very heavy, only for educators
           if (id.includes('node_modules/jodit')) {
             return 'editor';

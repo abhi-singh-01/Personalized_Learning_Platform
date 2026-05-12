@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { FileText, BookOpen, List, Loader2, Copy, Check, Download, ArrowRight, AlertCircle, Map, Clock, CheckCircle2, BookMarked } from 'lucide-react';
 import useApi from '../../hooks/useApi';
-import jsPDF from 'jspdf';
 
 export default function AIVideoPanel({ materialId, materialTitle }) {
   const api = useApi();
@@ -94,8 +93,9 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     }
   };
 
-  const downloadNotesPDF = () => {
+  const downloadNotesPDF = async () => {
     if (!transcript?.notes?.title) return;
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const n = transcript.notes;
     const margin = 15;

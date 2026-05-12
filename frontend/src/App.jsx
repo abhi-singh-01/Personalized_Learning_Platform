@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/auth/ErrorBoundary';
+import ApiConfigWarning from './components/ui/ApiConfigWarning';
 
 // ── Only the shell loads eagerly — everything else is lazy ──
 const AppLayout = lazy(() => import('./components/layout/AppLayout'));
@@ -100,6 +101,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+    <ApiConfigWarning />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public pages */}

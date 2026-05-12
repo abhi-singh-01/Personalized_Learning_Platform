@@ -22,7 +22,9 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: FRONTEND_URL
-        sync: false  # Set to your Vercel frontend URL
+        sync: false  # Vercel URL(s), comma-separated if multiple: https://app.vercel.app,https://preview.vercel.app
+      - key: CORS_ALLOW_VERCEL_PREVIEWS
+        value: "false"  # Set "true" only if you need any *.vercel.app preview without listing each URL
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GEMINI_API_KEY
@@ -39,4 +41,6 @@ services:
         value: "0.18"
       - key: PAYOUT_DELAY_DAYS
         value: "5"
+      - key: FAILED_PAYMENT_RETENTION_HOURS
+        value: "72"
     healthCheckPath: /api/auth
