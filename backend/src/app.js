@@ -31,9 +31,6 @@ const reviewRoutes = require('./routes/reviews');
 const auditLogRoutes = require('./routes/audit-logs');
 const chatbotRoutes = require('./routes/chatbot');
 
-const startPayoutCron = require('./services/payoutCron');
-const startFailedPaymentRetentionCron = require('./services/failedPaymentRetentionCron');
-
 const app = express();
 
 app.use(helmet({
@@ -44,7 +41,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://ui-avatars.com", "https://*.googleusercontent.com"],
-      mediaSrc: ["'self'", "blob:", "http://localhost:5000"],
+      mediaSrc: ["'self'", "blob:", "http://localhost:5000", "https://*.amazonaws.com"],
       frameSrc: [
         "'self'",
         'https://www.youtube.com',
@@ -145,9 +142,5 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 
 app.use(errorHandler);
-
-// Start payout cron job
-startPayoutCron();
-startFailedPaymentRetentionCron();
 
 module.exports = app;

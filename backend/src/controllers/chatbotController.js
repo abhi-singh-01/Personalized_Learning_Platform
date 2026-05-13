@@ -6,6 +6,11 @@ const Progress = require('../models/Progress');
 const AIInteractionLog = require('../models/AIInteractionLog');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
+const fs = require('fs').promises;
+const { createPartFromUri } = require('@google/genai');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+const path = require('path');
 
 // ── MCP Context Cache — 5-minute TTL ──
 // Avoids re-querying Course + Material + Transcript + Progress on every message
@@ -170,10 +175,90 @@ IMPORTANT:
 Remember: You are a TEACHER, not a search engine. Clear the doubt, then stop.`;
 };
 
+const parseHistoryInput = (historyInput) => {
+  if (!historyInput) return [];
+  if (Array.isArray(historyInput)) return historyInput;
+  if (typeof historyInput === 'string') {
+    try {
+      const parsed = JSON.parse(historyInput);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const buildRequestPayload = (req) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message : '';
+  const courseId = req.body?.courseId || null;
+  const history = parseHistoryInput(req.body?.history);
+  return { message, courseId, history };
+};
+
+const uploadAttachmentToGemini = async (filePath, mimeType) => {
+  const ai = await getAI();
+  const uploadedFile = await ai.files.upload({
+    file: filePath,
+    config: { mimeType: mimeType || 'application/octet-stream' },
+  });
+
+  let file = uploadedFile;
+  while (file.state === 'PROCESSING') {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    file = await ai.files.get({ name: file.name });
+  }
+  if (file.state === 'FAILED') {
+    throw new Error('Failed to process attachment for AI context.');
+  }
+  return file;
+};
+
+const extractAttachmentText = async (file) => {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (ext === '.txt') {
+    return fs.readFile(file.path, 'utf8');
+  }
+  if (ext === '.pdf') {
+    const buffer = await fs.readFile(file.path);
+    const parsed = await pdfParse(buffer);
+    return parsed.text || '';
+  }
+  if (ext === '.docx') {
+    const parsed = await mammoth.extractRawText({ path: file.path });
+    return parsed.value || '';
+  }
+  return '';
+};
+
+const buildUserParts = async (message, file) => {
+  const parts = [{ text: message }];
+  if (!file) return parts;
+
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const isImage = file.mimetype?.startsWith('image/');
+  const extractedText = await extractAttachmentText(file);
+
+  if (extractedText?.trim()) {
+    parts.push({
+      text: `Attached file (${file.originalname}) extracted content:\n\n${extractedText.substring(0, 12000)}`,
+    });
+  } else if (isImage || ext === '.doc') {
+    const uploaded = await uploadAttachmentToGemini(file.path, file.mimetype);
+    parts.push(createPartFromUri(uploaded.uri, uploaded.mimeType));
+  }
+
+  parts.push({
+    text: `Use the attached file as context while answering. File name: ${file.originalname}. If file text is incomplete or unreadable, say that clearly and ask one precise follow-up question.`,
+  });
+  return parts;
+};
+
 // ── Chat Endpoint — Non-Streaming ──
 exports.chat = async (req, res, next) => {
+  let userParts = null;
   try {
-    const { message, courseId, history = [] } = req.body;
+    const { message, courseId, history } = buildRequestPayload(req);
     if (!message?.trim()) throw new AppError('Message is required', 400);
 
     const userId = req.user._id;
@@ -193,6 +278,7 @@ exports.chat = async (req, res, next) => {
     }));
 
     const systemInstruction = buildSystemInstruction(learnerLevel, mcpContext);
+    userParts = await buildUserParts(message, req.file);
 
     // Call Gemini
     const ai = await getAI();
@@ -201,7 +287,7 @@ exports.chat = async (req, res, next) => {
       model: MODEL,
       contents: [
         ...recentHistory,
-        { role: 'user', parts: [{ text: message }] },
+        { role: 'user', parts: userParts },
       ],
       config: {
         systemInstruction,
@@ -217,7 +303,12 @@ exports.chat = async (req, res, next) => {
     AIInteractionLog.create({
       user: userId,
       type: 'chat',
-      input: { message, courseId, historyLength: history.length },
+      input: {
+        message,
+        courseId,
+        historyLength: history.length,
+        attachment: req.file ? { name: req.file.originalname, type: req.file.mimetype, size: req.file.size } : null,
+      },
       output: { reply: reply.substring(0, 500) },
     }).catch(() => {}); // Silent fail for logging
 
@@ -229,13 +320,18 @@ exports.chat = async (req, res, next) => {
     // Catch Gemini region errors and provide a clear message
     try { wrapGeminiError(err); } catch (wrapped) { return next(wrapped); }
     next(err);
+  } finally {
+    if (req.file?.path) {
+      fs.unlink(req.file.path).catch(() => {});
+    }
   }
 };
 
 // ── Streaming Chat (SSE) for near-zero latency feel ──
 exports.chatStream = async (req, res, next) => {
+  let userParts = null;
   try {
-    const { message, courseId, history = [] } = req.body;
+    const { message, courseId, history } = buildRequestPayload(req);
     if (!message?.trim()) throw new AppError('Message is required', 400);
 
     const userId = req.user._id;
@@ -264,6 +360,7 @@ exports.chatStream = async (req, res, next) => {
     }));
 
     const systemInstruction = buildSystemInstruction(learnerLevel, mcpContext);
+    userParts = await buildUserParts(message, req.file);
 
     const ai = await getAI();
 
@@ -271,7 +368,7 @@ exports.chatStream = async (req, res, next) => {
       model: MODEL,
       contents: [
         ...recentHistory,
-        { role: 'user', parts: [{ text: message }] },
+        { role: 'user', parts: userParts },
       ],
       config: {
         systemInstruction,
@@ -299,7 +396,11 @@ exports.chatStream = async (req, res, next) => {
     AIInteractionLog.create({
       user: userId,
       type: 'chat-stream',
-      input: { message, courseId },
+      input: {
+        message,
+        courseId,
+        attachment: req.file ? { name: req.file.originalname, type: req.file.mimetype, size: req.file.size } : null,
+      },
       output: { reply: fullReply.substring(0, 500) },
     }).catch(() => {});
   } catch (err) {
@@ -313,6 +414,10 @@ exports.chatStream = async (req, res, next) => {
     } else {
       try { wrapGeminiError(err); } catch (wrapped) { return next(wrapped); }
       next(err);
+    }
+  } finally {
+    if (req.file?.path) {
+      fs.unlink(req.file.path).catch(() => {});
     }
   }
 };

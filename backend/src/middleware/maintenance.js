@@ -5,6 +5,11 @@ const { sendResponse } = require('../utils/response');
 
 const maintenance = async (req, res, next) => {
     try {
+        // Uptime probes should not depend on DB (Render / load balancers)
+        if (req.path === '/health' || req.path === '/') {
+            return next();
+        }
+
         const settings = await Setting.findOne();
 
         // If maintenance mode is not enabled, proceed normally

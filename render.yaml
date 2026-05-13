@@ -46,4 +46,18 @@ services:
         value: "5"
       - key: FAILED_PAYMENT_RETENTION_HOURS
         value: "72"
-    healthCheckPath: /api/auth
+      # Optional: durable uploads (S3 or R2/MinIO). When all are set, course materials upload to the bucket instead of relying on ephemeral disk.
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # Optional: custom endpoint (Cloudflare R2, MinIO) and public URL base (CDN or R2 public dev URL)
+      - key: AWS_S3_ENDPOINT
+        sync: false
+      - key: AWS_S3_PUBLIC_URL_BASE
+        sync: false
+    healthCheckPath: /health

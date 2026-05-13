@@ -9,13 +9,22 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from 'recharts';
 import { BarChart2, Trophy } from 'lucide-react';
 import Card from '../ui/Card';
 
 const PIE_COLORS = ['#f97316', '#eab308', '#3b82f6', '#22c55e'];
 
+/** Zero-value slices still get label anchors in Recharts and stack on top of each other — chart only non-zero. */
+function pieSlicesNonZero(pieData) {
+  if (!pieData?.length) return [];
+  return pieData.filter((d) => Number(d.value) > 0);
+}
+
 export default function EducatorPerformanceCharts({ coursePerformance, pieData, dark }) {
+  const pieSlices = pieSlicesNonZero(pieData);
+
   return (
     <>
       {coursePerformance?.length > 0 && (
@@ -70,25 +79,28 @@ export default function EducatorPerformanceCharts({ coursePerformance, pieData, 
       {pieData?.some((d) => d.value > 0) && (
         <Card>
           <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-white">AI Level Distribution</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               <Pie
-                data={pieData}
+                data={pieSlices}
                 cx="50%"
-                cy="50%"
+                cy="42%"
                 innerRadius={45}
-                outerRadius={80}
+                outerRadius={72}
                 dataKey="value"
-                label={({ name, value }) => name + ': ' + value}
-                labelLine={{ stroke: dark ? '#6b7280' : '#9ca3af' }}
+                nameKey="name"
+                label={false}
                 stroke={dark ? '#1f2937' : '#fff'}
                 strokeWidth={2}
               >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
+                {pieSlices.map((slice, i) => {
+                  const origIdx = pieData.findIndex((d) => d.name === slice.name);
+                  const colorIdx = origIdx >= 0 ? origIdx : i;
+                  return <Cell key={slice.name} fill={PIE_COLORS[colorIdx % PIE_COLORS.length]} />;
+                })}
               </Pie>
               <Tooltip
+                formatter={(value, _name, props) => [`${value} learner${value !== 1 ? 's' : ''}`, props.payload.name]}
                 contentStyle={{
                   backgroundColor: dark ? '#1f2937' : '#fff',
                   border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`,
@@ -96,8 +108,23 @@ export default function EducatorPerformanceCharts({ coursePerformance, pieData, 
                   color: dark ? '#f3f4f6' : '#111827',
                 }}
               />
+              <Legend
+                verticalAlign="bottom"
+                layout="horizontal"
+                align="center"
+                wrapperStyle={{ paddingTop: 12, fontSize: 12 }}
+                formatter={(value, entry) => {
+                  const v = entry?.payload?.value;
+                  return `${value}: ${v ?? ''}`;
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
+          {pieData.some((d) => Number(d.value) === 0) && (
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 px-1">
+              Levels with 0 learners are omitted from the ring to keep labels readable.
+            </p>
+          )}
         </Card>
       )}
     </>

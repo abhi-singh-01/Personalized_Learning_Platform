@@ -74,6 +74,21 @@ export default function CourseDetail() {
     ? Math.round((progress.completedMaterials.length / materials.length) * 100)
     : 0;
 
+  const resolveMaterialUrl = (url) => {
+    if (!url) return '';
+    if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
+    if (!url.startsWith('/')) return url;
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    if (apiBase.startsWith('http')) {
+      try {
+        return `${new URL(apiBase).origin}${url}`;
+      } catch {
+        return url;
+      }
+    }
+    return url;
+  };
+
   const openMaterial = (m) => {
     trackView(m._id);
     if (m.type === 'youtube') {
@@ -89,7 +104,7 @@ export default function CourseDetail() {
       setActiveVideo(null);
       setActiveUploadedVideo(null);
     } else if (m.fileUrl) {
-      window.open(m.fileUrl, '_blank');
+      window.open(resolveMaterialUrl(m.fileUrl), '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -234,7 +249,7 @@ export default function CourseDetail() {
               <div className="aspect-video rounded-lg bg-black relative">
                 <video
                   key={activeUploadedVideo._id}
-                  src={activeUploadedVideo.fileUrl}
+                  src={resolveMaterialUrl(activeUploadedVideo.fileUrl)}
                   className="w-full h-full absolute top-0 left-0 rounded-lg"
                   controls
                   autoPlay

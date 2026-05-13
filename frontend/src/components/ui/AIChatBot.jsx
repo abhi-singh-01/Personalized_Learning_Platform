@@ -9,8 +9,14 @@ import {
   Trash2,
   BookOpen,
   Sparkles,
+  Paperclip,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import '../../styles/AIChatBot.css';
+
+const SUMMARIZE_FILE_PROMPT =
+  'Please summarize this attached file in plain language. Use short paragraphs and highlight the main ideas. If something is unclear from the file, say so briefly.';
 
 // ── Simple Markdown renderer ──
 function renderMarkdown(text) {
@@ -59,9 +65,10 @@ export default function AIChatBot() {
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState('');
   const [courseContext, setCourseContext] = useState(null);
+  const [attachment, setAttachment] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const abortRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // ── Detect course context from URL ──
   useEffect(() => {
@@ -136,14 +143,20 @@ export default function AIChatBot() {
 
   // ── Send Message — tries streaming first, falls back to non-streaming ──
   const sendMessage = async (text) => {
-    const msg = (text || input).trim();
-    if (!msg || isStreaming) return;
+    const rawMsg = (text !== undefined && text !== null ? String(text) : input).trim();
+    const fileSnapshot = attachment;
+    const msg = rawMsg || (fileSnapshot ? 'Attached a file for doubt solving.' : '');
+    if ((!msg && !fileSnapshot) || isStreaming) return;
 
     setInput('');
     setError('');
     setSuggestions([]);
 
-    const userMsg = { role: 'user', content: msg };
+    const userMsg = {
+      role: 'user',
+      content: msg,
+      attachment: fileSnapshot ? { name: fileSnapshot.name, type: fileSnapshot.type, size: fileSnapshot.size } : null,
+    };
     const botMsg = { role: 'bot', content: '', streaming: true };
 
     setMessages(prev => [...prev, userMsg, botMsg]);
@@ -158,6 +171,16 @@ export default function AIChatBot() {
       })),
     };
 
+    const hasAttachment = Boolean(fileSnapshot);
+    const requestBody = hasAttachment ? new FormData() : JSON.stringify(body);
+    if (hasAttachment) {
+      requestBody.append('message', body.message);
+      requestBody.append('courseId', body.courseId || '');
+      requestBody.append('history', JSON.stringify(body.history));
+      requestBody.append('attachment', fileSnapshot);
+    }
+    setAttachment(null);
+
     try {
       // Try SSE streaming first for real-time feel
       const token = localStorage.getItem('token');
@@ -167,10 +190,10 @@ export default function AIChatBot() {
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
+            ...(hasAttachment ? {} : { 'Content-Type': 'application/json' }),
           },
-          body: JSON.stringify(body),
+          body: requestBody,
         }
       );
 
@@ -227,7 +250,10 @@ export default function AIChatBot() {
     } catch (streamErr) {
       // ── Fallback: use non-streaming /chatbot/chat endpoint ──
       try {
-        const res = await API.post('/chatbot/chat', body);
+        const fallbackRes = hasAttachment
+          ? await API.post('/chatbot/chat', requestBody, { headers: { 'Content-Type': 'multipart/form-data' } })
+          : await API.post('/chatbot/chat', body);
+        const res = fallbackRes;
         const reply = res.data?.data?.reply || res.data?.reply || 'Sorry, I could not generate a response.';
 
         setMessages(prev => {
@@ -257,6 +283,42 @@ export default function AIChatBot() {
     } finally {
       setIsStreaming(false);
     }
+  };
+
+  const summarizeAttachedFile = () => {
+    if (!attachment) {
+      setError('Attach a file first, then tap Summarize.');
+      return;
+    }
+    sendMessage(SUMMARIZE_FILE_PROMPT);
+  };
+
+  const handleAttachmentSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+    ];
+    if (!allowed.includes(file.type)) {
+      setError('Only PDF, DOC, DOCX, TXT, and image files are supported.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError('File size must be 15 MB or less.');
+      e.target.value = '';
+      return;
+    }
+    setError('');
+    setAttachment(file);
+    e.target.value = '';
   };
 
   // ── Handle Enter Key ──
@@ -347,7 +409,15 @@ export default function AIChatBot() {
                   className={`chatbot-msg ${msg.role === 'user' ? 'user' : 'bot'}`}
                 >
                   {msg.role === 'user' ? (
-                    msg.content
+                    <div>
+                      <div>{msg.content}</div>
+                      {msg.attachment && (
+                        <div className="chatbot-attachment-chip user">
+                          {msg.attachment.type?.startsWith('image/') ? <ImageIcon size={12} /> : <FileText size={12} />}
+                          <span>{msg.attachment.name}</span>
+                        </div>
+                      )}
+                    </div>
                   ) : msg.content ? (
                     <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                   ) : (
@@ -379,6 +449,34 @@ export default function AIChatBot() {
 
           {/* Input Area */}
           <div className="chatbot-input-area">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp,.gif"
+              className="chatbot-file-input"
+              onChange={handleAttachmentSelect}
+              disabled={isStreaming}
+            />
+            <button
+              className="chatbot-attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isStreaming}
+              aria-label="Attach file"
+              title="Attach PDF, docs, or image"
+            >
+              <Paperclip size={16} />
+            </button>
+            <button
+              type="button"
+              className="chatbot-summarize-btn"
+              onClick={summarizeAttachedFile}
+              disabled={isStreaming || !attachment}
+              aria-label="Summarize attached file"
+              title={attachment ? 'Summarize this file in simple language' : 'Attach a file first'}
+            >
+              <Sparkles size={14} />
+              <span>Summarize</span>
+            </button>
             <textarea
               ref={inputRef}
               className="chatbot-input"
@@ -393,13 +491,29 @@ export default function AIChatBot() {
             <button
               className="chatbot-send-btn"
               onClick={() => sendMessage()}
-              disabled={!input.trim() || isStreaming}
+              disabled={(!input.trim() && !attachment) || isStreaming}
               id="chatbot-send"
               aria-label="Send message"
             >
               <Send size={18} />
             </button>
           </div>
+          {attachment && (
+            <div className="chatbot-attachment-preview">
+              <span className="chatbot-attachment-chip">
+                {attachment.type?.startsWith('image/') ? <ImageIcon size={12} /> : <FileText size={12} />}
+                <span>{attachment.name}</span>
+              </span>
+              <button
+                type="button"
+                className="chatbot-remove-attachment"
+                onClick={() => setAttachment(null)}
+                disabled={isStreaming}
+              >
+                Remove
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>

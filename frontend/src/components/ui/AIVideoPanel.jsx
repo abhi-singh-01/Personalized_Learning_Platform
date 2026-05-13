@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FileText, BookOpen, List, Loader2, Copy, Check, Download, ArrowRight, AlertCircle, Map, Clock, CheckCircle2, BookMarked } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { FileText, BookOpen, List, Loader2, Copy, Check, Download, ArrowRight, AlertCircle, Map, Clock, CheckCircle2, BookMarked, Sparkles } from 'lucide-react';
 import useApi from '../../hooks/useApi';
 
 export default function AIVideoPanel({ materialId, materialTitle }) {
@@ -18,23 +18,35 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     } catch { return null; }
   };
 
-  const handleTranscribe = async () => {
+  const requestTranscription = async ({ switchToTranscriptTab = true } = {}) => {
     setLoading(l => ({ ...l, transcribe: true }));
     setError('');
     try {
       const res = await api.post('/ai/transcribe/' + materialId);
       setTranscript(res.data);
-      setActiveTab('transcript');
+      if (switchToTranscriptTab) setActiveTab('transcript');
+      return res.data;
     } catch (err) {
       setError(err.response?.data?.message || 'Transcription failed. Please try again.');
+      return null;
     }
     setLoading(l => ({ ...l, transcribe: false }));
   };
 
-  const handleGenerateNotes = async () => {
+  const handleTranscribe = async () => {
+    await requestTranscription({ switchToTranscriptTab: true });
+  };
+
+  const ensureTranscript = async () => {
     const existing = transcript || await fetchExisting();
+    if (existing?.translatedText) return existing;
+    return requestTranscription({ switchToTranscriptTab: false });
+  };
+
+  const handleGenerateNotes = async () => {
+    const existing = await ensureTranscript();
     if (!existing?.translatedText) {
-      setError('Please transcribe the video first.');
+      setError('Transcription failed. Please try again.');
       return;
     }
     setLoading(l => ({ ...l, notes: true }));
@@ -50,9 +62,9 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   };
 
   const handleExtractSyllabus = async () => {
-    const existing = transcript || await fetchExisting();
+    const existing = await ensureTranscript();
     if (!existing?.translatedText) {
-      setError('Please transcribe the video first.');
+      setError('Transcription failed. Please try again.');
       return;
     }
     setLoading(l => ({ ...l, syllabus: true }));
@@ -68,9 +80,9 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   };
 
   const handleGenerateRoadmap = async () => {
-    const existing = transcript || await fetchExisting();
+    const existing = await ensureTranscript();
     if (!existing?.translatedText) {
-      setError('Please transcribe the video first.');
+      setError('Transcription failed. Please try again.');
       return;
     }
     setLoading(l => ({ ...l, roadmap: true }));
@@ -138,8 +150,21 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     doc.save(`${materialTitle || 'notes'}-study-notes.pdf`);
   };
 
-  // Load existing transcript on first render
-  useState(() => { fetchExisting(); });
+  // Load existing transcript and auto-start transcription for newly opened videos.
+  useEffect(() => {
+    let mounted = true;
+    const init = async () => {
+      setTranscript(null);
+      setError('');
+      const existing = await fetchExisting();
+      if (!mounted) return;
+      if (!existing?.translatedText) {
+        await requestTranscription({ switchToTranscriptTab: false });
+      }
+    };
+    init();
+    return () => { mounted = false; };
+  }, [materialId]);
 
   const isAnyLoading = loading.transcribe || loading.notes || loading.syllabus || loading.roadmap;
 
@@ -152,6 +177,14 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
 
   return (
     <div className="card mt-4">
+      {loading.transcribe && (
+        <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm flex items-center gap-2">
+          <Loader2 size={16} className="animate-spin" />
+          <span className="font-medium">Auto-transcribing video...</span>
+          <span className="text-blue-600/80 dark:text-blue-300/80">AI is preparing transcript for notes, syllabus, and roadmap.</span>
+        </div>
+      )}
+
       {/* AI Action Buttons */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button
@@ -159,7 +192,7 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
           disabled={isAnyLoading}
           className="btn-primary text-sm flex items-center gap-1.5 px-4 py-2"
         >
-          {loading.transcribe ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+          {loading.transcribe ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
           {loading.transcribe ? 'Transcribing...' : '📝 Transcribe'}
         </button>
         <button

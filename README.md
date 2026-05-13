@@ -6,28 +6,31 @@ An **AI-powered full-stack Learning Management System** that delivers personaliz
 
 ## ✨ Features
 
-### 👨‍🎓 Student
-- Browse and enroll in courses
-- View course materials (videos, PDFs, documents)
-- Attempt teacher-created quizzes with instant feedback
+### Learner
+- Browse and enroll in courses (free or paid via Razorpay / mock checkout)
+- View course materials (YouTube, uploaded video, PDF, PPT, articles)
+- Attempt educator-created quizzes with instant feedback
 - Take AI-generated **Practice Quizzes** (no repeated questions)
 - Generate a personalized **AI Study Plan** based on goals, available time, and weak topics
+- **AI from lectures:** transcript, notes, syllabus, and learning roadmap from video materials (Gemini)
+- **Course-aware AI chat** with optional attachments
 - Track learning progress, streaks, and engagement scores
-- Receive AI **Personalized Feedback** on performance
+- Live class rooms (Socket.io), payment history, reviews
 
-### 👩‍🏫 Teacher
-- Create, edit, and manage courses
-- Upload course materials (supports file upload via Multer)
+### Educator
+- Create, edit, and manage courses; coupons; earnings and payouts (Razorpay)
+- Upload course materials (Multer; optional **S3/R2** for durable storage in production)
 - Create quizzes manually with multiple-choice questions
-- View detailed **Student Analytics** (scores, engagement, weak topics)
-- Monitor per-student progress across enrolled courses
+- View detailed **Learner Analytics** (scores, engagement, weak topics)
+- Live lectures and live class manager
 
-### 🛡️ Admin
+### Admin
 - Full **Admin Dashboard** with platform-wide user and course management
-- View **Platform Analytics** (charts via Recharts)
+- **Platform Analytics**, offers, UI config, feature flags
+- **Live class monitor**, **audit logs**, **content moderation**
 - Toggle **Maintenance Mode** to lock the platform for non-admins
 - Manage global settings including Gemini AI API key and AI feature toggle
-- Manage all users (promote/demote roles, delete accounts)
+- Manage all users (roles, delete accounts)
 
 ---
 
@@ -41,7 +44,7 @@ An **AI-powered full-stack Learning Management System** that delivers personaliz
 | **JWT (jsonwebtoken)** | Authentication & authorization |
 | **bcryptjs** | Password hashing |
 | **Google Gemini AI** (`gemini-2.5-flash`) | Study plans, quizzes, feedback |
-| **Multer** | File uploads (course materials) |
+| **Multer** (+ optional **AWS S3** client) | File uploads; durable object storage when configured |
 | **Helmet** | HTTP security headers |
 | **express-rate-limit** | API rate limiting |
 | **express-validator** | Request validation |
@@ -164,6 +167,12 @@ JWT_EXPIRES_IN=7d
 GEMINI_API_KEY=your_google_gemini_api_key
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
+
+# Optional: durable uploads (see “Durable uploads” below)
+# AWS_REGION=us-east-1
+# AWS_S3_BUCKET=
+# AWS_ACCESS_KEY_ID=
+# AWS_SECRET_ACCESS_KEY=
 ```
 
 Start the backend server:
@@ -207,18 +216,25 @@ The app will be available at `http://localhost:5173`.
 
 | Prefix | Description |
 |---|---|
-| `POST /api/auth/register` | Register a new user (student/teacher) |
+| `POST /api/auth/register` | Register a new user (`learner` or `educator`) |
 | `POST /api/auth/login` | Login and receive a JWT |
 | `GET/POST /api/courses` | List or create courses |
 | `GET/POST /api/materials` | Fetch or upload course materials |
 | `GET/POST /api/quizzes` | Fetch or create quizzes |
-| `GET/POST /api/progress` | Track & update student progress |
+| `GET/POST /api/progress` | Track & update learner progress |
 | `POST /api/ai/study-plan` | Generate an AI study plan |
-| `POST /api/ai/quiz` | Generate an AI practice quiz |
+| `POST /api/ai/generate-quiz` | Generate an AI practice quiz |
 | `POST /api/ai/feedback` | Get AI personalized feedback |
-| `GET /api/analytics` | Fetch analytics data |
-| `GET /api/users` | User management |
+| `POST /api/ai/transcribe/:materialId` | Transcribe / enrich video material (educator) |
+| `GET /api/ai/transcript/:materialId` | Fetch stored transcript / notes / syllabus |
+| `GET/POST /api/payments/*` | Checkout, verify, webhooks, coupons, refunds |
+| `GET/POST /api/live-classes/*` | Live sessions (Socket.io) |
+| `POST /api/chatbot/chat` | Learner AI tutor (course context) |
+| `GET /api/notifications` | In-app notifications |
+| `GET/POST /api/reviews` | Course reviews |
+| `GET /api/audit-logs` | Admin audit trail |
 | `GET/PUT /api/admin/*` | Admin-only platform management |
+| `GET /health` | **Uptime check** (no DB required; use on Render) |
 
 All protected routes require a `Bearer <token>` Authorization header.
 
@@ -276,9 +292,10 @@ All AI features use the `gemini-2.5-flash` model and are togglable by the admin.
 
 | Role | Access |
 |---|---|
-| `student` | Courses, materials, quizzes, study plans, AI features, own progress |
-| `teacher` | All student access + create/manage courses, materials, quizzes, view student analytics |
-| `admin` | Full platform access + user management, platform analytics, settings, maintenance mode |
+| `learner` | Default student experience: courses, materials, quizzes, AI, payments, live classes |
+| `educator` | Course/material/quiz management, learner analytics, coupons, earnings, live teaching |
+| `admin` | Full platform access + user management, analytics, settings, maintenance mode |
+| `student` / `teacher` | Legacy enum values (migration path); prefer **learner** / **educator** for new accounts |
 
 ---
 
@@ -314,6 +331,7 @@ All AI features use the `gemini-2.5-flash` model and are togglable by the admin.
 ```bash
 npm run dev    # Start with nodemon (auto-reload)
 npm start      # Start in production mode
+npm test       # Smoke tests (no Mongo required for /health)
 npm run seed   # Seed the database with sample data
 ```
 
@@ -323,6 +341,42 @@ npm run dev      # Start Vite dev server
 npm run build    # Build for production
 npm run preview  # Preview the production build
 ```
+
+---
+
+## 🧪 CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` or `master`:
+
+- **backend:** `npm ci` + `npm test`
+- **frontend:** `npm ci` + `npm run build`
+
+---
+
+## 📦 Durable uploads (S3 / R2 / MinIO)
+
+On hosts with an **ephemeral filesystem** (e.g. Render free web instances), files under `/uploads` can disappear after a restart. When these variables are set, new course material uploads are copied to your bucket and the **public HTTPS URL** is stored on the `Material` document (the UI already supports absolute `fileUrl`s):
+
+| Variable | Purpose |
+|---|---|
+| `AWS_S3_BUCKET` | Bucket name |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | API credentials |
+| `AWS_REGION` | Region (default `us-east-1` if omitted) |
+| `AWS_S3_ENDPOINT` | Optional; set for **Cloudflare R2**, MinIO, LocalStack (enables path-style access) |
+| `AWS_S3_PUBLIC_URL_BASE` | Optional; public CDN or R2 dev URL prefix for object URLs and delete key parsing |
+
+Implementation: `backend/src/services/storageService.js` (used from `materialController`).
+
+---
+
+## 🛣️ Product roadmap (next implementations)
+
+Suggested order to deepen the product (not yet built as full features in this repo):
+
+1. **Email / push** — wire `Notification.channel` beyond `in_app` (transactional email for class start, payment, digest).
+2. **Completion credentials** — PDF certificate or badge when course + quiz thresholds pass.
+3. **Adaptive path** — recommend next lessons / practice from aggregate quiz + transcript signals.
+4. **Spaced repetition** — review deck from transcripts or weak-topic quizzes.
 
 ---
 

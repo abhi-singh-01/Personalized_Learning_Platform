@@ -5,6 +5,8 @@ const connectDB = require('./src/config/db');
 const { PORT } = require('./src/config/env');
 const { isOriginAllowed } = require('./src/config/corsOrigins');
 const initializeSocket = require('./src/services/socketService');
+const startPayoutCron = require('./src/services/payoutCron');
+const startFailedPaymentRetentionCron = require('./src/services/failedPaymentRetentionCron');
 
 connectDB().then(() => {
   // Create HTTP server from Express app
@@ -29,6 +31,9 @@ connectDB().then(() => {
 
   // Initialize socket event handlers
   initializeSocket(io);
+
+  startPayoutCron();
+  startFailedPaymentRetentionCron();
 
   server.listen(port, () => {
     console.log(`Server running on port ${port}`);
