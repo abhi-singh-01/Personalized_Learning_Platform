@@ -331,7 +331,7 @@ All AI features use the `gemini-2.5-flash` model and are togglable by the admin.
 ```bash
 npm run dev    # Start with nodemon (auto-reload)
 npm start      # Start in production mode
-npm test       # Smoke tests (no Mongo required for /health)
+npm test       # Health checks + materials API integration (MongoDB Memory Server; use `npm ci` first)
 npm run seed   # Seed the database with sample data
 ```
 
@@ -340,6 +340,8 @@ npm run seed   # Seed the database with sample data
 npm run dev      # Start Vite dev server
 npm run build    # Build for production
 npm run preview  # Preview the production build
+npx playwright install   # One-time: browsers for e2e
+npm run test:e2e          # Playwright smoke (CI skips unless PLAYWRIGHT_RUN=1)
 ```
 
 ---

@@ -2,12 +2,26 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
-import Loading from '../../components/ui/Loading';
 import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, X } from 'lucide-react';
 import API from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
 
 const JoditEditor = lazy(() => import('jodit-react'));
+
+function resolveMaterialUrl(url) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (!url.startsWith('/')) return url;
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+  if (apiBase.startsWith('http')) {
+    try {
+      return `${new URL(apiBase).origin}${url}`;
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
 
 export default function UploadMaterial() {
   usePageTitle('Upload Material');
@@ -19,6 +33,8 @@ export default function UploadMaterial() {
   const [saving, setSaving] = useState(false);
   const [courseName, setCourseName] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [editingFileUrl, setEditingFileUrl] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const editor = useRef(null);
@@ -74,6 +90,7 @@ export default function UploadMaterial() {
       setForm({ title: '', description: '', type: 'youtube', url: '', content: '' });
       setFile(null);
       setEditingId(null);
+      setEditingFileUrl(null);
       setUploadProgress(0);
       setIsUploading(false);
       loadMaterials();
@@ -86,29 +103,42 @@ export default function UploadMaterial() {
 
   const startEdit = (m) => {
     setEditingId(m._id);
+    const ytUrl =
+      m.type === 'youtube'
+        ? (m.url || (m.videoId ? `https://www.youtube.com/watch?v=${m.videoId}` : ''))
+        : '';
     setForm({
       title: m.title || '',
       description: m.description || '',
       type: m.type || 'youtube',
-      url: m.url || `https://youtube.com/watch?v=${m.videoId}` || '',
+      url: ytUrl,
       content: m.content || ''
     });
+    setEditingFileUrl(m.fileUrl && ['video', 'pdf', 'ppt'].includes(m.type) ? m.fileUrl : null);
     setFile(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
+    setEditingFileUrl(null);
     setForm({ title: '', description: '', type: 'youtube', url: '', content: '' });
     setFile(null);
   };
 
   const remove = async (id) => {
-    if (!confirm('Delete this material?')) return;
+    const m = materials.find((x) => x._id === id);
+    if (!confirm(`Delete “${m?.title || 'this material'}”? Learners lose access. This cannot be undone.`)) return;
+    setDeletingId(id);
     try {
       await api.del('/materials/' + id);
+      if (editingId === id) cancelEdit();
       loadMaterials();
-    } catch (e) { }
+    } catch (e) {
+      alert(e.response?.data?.message || e.message || 'Could not delete material');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const icons = { youtube: Play, pdf: FileText, ppt: Presentation, video: Video };
@@ -170,7 +200,28 @@ export default function UploadMaterial() {
 
           {(form.type === 'pdf' || form.type === 'ppt' || form.type === 'video') && (
             <div>
-              <label className="block text-sm font-medium mb-1.5">Upload File</label>
+              <label className="block text-sm font-medium mb-1.5">
+                {form.type === 'video' ? 'Video file' : 'Upload file'}
+                {editingId ? <span className="font-normal text-gray-400"> (optional when editing)</span> : null}
+              </label>
+              {editingId && editingFileUrl && (
+                <div className="mb-3 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/90 dark:bg-emerald-950/30 px-3 py-2.5 text-sm text-emerald-950 dark:text-emerald-100/95">
+                  <p className="font-medium text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-300/90 mb-1">
+                    {form.type === 'video' ? 'Current video' : 'Current file'}
+                  </p>
+                  <a
+                    href={resolveMaterialUrl(editingFileUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    Open / preview in new tab
+                  </a>
+                  <p className="text-xs text-emerald-800/75 dark:text-emerald-200/60 mt-2">
+                    Leave the picker empty to keep this file. Choose a new file only to replace it (old file is removed from storage when save succeeds).
+                  </p>
+                </div>
+              )}
               <div className="relative">
                 <input
                   type="file"
@@ -245,36 +296,57 @@ export default function UploadMaterial() {
           )}
 
           <button type="submit" disabled={saving || (form.type === 'article' && !form.content)} className="btn-primary">
-            {saving ? (isUploading ? `Uploading... ${uploadProgress}%` : 'Saving...') : editingId ? 'Save Changes' : 'Upload Material'}
+            {saving
+              ? (isUploading ? `Uploading... ${uploadProgress}%` : 'Saving...')
+              : editingId
+                ? (file && (form.type === 'video' || form.type === 'pdf' || form.type === 'ppt') ? 'Save & replace file' : 'Save changes')
+                : 'Upload material'}
           </button>
         </form>
       </Card>
 
       <Card>
-        <h2 className="text-lg font-semibold mb-4">Current Materials ({materials.length})</h2>
+        <h2 className="text-lg font-semibold mb-1">Course materials ({materials.length})</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Edit titles, YouTube links, or articles anytime. For uploaded videos, PDFs, and slides you can replace the file or delete the item.
+        </p>
         {materials.length === 0 ? (
           <p className="text-gray-400 text-center py-6 text-sm">No materials uploaded yet</p>
         ) : (
           <div className="space-y-2">
             {materials.map((m) => {
               const Icon = icons[m.type] || FileText;
+              const busy = deletingId === m._id;
               return (
-                <div key={m._id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary-600">
+                <div key={m._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary-600 shrink-0">
                       <Icon size={16} />
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{m.title}</p>
-                      <p className="text-xs text-gray-400 capitalize">{m.type}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{m.title}</p>
+                      <p className="text-xs text-gray-400 capitalize">{m.type.replace('_', ' ')}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => startEdit(m)} className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg">
-                      <Edit3 size={16} />
+                  <div className="flex items-center gap-2 shrink-0 pl-11 sm:pl-0">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(m)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50"
+                      title="Edit material or replace video file"
+                    >
+                      <Edit3 size={14} />
+                      <span className="hidden sm:inline">Edit</span>
                     </button>
-                    <button onClick={() => remove(m._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                      <Trash2 size={16} />
+                    <button
+                      type="button"
+                      onClick={() => remove(m._id)}
+                      disabled={busy}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-50"
+                      title="Delete this material permanently"
+                    >
+                      <Trash2 size={14} />
+                      <span className="hidden sm:inline">{busy ? '…' : 'Delete'}</span>
                     </button>
                   </div>
                 </div>

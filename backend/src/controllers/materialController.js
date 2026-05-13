@@ -7,6 +7,8 @@ const { extractYouTubeId } = require('../utils/helpers');
 const { updateLearnerStreak } = require('../services/analyticsService');
 const storageService = require('../services/storageService');
 
+const FILE_TYPES = new Set(['pdf', 'ppt', 'video']);
+
 exports.create = async (req, res, next) => {
   try {
     const course = await Course.findOne({ _id: req.body.course, educator: req.user._id });
@@ -65,10 +67,27 @@ exports.update = async (req, res, next) => {
     if (material.course.educator.toString() !== req.user._id.toString())
       throw new AppError('Not authorized', 403);
 
+    const prevType = material.type;
+    const prevFileUrl = material.fileUrl || '';
+
     const keys = ['title', 'description', 'type', 'url', 'content'];
     keys.forEach(k => {
       if (req.body[k] !== undefined) material[k] = req.body[k];
     });
+
+    const newType = material.type;
+    if (FILE_TYPES.has(prevType) && !FILE_TYPES.has(newType) && prevFileUrl) {
+      await storageService.deleteMaterialAtUrlIfCloud(prevFileUrl);
+      await storageService.unlinkLocalUploadsPath(prevFileUrl);
+      material.fileUrl = '';
+    }
+    if (newType === 'youtube' && prevType !== 'youtube') {
+      material.fileUrl = '';
+    }
+    if (FILE_TYPES.has(newType)) {
+      material.videoId = '';
+      material.url = '';
+    }
 
     if (material.type === 'youtube' && req.body.url) {
       material.videoId = extractYouTubeId(req.body.url);

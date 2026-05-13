@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/auth/ErrorBoundary';
 import ApiConfigWarning from './components/ui/ApiConfigWarning';
+import { roleHomeSegment, isLearnerRole } from './utils/rolePaths';
 
 // ── Only the shell loads eagerly — everything else is lazy ──
 const AppLayout = lazy(() => import('./components/layout/AppLayout'));
@@ -90,13 +91,13 @@ export default function App() {
   // Smart redirect: logged-in user visiting /login?role=educator goes to /become-educator
   const LoginRedirect = () => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('role') === 'educator' && user?.role === 'learner') {
+    if (params.get('role') === 'educator' && isLearnerRole(user?.role)) {
       return <Navigate to="/become-educator" replace />;
     }
     if (user?.role === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
     }
-    return <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />;
+    return <Navigate to={`/${roleHomeSegment(user.role)}/dashboard`} replace />;
   };
 
   return (
@@ -120,7 +121,7 @@ export default function App() {
           path="/register"
           element={
             !loading && user ? (
-              <Navigate to={'/' + (user.role || 'learner') + '/dashboard'} replace />
+              <Navigate to={`/${roleHomeSegment(user.role)}/dashboard`} replace />
             ) : (
               <Register />
             )

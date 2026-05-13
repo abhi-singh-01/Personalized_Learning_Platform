@@ -1,13 +1,14 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { roleHomeSegment, roleMatchesAllowed } from '../../utils/rolePaths';
 
 /**
  * ProtectedRoute — guards authenticated routes with role checks.
  *
  * Usage:
  *   <ProtectedRoute>               → any authenticated user
- *   <ProtectedRoute allowedRoles={['learner']}>  → only learners
- *   <ProtectedRoute allowedRoles={['educator']}> → only educators
+ *   <ProtectedRoute allowedRoles={['learner']}>  → learners (and legacy student)
+ *   <ProtectedRoute allowedRoles={['educator']}> → educators (and legacy teacher)
  */
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
@@ -35,8 +36,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   }
 
   // ── Role mismatch → redirect to correct dashboard ──
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    const correctPath = `/${user.role}/dashboard`;
+  if (allowedRoles && !roleMatchesAllowed(user.role, allowedRoles)) {
+    const correctPath = `/${roleHomeSegment(user.role)}/dashboard`;
     return <Navigate to={correctPath} replace />;
   }
 

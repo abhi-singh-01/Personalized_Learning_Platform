@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { isEducatorRole } from '../../utils/rolePaths';
 import {
   LayoutDashboard, BookOpen, Brain, User, PlusCircle, Users,
   TicketPercent, Radio, IndianRupee, Layout, Zap, FileText,
@@ -41,10 +42,10 @@ export default function Sidebar() {
   const { user } = useAuth();
 
   let links = learnerLinks;
-  if (user?.role === 'educator') links = educatorLinks;
+  if (isEducatorRole(user?.role)) links = educatorLinks;
   else if (user?.role === 'admin') links = adminLinks;
 
-  const roleName = user?.role === 'admin' ? 'Admin' : (user?.role === 'educator' ? 'Educator' : 'Learner');
+  const roleName = user?.role === 'admin' ? 'Admin' : (isEducatorRole(user?.role) ? 'Educator' : 'Learner');
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-white/90 dark:bg-[#0B1220]/80 backdrop-blur-xl border-r border-gray-200 dark:border-white/10 min-h-[calc(100vh-4rem)] transition-all duration-300 shadow-[0_1px_0_rgba(255,255,255,0.04)]">

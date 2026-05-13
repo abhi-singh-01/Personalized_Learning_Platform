@@ -8,6 +8,7 @@ import {
   LayoutDashboard, PlusCircle, Users, ChevronDown, AlertTriangle, X, Menu, TicketPercent
 } from 'lucide-react';
 import { getInitials } from '../../utils/helpers';
+import { isEducatorRole } from '../../utils/rolePaths';
 
 const learnerQuickLinks = [
   { to: '/learner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -36,7 +37,7 @@ export default function Navbar() {
   const location = useLocation();
   const profileRef = useRef(null);
 
-  const isEducator = user?.role === 'educator';
+  const isEducator = isEducatorRole(user?.role);
   const links = isEducator
     ? educatorQuickLinks
     : user?.role === 'admin'

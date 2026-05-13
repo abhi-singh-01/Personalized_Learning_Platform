@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, ArrowRight, Phone, MapPin, CheckCircle2 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { roleHomeSegment } from '../../utils/rolePaths';
 
 const locationData = {
   India: {
@@ -73,7 +74,7 @@ export default function CompleteProfile() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
-      nav(`/${user?.role || 'learner'}/dashboard`);
+      nav(`/${roleHomeSegment(user?.role)}/dashboard`);
     } catch (err) {
       setError(err.message || 'Failed to complete profile');
     } finally { setLoading(false); }

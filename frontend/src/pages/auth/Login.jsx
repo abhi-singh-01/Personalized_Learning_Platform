@@ -5,6 +5,7 @@ import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
+import { roleHomeSegment, isLearnerRole, isEducatorRole } from '../../utils/rolePaths';
 
 function GoogleIcon({ size = 20 }) {
   return (
@@ -42,14 +43,14 @@ export default function Login() {
       if (user.role === 'admin') {
         toast.success('Welcome back, Administrator!');
         nav('/admin/dashboard', { replace: true });
-      } else if (isEducatorFlow && user.role === 'learner') {
+      } else if (isEducatorFlow && isLearnerRole(user.role)) {
         // If user came from educator flow but is a learner, guide them — do NOT auto-upgrade
         toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
         nav('/become-educator', { replace: true });
       } else {
-        const greeting = user.role === 'educator' ? 'Educator' : (user.name || 'Learner');
+        const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
         toast.success(`Welcome back, ${greeting}!`);
-        nav(`/${user.role || 'learner'}/dashboard`, { replace: true });
+        nav(`/${roleHomeSegment(user.role)}/dashboard`, { replace: true });
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
@@ -66,13 +67,13 @@ export default function Login() {
       const selectedRole = isEducatorFlow ? 'educator' : 'learner';
       const user = await googleLogin(credential, selectedRole);
       // If existing user logged in as learner via educator flow — guide them, don't auto-upgrade
-      if (isEducatorFlow && user.role === 'learner') {
+      if (isEducatorFlow && isLearnerRole(user.role)) {
         toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
         nav('/become-educator', { replace: true });
       } else {
-        const greeting = user.role === 'educator' ? 'Educator' : (user.name || 'Learner');
+        const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
         toast.success(`Welcome back, ${greeting}!`);
-        nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+        nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
       }
     },
     [googleLogin, isEducatorFlow, nav, toast]

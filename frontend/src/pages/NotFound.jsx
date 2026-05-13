@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Home, ArrowLeft, GraduationCap } from 'lucide-react';
 import usePageTitle from '../hooks/usePageTitle';
+import { roleHomeSegment } from '../utils/rolePaths';
 
 export default function NotFound() {
   usePageTitle('Page Not Found');
@@ -38,7 +39,7 @@ export default function NotFound() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
-            to={user ? `/${user.role}/dashboard` : '/'}
+            to={user ? `/${roleHomeSegment(user.role)}/dashboard` : '/'}
             className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6 py-3 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
           >
             <Home size={16} />

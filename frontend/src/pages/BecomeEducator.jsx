@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
 import { useToast } from '../context/ToastContext';
+import { isEducatorRole } from '../utils/rolePaths';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import {
   GraduationCap, ArrowRight, Users, Brain, Globe, TrendingUp,
@@ -231,7 +232,7 @@ export default function BecomeEducator() {
 
   const ctaAction = () => {
     if (!user) nav('/register?role=educator');
-    else if (user.role === 'educator') nav('/educator/dashboard');
+    else if (isEducatorRole(user.role)) nav('/educator/dashboard');
     else {
       // Show confirmation modal instead of auto-upgrading
       setSwitchError('');
@@ -265,7 +266,7 @@ export default function BecomeEducator() {
 
   const ctaLabel = !user
     ? 'Get started'
-    : user.role === 'educator'
+    : isEducatorRole(user.role)
     ? 'Go to Dashboard'
     : 'Start teaching';
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { roleHomeSegment, isLearnerRole } from '../../utils/rolePaths';
 import { useTheme } from '../../context/ThemeContext';
 import {
   GraduationCap, Sun, Moon, LogIn, Search, Menu, X,
@@ -95,7 +96,7 @@ export default function PublicNavbar() {
   const { user } = useAuth();
   const { dark, toggle } = useTheme();
   const location = useLocation();
-  const role = user?.role;
+  const pathRole = roleHomeSegment(user?.role);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
   const exploreRef = useRef(null);
@@ -155,7 +156,7 @@ export default function PublicNavbar() {
         <div className="hidden lg:flex items-center gap-5">
           {navLink('/features', 'Features')}
           {navLink('/insights', 'AI Insights')}
-          {user && navLink(`/${role}/courses`, 'My Learning')}
+          {user && navLink(`/${pathRole}/courses`, 'My Learning')}
         </div>
 
         {/* Search (desktop) */}
@@ -164,7 +165,7 @@ export default function PublicNavbar() {
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
           {/* Become Educator CTA */}
-          {(!user || user.role === 'learner') && (
+          {(!user || isLearnerRole(user.role)) && (
             <Link to="/become-educator" className="hidden lg:inline-flex text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30">
               Become an Educator
             </Link>
@@ -176,7 +177,7 @@ export default function PublicNavbar() {
           </button>
 
           {user ? (
-            <Link to={`/${role}/dashboard`}
+            <Link to={`/${pathRole}/dashboard`}
               className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-4 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all">
               <UserCircle2 size={16} /> Dashboard
             </Link>
@@ -219,15 +220,15 @@ export default function PublicNavbar() {
               )}
               <Link to="/features" onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">Features</Link>
               <Link to="/insights" onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">AI Insights</Link>
-              {user && <Link to={`/${role}/courses`} onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">My Learning</Link>}
-              {(!user || user.role === 'learner') && (
+              {user && <Link to={`/${pathRole}/courses`} onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">My Learning</Link>}
+              {(!user || isLearnerRole(user.role)) && (
                 <Link to="/become-educator" onClick={closeMobile} className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20">Become an Educator</Link>
               )}
             </div>
 
             <div className="pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2">
               {user ? (
-                <Link to={`/${role}/dashboard`} onClick={closeMobile}
+                <Link to={`/${pathRole}/dashboard`} onClick={closeMobile}
                   className="flex-1 text-center text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 py-2.5 rounded-full shadow-md">
                   Go to Dashboard
                 </Link>

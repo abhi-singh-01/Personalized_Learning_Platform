@@ -5,6 +5,7 @@ import { GraduationCap, ArrowRight, Phone, MapPin } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
+import { roleHomeSegment } from '../../utils/rolePaths';
 
 const locationData = {
   India: {
@@ -96,7 +97,7 @@ export default function Register() {
       const selectedRole = isEducatorFlow ? 'educator' : 'learner';
       const user = await register({ ...form, role: selectedRole });
       toast.success(isEducatorFlow ? 'Educator account created! Welcome aboard 🎉' : 'Account created successfully! Welcome aboard 🎉');
-      nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+      nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed';
       setError(msg);
@@ -110,7 +111,7 @@ export default function Register() {
       const selectedRole = isEducatorFlow ? 'educator' : 'learner';
       const user = await googleLogin(credential, selectedRole);
       toast.success(isEducatorFlow ? 'Educator account ready — welcome!' : 'Welcome — your account is ready!');
-      nav(`/${user.role || selectedRole}/dashboard`, { replace: true });
+      nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
     },
     [googleLogin, isEducatorFlow, nav, toast]
   );

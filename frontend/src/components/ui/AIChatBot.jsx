@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { isLearnerRole } from '../../utils/rolePaths';
 import API from '../../api/axios';
 import {
   MessageCircle,
@@ -72,7 +73,7 @@ export default function AIChatBot() {
 
   // ── Detect course context from URL ──
   useEffect(() => {
-    if (!user || user.role !== 'learner') return;
+    if (!user || !isLearnerRole(user.role)) return;
     const match = location.pathname.match(/\/learner\/courses\/([a-f0-9]{24})/);
     if (match) {
       setCourseContext({ id: match[1] });
@@ -139,7 +140,7 @@ export default function AIChatBot() {
   }, [isOpen, loadSuggestions]);
 
   // ── Only show for learners — MUST be after all hooks ──
-  if (!user || user.role !== 'learner') return null;
+  if (!user || !isLearnerRole(user.role)) return null;
 
   // ── Send Message — tries streaming first, falls back to non-streaming ──
   const sendMessage = async (text) => {
