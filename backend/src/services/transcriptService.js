@@ -1,7 +1,88 @@
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
+const os = require('os');
+const http = require('http');
+const https = require('https');
+const { URL } = require('url');
 const { getAI, MODEL } = require('./aiService');
 const { createPartFromUri } = require('@google/genai');
+
+/**
+ * Download a remote video to a temp file (S3/CDN URLs). Follows a few redirects.
+ */
+function downloadUrlToFile(urlStr, destPath, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    if (redirectsLeft < 0) {
+      reject(new Error('Too many redirects while downloading video'));
+      return;
+    }
+    let parsed;
+    try {
+      parsed = new URL(urlStr);
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    const lib = parsed.protocol === 'https:' ? https : http;
+    lib
+      .get(urlStr, (res) => {
+        if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+          res.resume();
+          const next = new URL(res.headers.location, urlStr).href;
+          resolve(downloadUrlToFile(next, destPath, redirectsLeft - 1));
+          return;
+        }
+        if (res.statusCode >= 400) {
+          reject(new Error(`Could not download video (HTTP ${res.statusCode})`));
+          return;
+        }
+        const file = fs.createWriteStream(destPath);
+        res.pipe(file);
+        file.on('finish', () => file.close((err) => (err ? reject(err) : resolve())));
+        file.on('error', reject);
+      })
+      .on('error', reject);
+  });
+}
+
+/**
+ * Resolve material.fileUrl to a local path Gemini can read.
+ * - https? URLs → temp file (required for S3 / CDN after local file was removed)
+ * - /uploads/... → backend/uploads/<basename> (ephemeral on many hosts)
+ */
+const resolveLocalVideoPathForTranscription = async (fileUrl) => {
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    throw new Error('Material has no file URL');
+  }
+  const trimmed = fileUrl.trim();
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    const ext = path.extname(new URL(trimmed).pathname) || '.mp4';
+    const dest = path.join(
+      os.tmpdir(),
+      `plp-transcribe-${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`
+    );
+    await downloadUrlToFile(trimmed, dest);
+    return {
+      localPath: dest,
+      cleanup: () => fsp.unlink(dest).catch(() => {}),
+    };
+  }
+
+  const basename = path.basename(trimmed.replace(/^\//, ''));
+  const localPath = path.join(__dirname, '../..', 'uploads', basename);
+
+  if (!fs.existsSync(localPath)) {
+    throw new Error(
+      'Video file is not on this server. Typical causes: the server restarted and wiped local disk (e.g. Render), ' +
+      'or the database still points at /uploads/... while the real file only exists in cloud storage. ' +
+      'Re-upload the video or ensure the material uses a full https file URL.'
+    );
+  }
+
+  return { localPath, cleanup: async () => {} };
+};
 
 /**
  * Upload a video file to Gemini Files API and wait until it's processed.
@@ -216,4 +297,5 @@ module.exports = {
   extractSyllabusFromTranscript,
   generateRoadmapFromTranscript,
   getMimeType,
+  resolveLocalVideoPathForTranscription,
 };

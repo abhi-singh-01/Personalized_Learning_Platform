@@ -8,8 +8,8 @@ const {
   extractSyllabusFromTranscript,
   generateRoadmapFromTranscript,
   getMimeType,
+  resolveLocalVideoPathForTranscription,
 } = require('../services/transcriptService');
-const path = require('path');
 
 /**
  * POST /api/ai/transcribe/:materialId
@@ -41,12 +41,12 @@ exports.transcribe = async (req, res, next) => {
     }
     await transcript.save();
 
-    // Resolve video file path
-    const videoPath = path.join(__dirname, '../../uploads', path.basename(material.fileUrl));
-    const mimeType = getMimeType(videoPath);
-
+    let cleanup = async () => {};
     try {
-      const result = await transcribeVideo(videoPath, mimeType);
+      const { localPath, cleanup: doCleanup } = await resolveLocalVideoPathForTranscription(material.fileUrl);
+      cleanup = doCleanup;
+      const mimeType = getMimeType(localPath);
+      const result = await transcribeVideo(localPath, mimeType);
       transcript.translatedText = result.transcript;
       transcript.language = result.language || 'en';
       transcript.status = 'completed';
@@ -58,6 +58,8 @@ exports.transcribe = async (req, res, next) => {
       transcript.error = aiError.message;
       await transcript.save();
       throw new AppError('Transcription failed: ' + aiError.message, 500);
+    } finally {
+      await cleanup();
     }
   } catch (err) { next(err); }
 };

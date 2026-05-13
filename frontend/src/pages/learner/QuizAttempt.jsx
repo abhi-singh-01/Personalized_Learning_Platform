@@ -2,9 +2,20 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
-import Badge from '../../components/ui/Badge';
-import { CheckCircle, XCircle, ArrowLeft, Trophy, Star, Sparkles } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, Sparkles, BookOpenCheck } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { readDraftJson, writeDraft, clearDraft, QUIZ_DRAFT_TTL_HOURS } from '../../utils/quizDraftStorage';
+
+const quizAttemptDraftKey = (quizId) => `plp_quiz_attempt:${quizId}`;
+
+function mainDraftMatchesServer(draft, qz) {
+  if (!draft || draft.v !== 1 || draft.phase !== 'main') return false;
+  if (!draft.quizSnapshot?.questions?.length || !qz?.questions?.length) return false;
+  if (draft.quizSnapshot.questions.length !== qz.questions.length) return false;
+  const serverUpd = qz.updatedAt != null ? String(qz.updatedAt) : '';
+  if ((draft.quizUpdatedAt || '') !== serverUpd) return false;
+  return true;
+}
 
 export default function QuizAttempt() {
   usePageTitle('Quiz');
@@ -20,11 +31,11 @@ export default function QuizAttempt() {
   const [isAdaptiveMode, setIsAdaptiveMode] = useState(false);
   const [adaptiveLoading, setAdaptiveLoading] = useState(false);
   const [adaptiveResult, setAdaptiveResult] = useState(null);
+  const [showSolutions, setShowSolutions] = useState(false);
 
   useEffect(() => {
-    // Basic randomization logic for options and questions
     const randomizeOptions = (questions) => {
-      return questions.map(q => {
+      return questions.map((q) => {
         const optionsCopy = [...q.options];
         const correctText = optionsCopy[q.correctAnswer];
         optionsCopy.sort(() => Math.random() - 0.5);
@@ -33,14 +44,62 @@ export default function QuizAttempt() {
       });
     };
 
+    const key = quizAttemptDraftKey(id);
+
     api.get('/quizzes/' + id).then((res) => {
       const qz = res.data;
-      if (qz && qz.questions) {
+      if (!qz) {
+        setQuiz(null);
+        return;
+      }
+
+      const draft = readDraftJson(key);
+
+      if (draft?.v === 1 && draft.phase === 'adaptive' && draft.quizSnapshot?.questions?.length) {
+        setQuiz({
+          ...qz,
+          title: draft.quizSnapshot.title || qz.title,
+          questions: draft.quizSnapshot.questions,
+        });
+        setAnswers(typeof draft.answers === 'object' && draft.answers ? draft.answers : {});
+        setIsAdaptiveMode(true);
+        return;
+      }
+
+      if (mainDraftMatchesServer(draft, qz)) {
+        setQuiz({
+          ...qz,
+          questions: draft.quizSnapshot.questions,
+        });
+        setAnswers(typeof draft.answers === 'object' && draft.answers ? draft.answers : {});
+        setIsAdaptiveMode(false);
+        return;
+      }
+
+      if (draft) clearDraft(key);
+
+      if (qz.questions) {
         qz.questions = randomizeOptions(qz.questions);
       }
       setQuiz(qz);
+      setIsAdaptiveMode(false);
+      setAnswers({});
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !quiz?.questions?.length) return;
+    const finished = Boolean(adaptiveResult) || (Boolean(result) && !isAdaptiveMode);
+    if (finished) return;
+
+    writeDraft(quizAttemptDraftKey(id), {
+      v: 1,
+      phase: isAdaptiveMode ? 'adaptive' : 'main',
+      quizUpdatedAt: quiz.updatedAt != null ? String(quiz.updatedAt) : '',
+      quizSnapshot: { title: quiz.title, questions: quiz.questions },
+      answers,
+    });
+  }, [id, quiz, answers, isAdaptiveMode, result, adaptiveResult]);
 
   const select = (qIndex, optIndex) => {
     if (result && !isAdaptiveMode) return;
@@ -66,12 +125,17 @@ export default function QuizAttempt() {
           if (isCorrect) correctCount++;
           return {
             question: q.question,
+            options: q.options,
+            selectedIndex: answers[i],
+            correctIndex: q.correctAnswer,
             explanation: q.explanation,
-            isCorrect
+            isCorrect,
           };
         });
         const score = Math.round((correctCount / activeQuiz.questions.length) * 100);
         setAdaptiveResult({ score, correctCount, totalQuestions: activeQuiz.questions.length, explanations });
+        setShowSolutions(false);
+        clearDraft(quizAttemptDraftKey(id));
       } else {
         // Standard Database Submit
         const orderedAnswers = activeQuiz.questions.map((_, i) => answers[i] ?? -1);
@@ -81,6 +145,8 @@ export default function QuizAttempt() {
           timeTaken: 0,
         });
         setResult(res.data);
+        setShowSolutions(false);
+        clearDraft(quizAttemptDraftKey(id));
       }
     } catch (e) {
       console.error(e);
@@ -92,10 +158,11 @@ export default function QuizAttempt() {
     setAdaptiveLoading(true);
 
     setTimeout(() => {
-      // Overwrite the rendering state with the new AI payload
+      clearDraft(quizAttemptDraftKey(id));
       setQuiz(adaptivePayload);
       setAnswers({});
       setIsAdaptiveMode(true);
+      setShowSolutions(false);
       setAdaptiveLoading(false);
     }, 1500); // Small dramatic pause
   };
@@ -119,7 +186,31 @@ export default function QuizAttempt() {
   const activeResult = isAdaptiveMode ? adaptiveResult : result;
 
   if (activeResult) {
-    const isLevelUpReady = !isAdaptiveMode && result.nextAdaptiveQuiz && result.score >= 80;
+    const isLevelUpReady = !isAdaptiveMode && result?.nextAdaptiveQuiz && result.score >= 80;
+
+    const solutionRows = (() => {
+      if (isAdaptiveMode && adaptiveResult?.explanations?.length) {
+        return adaptiveResult.explanations.map((e) => ({
+          question: e.question,
+          options: e.options,
+          selectedIndex: e.selectedIndex,
+          correctIndex: e.correctIndex,
+          explanation: e.explanation,
+          isCorrect: e.isCorrect,
+        }));
+      }
+      if (!isAdaptiveMode && result && quiz?.questions?.length) {
+        return quiz.questions.map((q, i) => ({
+          question: q.question,
+          options: q.options,
+          selectedIndex: answers[i],
+          correctIndex: q.correctAnswer,
+          explanation: q.explanation,
+          isCorrect: answers[i] === q.correctAnswer,
+        }));
+      }
+      return [];
+    })();
 
     return (
       <div className="max-w-2xl mx-auto space-y-6">
@@ -137,8 +228,24 @@ export default function QuizAttempt() {
             </p>
           </div>
 
-          <div className="flex justify-center gap-3">
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
             <Link to={-1} className="btn-secondary">Back to Course</Link>
+            {solutionRows.length > 0 && (
+              showSolutions ? (
+                <button type="button" onClick={() => setShowSolutions(false)} className="btn-secondary">
+                  Hide solutions
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowSolutions(true)}
+                  className="btn-primary inline-flex items-center justify-center gap-2"
+                >
+                  <BookOpenCheck size={18} aria-hidden />
+                  View solutions
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -167,26 +274,42 @@ export default function QuizAttempt() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {activeResult.explanations?.map((exp, i) => {
-            const isCorrect = isAdaptiveMode ? exp.isCorrect : result.answers?.[i]?.isCorrect;
-            return (
-              <div key={i} className={'card border-l-4 ' + (isCorrect ? 'border-l-green-500' : 'border-l-red-500')}>
+        {showSolutions && solutionRows.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Question review</h2>
+            {solutionRows.map((row, i) => (
+              <div key={i} className={'card border-l-4 ' + (row.isCorrect ? 'border-l-green-500' : 'border-l-red-500')}>
                 <div className="flex items-start gap-2 mb-2">
-                  {isCorrect ? (
+                  {row.isCorrect ? (
                     <CheckCircle size={20} className="text-green-500 flex-shrink-0 mt-0.5" />
                   ) : (
                     <XCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
                   )}
-                  <p className="font-medium text-sm">{exp.question}</p>
+                  <p className="font-medium text-sm">{row.question}</p>
                 </div>
-                {exp.explanation && (
-                  <p className="text-xs text-gray-500 ml-7">{exp.explanation}</p>
-                )}
+                <div className="ml-7 space-y-1.5 text-sm">
+                  <p className={row.isCorrect ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-200'}>
+                    <span className="font-medium text-gray-500 dark:text-gray-400">Your answer: </span>
+                    {typeof row.selectedIndex === 'number' && row.options
+                      ? `${String.fromCharCode(65 + row.selectedIndex)}. ${row.options[row.selectedIndex]}`
+                      : '—'}
+                  </p>
+                  <p className="text-emerald-700 dark:text-emerald-300">
+                    <span className="font-medium text-gray-500 dark:text-gray-400">Correct: </span>
+                    {typeof row.correctIndex === 'number' && row.options
+                      ? `${String.fromCharCode(65 + row.correctIndex)}. ${row.options[row.correctIndex]}`
+                      : '—'}
+                  </p>
+                  {row.explanation && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700 mt-2">
+                      {row.explanation}
+                    </p>
+                  )}
+                </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -231,10 +354,15 @@ export default function QuizAttempt() {
         </div>
       ))}
 
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-500">
-          {Object.keys(answers).length} / {quiz.questions.length} answered
-        </p>
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <div>
+          <p className="text-sm text-gray-500">
+            {Object.keys(answers).length} / {quiz.questions.length} answered
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-md">
+            Progress is saved on this device for {QUIZ_DRAFT_TTL_HOURS} hours; you can close the tab and resume later.
+          </p>
+        </div>
         <button
           onClick={submit}
           disabled={submitting || Object.keys(answers).length < quiz.questions.length}
