@@ -44,6 +44,7 @@ const LiveLecture = lazy(() => import('./pages/educator/LiveLecture'));
 const EducatorCoupons = lazy(() => import('./pages/educator/Coupons'));
 const LiveClassManager = lazy(() => import('./pages/educator/LiveClassManager'));
 const EarningsDashboard = lazy(() => import('./pages/educator/EarningsDashboard'));
+const CourseReviews = lazy(() => import('./pages/educator/CourseReviews'));
 
 // ── Admin pages ──
 const AdminLogin = lazy(() => import('./pages/auth/AdminLogin'));
@@ -58,6 +59,7 @@ const ContentModeration = lazy(() => import('./pages/admin/ContentModeration'));
 
 // ── Shared ──
 const Profile = lazy(() => import('./pages/Profile'));
+const Notifications = lazy(() => import('./pages/Notifications'));
 
 // ── Full-page loading skeleton ──
 const PageLoader = () => (
@@ -162,6 +164,7 @@ export default function App() {
           <Route path="/educator/courses/:id/edit" element={<ProtectedRoute allowedRoles={['educator']}><ManageCourse /></ProtectedRoute>} />
           <Route path="/educator/courses/:courseId/materials" element={<ProtectedRoute allowedRoles={['educator']}><UploadMaterial /></ProtectedRoute>} />
           <Route path="/educator/courses/:courseId/quizzes" element={<ProtectedRoute allowedRoles={['educator']}><CreateQuiz /></ProtectedRoute>} />
+          <Route path="/educator/courses/:courseId/reviews" element={<ProtectedRoute allowedRoles={['educator']}><CourseReviews /></ProtectedRoute>} />
           <Route path="/educator/learners" element={<ProtectedRoute allowedRoles={['educator']}><LearnerAnalytics /></ProtectedRoute>} />
           <Route path="/educator/courses/:courseId/live" element={<ProtectedRoute allowedRoles={['educator']}><LiveLecture /></ProtectedRoute>} />
           <Route path="/educator/coupons" element={<ProtectedRoute allowedRoles={['educator']}><EducatorCoupons /></ProtectedRoute>} />
@@ -179,6 +182,7 @@ export default function App() {
           <Route path="/admin/moderation" element={<ProtectedRoute allowedRoles={['admin']}><ContentModeration /></ProtectedRoute>} />
 
           {/* Shared */}
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 

@@ -52,6 +52,39 @@ exports.getByCourse = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.reorderCourse = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      throw new AppError('orderedIds must be a non-empty array', 400);
+    }
+
+    const course = await Course.findOne({ _id: courseId, educator: req.user._id });
+    if (!course) throw new AppError('Course not found or not authorized', 404);
+
+    const materials = await Material.find({ course: courseId }).select('_id').lean();
+    if (materials.length !== orderedIds.length) {
+      throw new AppError('Order list must include every material for this course', 400);
+    }
+
+    const valid = new Set(materials.map((m) => m._id.toString()));
+    for (const id of orderedIds) {
+      if (!valid.has(String(id))) throw new AppError('Invalid material id in order list', 400);
+    }
+
+    const bulk = orderedIds.map((id, order) => ({
+      updateOne: {
+        filter: { _id: id, course: courseId },
+        update: { $set: { order } },
+      },
+    }));
+    await Material.bulkWrite(bulk);
+    const updated = await Material.find({ course: courseId }).sort({ order: 1 });
+    sendResponse(res, 200, 'Materials reordered', updated);
+  } catch (err) { next(err); }
+};
+
 exports.trackView = async (req, res, next) => {
   try {
     await User.findByIdAndUpdate(req.user._id, { $inc: { totalMaterialsViewed: 1 } });

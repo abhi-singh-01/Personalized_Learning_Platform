@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
-import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, X } from 'lucide-react';
+import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, X, ExternalLink, BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
 import API from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
 
@@ -23,6 +23,18 @@ function resolveMaterialUrl(url) {
   return url;
 }
 
+function youtubeWatchUrl(m) {
+  if (!m) return '';
+  if (m.url && /^https?:\/\//i.test(m.url.trim())) return m.url.trim();
+  if (m.videoId) return `https://www.youtube.com/watch?v=${m.videoId}`;
+  return '';
+}
+
+function materialFileHref(m) {
+  if (!m?.fileUrl) return '';
+  return resolveMaterialUrl(m.fileUrl);
+}
+
 export default function UploadMaterial() {
   usePageTitle('Upload Material');
   const { courseId } = useParams();
@@ -37,7 +49,8 @@ export default function UploadMaterial() {
   const [deletingId, setDeletingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const editor = useRef(null);
+  const [previewArticle, setPreviewArticle] = useState(null);
+  const [reorderBusy, setReorderBusy] = useState(false);
 
   useEffect(() => {
     if (courseId) {
@@ -50,6 +63,32 @@ export default function UploadMaterial() {
 
   const loadMaterials = () => {
     api.get('/materials/course/' + courseId).then((res) => setMaterials(res.data || []));
+  };
+
+  const persistMaterialOrder = async (orderedList) => {
+    if (orderedList.length < 2) return;
+    setReorderBusy(true);
+    try {
+      const res = await api.put(`/materials/course/${courseId}/reorder`, {
+        orderedIds: orderedList.map((m) => m._id),
+      });
+      setMaterials(res.data || orderedList);
+    } catch (e) {
+      console.error(e);
+      alert(e.response?.data?.message || e.message || 'Could not reorder materials');
+      loadMaterials();
+    } finally {
+      setReorderBusy(false);
+    }
+  };
+
+  const moveMaterial = (index, direction) => {
+    const j = index + direction;
+    if (j < 0 || j >= materials.length) return;
+    const next = [...materials];
+    [next[index], next[j]] = [next[j], next[index]];
+    setMaterials(next);
+    persistMaterialOrder(next);
   };
 
   const handleSubmit = async (e) => {
@@ -141,7 +180,19 @@ export default function UploadMaterial() {
     }
   };
 
-  const icons = { youtube: Play, pdf: FileText, ppt: Presentation, video: Video };
+  const icons = { youtube: Play, pdf: FileText, ppt: Presentation, video: Video, article: BookOpen };
+
+  const openUploadedFile = (m) => {
+    const href = materialFileHref(m);
+    if (!href) return;
+    window.open(href, '_blank', 'noopener,noreferrer');
+  };
+
+  const openYoutube = (m) => {
+    const href = youtubeWatchUrl(m);
+    if (!href) return;
+    window.open(href, '_blank', 'noopener,noreferrer');
+  };
 
   const fileSizeDisplay = file ? (file.size / (1024 * 1024)).toFixed(1) + ' MB' : null;
 
@@ -308,18 +359,42 @@ export default function UploadMaterial() {
       <Card>
         <h2 className="text-lg font-semibold mb-1">Course materials ({materials.length})</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Edit titles, YouTube links, or articles anytime. For uploaded videos, PDFs, and slides you can replace the file or delete the item.
+          Use <strong className="font-medium text-gray-600 dark:text-gray-300">View</strong> to open PDFs, uploaded videos, or YouTube in a new tab and confirm they look correct for learners. Articles open in a quick preview here.
         </p>
         {materials.length === 0 ? (
           <p className="text-gray-400 text-center py-6 text-sm">No materials uploaded yet</p>
         ) : (
           <div className="space-y-2">
-            {materials.map((m) => {
+            {materials.map((m, idx) => {
               const Icon = icons[m.type] || FileText;
               const busy = deletingId === m._id;
               return (
                 <div key={m._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
+                    {materials.length > 1 && (
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={reorderBusy || idx === 0}
+                          onClick={() => moveMaterial(idx, -1)}
+                          className="p-1 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
+                          title="Move up"
+                          aria-label="Move up"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={reorderBusy || idx === materials.length - 1}
+                          onClick={() => moveMaterial(idx, 1)}
+                          className="p-1 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-30"
+                          title="Move down"
+                          aria-label="Move down"
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+                      </div>
+                    )}
                     <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary-600 shrink-0">
                       <Icon size={16} />
                     </div>
@@ -328,7 +403,44 @@ export default function UploadMaterial() {
                       <p className="text-xs text-gray-400 capitalize">{m.type.replace('_', ' ')}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 pl-11 sm:pl-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 pl-11 sm:pl-0">
+                    {(m.type === 'pdf' || m.type === 'ppt' || m.type === 'video') && m.fileUrl && (
+                      <button
+                        type="button"
+                        onClick={() => openUploadedFile(m)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-sky-800 dark:text-sky-200 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/40 border border-sky-200/80 dark:border-sky-800/60"
+                        title="Open file in a new tab to verify"
+                      >
+                        <ExternalLink size={14} />
+                        <span className="hidden sm:inline">View file</span>
+                        <span className="sm:hidden">View</span>
+                      </button>
+                    )}
+                    {m.type === 'youtube' && (
+                      <button
+                        type="button"
+                        onClick={() => openYoutube(m)}
+                        disabled={!youtubeWatchUrl(m)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-sky-800 dark:text-sky-200 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/40 border border-sky-200/80 dark:border-sky-800/60 disabled:opacity-40 disabled:pointer-events-none"
+                        title="Open YouTube in a new tab"
+                      >
+                        <Play size={14} />
+                        <span className="hidden sm:inline">View video</span>
+                        <span className="sm:hidden">View</span>
+                      </button>
+                    )}
+                    {m.type === 'article' && m.content && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewArticle(m)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-violet-800 dark:text-violet-200 bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-violet-200/80 dark:border-violet-800/60"
+                        title="Preview article as learners will see it"
+                      >
+                        <BookOpen size={14} />
+                        <span className="hidden sm:inline">Preview article</span>
+                        <span className="sm:hidden">Preview</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => startEdit(m)}
@@ -355,6 +467,35 @@ export default function UploadMaterial() {
           </div>
         )}
       </Card>
+
+      {previewArticle && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="article-preview-title"
+          onClick={(e) => e.target === e.currentTarget && setPreviewArticle(null)}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+              <h3 id="article-preview-title" className="font-semibold text-sm sm:text-base truncate pr-2">
+                {previewArticle.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPreviewArticle(null)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+                aria-label="Close preview"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 sm:p-6 text-sm leading-relaxed text-gray-800 dark:text-gray-200 max-w-none break-words [&_img]:max-w-full [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary-600 [&_a]:underline">
+              <div dangerouslySetInnerHTML={{ __html: previewArticle.content || '' }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

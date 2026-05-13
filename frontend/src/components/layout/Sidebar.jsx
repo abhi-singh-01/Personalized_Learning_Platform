@@ -4,7 +4,7 @@ import { isEducatorRole } from '../../utils/rolePaths';
 import {
   LayoutDashboard, BookOpen, Brain, User, PlusCircle, Users,
   TicketPercent, Radio, IndianRupee, Layout, Zap, FileText,
-  Flag, Monitor, BarChart3, CreditCard
+  Flag, Monitor, BarChart3, CreditCard, Bell,
 } from 'lucide-react';
 
 const learnerLinks = [
@@ -13,6 +13,7 @@ const learnerLinks = [
   { to: '/learner/courses', label: 'Explore Courses', icon: BookOpen },
   { to: '/learner/study-plan', label: 'AI Study Plan', icon: Brain },
   { to: '/learner/payments', label: 'Payments', icon: CreditCard },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -23,6 +24,7 @@ const educatorLinks = [
   { to: '/educator/coupons', label: 'Coupons', icon: TicketPercent },
   { to: '/educator/earnings', label: 'Earnings', icon: IndianRupee },
   { to: '/educator/learners', label: 'Learners', icon: Users },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -35,6 +37,7 @@ const adminLinks = [
   { to: '/admin/live-monitor', label: 'Live Monitor', icon: Monitor },
   { to: '/admin/moderation', label: 'Moderation', icon: Flag },
   { to: '/admin/audit-logs', label: 'Audit Logs', icon: FileText },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/profile', label: 'Profile', icon: User },
 ];
 

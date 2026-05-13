@@ -6,7 +6,7 @@ import Loading from '../../components/ui/Loading';
 import {
   BookOpen, PlusCircle, Search, Pencil, Trash2, Copy, Eye, EyeOff,
   Upload, FileQuestion, Video, Users, Calendar, Tag, Filter,
-  LayoutGrid, GraduationCap, ChevronRight
+  LayoutGrid, GraduationCap, ChevronRight, MessageSquare,
 } from 'lucide-react';
 
 const STATUS_BADGES = {
@@ -234,7 +234,7 @@ export default function MyCourses() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                     <Link
                       to={`/educator/courses/${course._id}/edit`}
                       className="flex flex-col items-center gap-0.5 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all text-[10px] font-medium"
@@ -255,6 +255,13 @@ export default function MyCourses() {
                       title="Quizzes"
                     >
                       <FileQuestion size={14} /> Quiz
+                    </Link>
+                    <Link
+                      to={`/educator/courses/${course._id}/reviews`}
+                      className="flex flex-col items-center gap-0.5 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all text-[10px] font-medium"
+                      title="Reviews"
+                    >
+                      <MessageSquare size={14} /> Reviews
                     </Link>
                     <Link
                       to={`/educator/courses/${course._id}/live`}

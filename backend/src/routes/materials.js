@@ -5,6 +5,7 @@ const role = require('../middleware/role');
 const upload = require('../middleware/upload');
 
 router.get('/course/:courseId', auth, c.getByCourse);
+router.put('/course/:courseId/reorder', auth, role('educator'), c.reorderCourse);
 router.post('/', auth, role('educator'), upload.single('file'), c.create);
 router.put('/:id', auth, role('educator'), upload.single('file'), c.update);
 router.post('/:id/view', auth, role('learner'), c.trackView);

@@ -4,11 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import {
-  Sun, Moon, LogOut, User, GraduationCap, Bell, BookOpen, Brain,
-  LayoutDashboard, PlusCircle, Users, ChevronDown, AlertTriangle, X, Menu, TicketPercent
+  Sun, Moon, LogOut, User, GraduationCap, BookOpen, Brain,
+  LayoutDashboard, PlusCircle, Users, ChevronDown, AlertTriangle, X, Menu, TicketPercent,
+  Radio, IndianRupee,
 } from 'lucide-react';
 import { getInitials } from '../../utils/helpers';
 import { isEducatorRole } from '../../utils/rolePaths';
+import NotificationBell from './NotificationBell';
 
 const learnerQuickLinks = [
   { to: '/learner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,7 +21,9 @@ const learnerQuickLinks = [
 const educatorQuickLinks = [
   { to: '/educator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/educator/courses', label: 'Manage Courses', icon: PlusCircle },
+  { to: '/educator/live-classes', label: 'Live Classes', icon: Radio },
   { to: '/educator/coupons', label: 'Coupons', icon: TicketPercent },
+  { to: '/educator/earnings', label: 'Earnings', icon: IndianRupee },
   { to: '/educator/learners', label: 'Learners', icon: Users },
 ];
 const adminQuickLinks = [
@@ -120,6 +124,8 @@ export default function Navbar() {
             <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
               {roleName}
             </span>
+
+            <NotificationBell />
 
             {/* Theme toggle */}
             <button onClick={toggle} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400">
