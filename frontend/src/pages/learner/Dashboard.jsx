@@ -6,6 +6,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { StatCard } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Loading from '../../components/ui/Loading';
+import BDUIPanel from '../../components/ui/BDUIPanel';
 import ReportExporter from '../../components/ui/ReportExporter';
 import { levelColors } from '../../utils/helpers';
 import {
@@ -66,6 +67,7 @@ export default function LearnerDashboard() {
 
   return (
     <div className="space-y-6">
+      <BDUIPanel screen="dashboard" />
       {/* Welcome Section */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import useApi from '../../hooks/useApi';
 import usePageTitle from '../../hooks/usePageTitle';
 import Loading from '../../components/ui/Loading';
+import BDUIPanel from '../../components/ui/BDUIPanel';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
 import {
@@ -297,6 +298,7 @@ export default function Courses() {
   /* ─── Render ─── */
   return (
     <div className="space-y-6 page-transition">
+      <BDUIPanel screen="courses" />
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

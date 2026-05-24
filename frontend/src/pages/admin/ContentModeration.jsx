@@ -41,7 +41,7 @@ export default function ContentModeration() {
       <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
           <Flag className="text-orange-500" /> Content Moderation
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review and moderate flagged content</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review flagged course reviews</p>
       </div>
 
       {/* Summary */}

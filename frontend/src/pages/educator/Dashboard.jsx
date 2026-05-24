@@ -13,6 +13,7 @@ import {
   Video, X, ChevronRight, Calendar, Clock, XCircle, CalendarPlus
 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import BDUIPanel from '../../components/ui/BDUIPanel';
 
 const EducatorPerformanceCharts = lazy(() => import('../../components/charts/EducatorPerformanceCharts'));
 
@@ -215,6 +216,7 @@ export default function EducatorDashboard() {
 
   return (
     <div className="space-y-6">
+      <BDUIPanel screen="dashboard" />
       {/* ═══ Hero Header ═══ */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 dark:from-indigo-700 dark:via-purple-800 dark:to-violet-900 p-5 sm:p-6 md:p-8 text-white shadow-xl shadow-purple-500/15 dark:shadow-purple-900/30">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjEuNSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvZz48L3N2Zz4=')] opacity-50" />

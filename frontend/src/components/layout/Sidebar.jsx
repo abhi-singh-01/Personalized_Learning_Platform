@@ -3,8 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isEducatorRole } from '../../utils/rolePaths';
 import {
   LayoutDashboard, BookOpen, Brain, User, PlusCircle, Users,
-  TicketPercent, Radio, IndianRupee, Layout, Zap, FileText,
-  Flag, Monitor, BarChart3, CreditCard, Bell,
+  TicketPercent, Radio, IndianRupee, Flag, Monitor, CreditCard, Bell, Layout,
 } from 'lucide-react';
 
 const learnerLinks = [
@@ -30,13 +29,9 @@ const educatorLinks = [
 
 const adminLinks = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/admin/offers', label: 'Offers', icon: TicketPercent },
   { to: '/admin/ui-config', label: 'UI Manager', icon: Layout },
-  { to: '/admin/feature-flags', label: 'Feature Flags', icon: Zap },
   { to: '/admin/live-monitor', label: 'Live Monitor', icon: Monitor },
   { to: '/admin/moderation', label: 'Moderation', icon: Flag },
-  { to: '/admin/audit-logs', label: 'Audit Logs', icon: FileText },
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/profile', label: 'Profile', icon: User },
 ];

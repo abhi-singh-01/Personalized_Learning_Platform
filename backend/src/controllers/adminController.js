@@ -1,18 +1,23 @@
 const User = require('../models/User');
 const Course = require('../models/Course');
+const Progress = require('../models/Progress');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 
 exports.getDashboardStats = async (req, res, next) => {
     try {
-        const totalLearners = await User.countDocuments({ role: 'learner' });
-        const totalEducators = await User.countDocuments({ role: 'educator' });
-        const totalCourses = await Course.countDocuments();
+        const [totalLearners, totalEducators, totalCourses, totalQuizAttempts] = await Promise.all([
+            User.countDocuments({ role: 'learner' }),
+            User.countDocuments({ role: 'educator' }),
+            Course.countDocuments(),
+            Progress.countDocuments(),
+        ]);
 
         sendResponse(res, 200, 'Admin stats fetched', {
             totalLearners,
             totalEducators,
             totalCourses,
+            totalQuizAttempts,
         });
     } catch (err) { next(err); }
 };

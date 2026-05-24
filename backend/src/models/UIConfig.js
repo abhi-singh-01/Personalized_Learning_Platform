@@ -23,11 +23,10 @@ const uiConfigSchema = new mongoose.Schema({
   */
 
   // Targeting
-  targetRoles: [{
-    type: String,
-    enum: ['learner', 'educator', 'admin', 'guest', 'all'],
-    default: 'all',
-  }],
+  targetRoles: {
+    type: [{ type: String, enum: ['learner', 'educator', 'admin', 'guest', 'all'] }],
+    default: ['all'],
+  },
   targetUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
   conditions: {

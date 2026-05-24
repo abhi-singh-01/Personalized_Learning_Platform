@@ -10,6 +10,7 @@ import {
   TrendingUp, Globe, ChevronRight, Quote, Heart, Monitor,
 } from 'lucide-react';
 import usePageTitle from '../hooks/usePageTitle';
+import BDUIPanel from '../components/ui/BDUIPanel';
 
 /* ── Data ── */
 const stats = [
@@ -77,6 +78,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 font-sans">
       <PublicNavbar />
+      <BDUIPanel screen="home" className="max-w-7xl mx-auto px-4 pt-2" />
 
       {/* ═══════════ HERO ═══════════ */}
       <section className="relative overflow-hidden min-h-[500px] lg:min-h-[560px]">

@@ -8,6 +8,7 @@ import {
   Monitor, Copy, Search, Filter
 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { unwrapApiData } from '../../utils/apiData';
 
 const SCREEN_OPTIONS = ['home', 'courses', 'checkout', 'dashboard', 'global'];
 const TYPE_OPTIONS = ['banner', 'carousel', 'popup', 'strip', 'modal', 'section', 'announcement'];
@@ -47,14 +48,15 @@ export default function UIConfigManager() {
       if (filterScreen) params.set('screen', filterScreen);
       if (filterType) params.set('type', filterType);
       const res = await api.get(`/ui-config?${params.toString()}`);
-      setConfigs(res.data || []);
+      const list = unwrapApiData(res);
+      setConfigs(Array.isArray(list) ? list : []);
     } catch (e) { console.error(e); }
   };
 
   const fetchAnalytics = async () => {
     try {
       const res = await api.get('/ui-config/analytics');
-      setAnalytics(res.data);
+      setAnalytics(unwrapApiData(res));
     } catch (e) { console.error(e); }
   };
 

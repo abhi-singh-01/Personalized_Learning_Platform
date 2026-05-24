@@ -380,19 +380,8 @@ export default function CourseDetail() {
                             <p className="font-medium text-sm group-hover:text-primary-600 transition-colors truncate">{q.title}</p>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {q.questions?.length || 0} questions
-                              {q.isAIGenerated && <span className="ml-2 text-purple-400">✦ AI Generated</span>}
-                              {q.attemptStatus && (
-                                <span className="ml-2 text-gray-500">
-                                  · {q.attemptStatus.attemptsUsed}/{q.attemptStatus.totalAttemptsAllowed} attempts
-                                </span>
-                              )}
+                              {q.isAIGenerated && <span className="ml-2 text-purple-400">✦ AI</span>}
                             </p>
-                            {(q.availableFrom || q.availableUntil) && (
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {q.availableFrom && `Opens ${new Date(q.availableFrom).toLocaleString()} `}
-                                {q.availableUntil && `· Due ${new Date(q.availableUntil).toLocaleString()}`}
-                              </p>
-                            )}
                             {!can && q.attemptStatus?.reason && (
                               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{q.attemptStatus.reason}</p>
                             )}

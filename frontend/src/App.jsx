@@ -49,13 +49,9 @@ const CourseReviews = lazy(() => import('./pages/educator/CourseReviews'));
 // ── Admin pages ──
 const AdminLogin = lazy(() => import('./pages/auth/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
-const PlatformAnalytics = lazy(() => import('./pages/admin/PlatformAnalytics'));
-const OffersDashboard = lazy(() => import('./pages/admin/OffersDashboard'));
-const UIConfigManager = lazy(() => import('./pages/admin/UIConfigManager'));
-const FeatureFlagsManager = lazy(() => import('./pages/admin/FeatureFlagsManager'));
 const LiveClassMonitor = lazy(() => import('./pages/admin/LiveClassMonitor'));
-const AuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
 const ContentModeration = lazy(() => import('./pages/admin/ContentModeration'));
+const UIConfigManager = lazy(() => import('./pages/admin/UIConfigManager'));
 
 // ── Shared ──
 const Profile = lazy(() => import('./pages/Profile'));
@@ -173,13 +169,14 @@ export default function App() {
 
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><PlatformAnalytics /></ProtectedRoute>} />
-          <Route path="/admin/offers" element={<ProtectedRoute allowedRoles={['admin']}><OffersDashboard /></ProtectedRoute>} />
-          <Route path="/admin/ui-config" element={<ProtectedRoute allowedRoles={['admin']}><UIConfigManager /></ProtectedRoute>} />
-          <Route path="/admin/feature-flags" element={<ProtectedRoute allowedRoles={['admin']}><FeatureFlagsManager /></ProtectedRoute>} />
           <Route path="/admin/live-monitor" element={<ProtectedRoute allowedRoles={['admin']}><LiveClassMonitor /></ProtectedRoute>} />
-          <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
           <Route path="/admin/moderation" element={<ProtectedRoute allowedRoles={['admin']}><ContentModeration /></ProtectedRoute>} />
+          <Route path="/admin/ui-config" element={<ProtectedRoute allowedRoles={['admin']}><UIConfigManager /></ProtectedRoute>} />
+          {/* Legacy admin URLs → dashboard */}
+          <Route path="/admin/analytics" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/offers" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/feature-flags" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/audit-logs" element={<Navigate to="/admin/dashboard" replace />} />
 
           {/* Shared */}
           <Route path="/notifications" element={<Notifications />} />

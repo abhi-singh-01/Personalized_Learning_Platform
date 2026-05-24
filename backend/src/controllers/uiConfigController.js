@@ -19,13 +19,13 @@ exports.getScreenConfig = async (req, res, next) => {
       ],
     };
 
-    // Apply role-based targeting if user is authenticated
+    const role = req.user?.role === 'student' ? 'learner' : req.user?.role === 'teacher' ? 'educator' : req.user?.role;
+
     if (req.user) {
       query.$and = [
         {
           $or: [
-            { targetRoles: 'all' },
-            { targetRoles: req.user.role },
+            { targetRoles: { $in: ['all', role] } },
             { targetUserIds: req.user._id },
           ],
         },
@@ -34,8 +34,7 @@ exports.getScreenConfig = async (req, res, next) => {
       query.$and = [
         {
           $or: [
-            { targetRoles: 'all' },
-            { targetRoles: 'guest' },
+            { targetRoles: { $in: ['all', 'guest'] } },
           ],
         },
       ];

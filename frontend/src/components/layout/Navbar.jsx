@@ -28,7 +28,6 @@ const educatorQuickLinks = [
 ];
 const adminQuickLinks = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/offers', label: 'Offers', icon: TicketPercent },
 ];
 
 export default function Navbar() {
