@@ -3,12 +3,15 @@ const Quiz = require('../models/Quiz');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const { updateLearnerMetrics, updateLearnerStreak } = require('../services/analyticsService');
+const { assertLearnerMaySubmit } = require('../services/quizAccessService');
 
 exports.submitQuiz = async (req, res, next) => {
   try {
     const { quizId, answers, timeTaken } = req.body;
     const quiz = await Quiz.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404);
+
+    await assertLearnerMaySubmit(quiz, req.user._id);
 
     const graded = answers.map((a, i) => ({
       questionIndex: i,

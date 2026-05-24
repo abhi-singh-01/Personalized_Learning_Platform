@@ -4,6 +4,7 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import { CheckCircle, XCircle, Sparkles, BookOpenCheck } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import useQuizSecureSession from '../../hooks/useQuizSecureSession';
 import { readDraftJson, writeDraft, clearDraft, QUIZ_DRAFT_TTL_HOURS } from '../../utils/quizDraftStorage';
 
 const practiceDraftKey = (courseId) => `plp_practice_attempt:${courseId}`;
@@ -78,6 +79,10 @@ export default function PracticeQuiz() {
             previousQuestions,
         });
     }, [courseId, quiz, answers, previousQuestions, result]);
+
+    const secureQuizActive =
+        Boolean(quiz?.questions?.length) && !loadingQuiz && !result;
+    useQuizSecureSession(secureQuizActive);
 
     const generateNextQuiz = () => {
         clearDraft(practiceDraftKey(courseId));
@@ -217,7 +222,13 @@ export default function PracticeQuiz() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div
+            className="max-w-2xl mx-auto space-y-6 select-none"
+            onContextMenu={(e) => e.preventDefault()}
+            onCopy={(e) => e.preventDefault()}
+            onCut={(e) => e.preventDefault()}
+            onPaste={(e) => e.preventDefault()}
+        >
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">

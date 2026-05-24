@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
-import { CheckCircle, XCircle, Trophy, Sparkles, BookOpenCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, Sparkles, BookOpenCheck, Clock } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import useQuizSecureSession from '../../hooks/useQuizSecureSession';
 import { readDraftJson, writeDraft, clearDraft, QUIZ_DRAFT_TTL_HOURS } from '../../utils/quizDraftStorage';
+import { unwrapApiData } from '../../utils/apiData';
 
 const quizAttemptDraftKey = (quizId) => `plp_quiz_attempt:${quizId}`;
+const quizTimerKey = (quizId) => `plp_quiz_timer_start:${quizId}`;
 
 function mainDraftMatchesServer(draft, qz) {
   if (!draft || draft.v !== 1 || draft.phase !== 'main') return false;
@@ -33,6 +36,12 @@ export default function QuizAttempt() {
   const [adaptiveResult, setAdaptiveResult] = useState(null);
   const [showSolutions, setShowSolutions] = useState(false);
 
+  const [attemptStatus, setAttemptStatus] = useState(null);
+  const [accessBlock, setAccessBlock] = useState(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [timeUp, setTimeUp] = useState(false);
+  const timerStartRef = useRef(null);
+
   useEffect(() => {
     const randomizeOptions = (questions) => {
       return questions.map((q) => {
@@ -47,15 +56,27 @@ export default function QuizAttempt() {
     const key = quizAttemptDraftKey(id);
 
     api.get('/quizzes/' + id).then((res) => {
-      const qz = res.data;
+      const qz = unwrapApiData(res);
       if (!qz) {
         setQuiz(null);
+        setAccessBlock(null);
+        setAttemptStatus(null);
         return;
       }
+
+      const status = qz.attemptStatus || {
+        canStart: true,
+        reason: '',
+        attemptsUsed: 0,
+        totalAttemptsAllowed: 1,
+        timeLimitMinutes: qz.timeLimit ?? 15,
+      };
+      setAttemptStatus(status);
 
       const draft = readDraftJson(key);
 
       if (draft?.v === 1 && draft.phase === 'adaptive' && draft.quizSnapshot?.questions?.length) {
+        setAccessBlock(null);
         setQuiz({
           ...qz,
           title: draft.quizSnapshot.title || qz.title,
@@ -67,6 +88,15 @@ export default function QuizAttempt() {
       }
 
       if (mainDraftMatchesServer(draft, qz)) {
+        if (!status.canStart) {
+          clearDraft(key);
+          setAccessBlock({ title: qz.title, reason: status.reason || 'You cannot continue this quiz.' });
+          setQuiz(null);
+          setIsAdaptiveMode(false);
+          setAnswers({});
+          return;
+        }
+        setAccessBlock(null);
         setQuiz({
           ...qz,
           questions: draft.quizSnapshot.questions,
@@ -78,14 +108,47 @@ export default function QuizAttempt() {
 
       if (draft) clearDraft(key);
 
-      if (qz.questions) {
-        qz.questions = randomizeOptions(qz.questions);
+      if (!status.canStart) {
+        setAccessBlock({ title: qz.title, reason: status.reason || 'You cannot take this quiz right now.' });
+        setQuiz(null);
+        setIsAdaptiveMode(false);
+        setAnswers({});
+        return;
       }
-      setQuiz(qz);
+
+      setAccessBlock(null);
+      const copy = { ...qz };
+      if (copy.questions) {
+        copy.questions = randomizeOptions(copy.questions);
+      }
+      setQuiz(copy);
       setIsAdaptiveMode(false);
       setAnswers({});
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !quiz?.questions?.length || isAdaptiveMode || result || accessBlock) return;
+    const limitMin = attemptStatus?.timeLimitMinutes ?? quiz?.timeLimit ?? 15;
+    const limitSec = Math.max(60, Math.floor(limitMin * 60));
+
+    const key = quizTimerKey(id);
+    let stored = Number(sessionStorage.getItem(key));
+    if (!stored || Number.isNaN(stored)) {
+      stored = Date.now();
+      sessionStorage.setItem(key, String(stored));
+    }
+    timerStartRef.current = stored;
+
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - stored) / 1000);
+      setElapsedSec(elapsed);
+      if (elapsed >= limitSec) setTimeUp(true);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [id, quiz, isAdaptiveMode, result, accessBlock, attemptStatus]);
 
   useEffect(() => {
     if (!id || !quiz?.questions?.length) return;
@@ -101,9 +164,16 @@ export default function QuizAttempt() {
     });
   }, [id, quiz, answers, isAdaptiveMode, result, adaptiveResult]);
 
+  const quizAttemptFinished =
+    Boolean(adaptiveResult) || (Boolean(result) && !isAdaptiveMode);
+  const secureQuizActive =
+    Boolean(quiz?.questions?.length) && !adaptiveLoading && !quizAttemptFinished;
+  useQuizSecureSession(secureQuizActive);
+
   const select = (qIndex, optIndex) => {
     if (result && !isAdaptiveMode) return;
     if (adaptiveResult && isAdaptiveMode) return;
+    if (!isAdaptiveMode && timeUp) return;
     setAnswers((prev) => ({ ...prev, [qIndex]: optIndex }));
   };
 
@@ -111,7 +181,8 @@ export default function QuizAttempt() {
     const activeQuiz = isAdaptiveMode ? quiz : quiz;
     // In adaptive mode, 'quiz' gets overwritten with the new questions
 
-    if (Object.keys(answers).length < activeQuiz.questions.length) {
+    const answered = Object.keys(answers).length;
+    if (answered < activeQuiz.questions.length && !(timeUp && !isAdaptiveMode)) {
       alert('Please answer all questions before submitting.');
       return;
     }
@@ -142,14 +213,17 @@ export default function QuizAttempt() {
         const res = await api.post('/progress/submit', {
           quizId: id,
           answers: orderedAnswers,
-          timeTaken: 0,
+          timeTaken: elapsedSec,
         });
-        setResult(res.data);
+        setResult(unwrapApiData(res));
         setShowSolutions(false);
         clearDraft(quizAttemptDraftKey(id));
+        sessionStorage.removeItem(quizTimerKey(id));
       }
     } catch (e) {
       console.error(e);
+      const msg = e?.response?.data?.message || e.message || 'Submit failed';
+      alert(msg);
     }
     setSubmitting(false);
   };
@@ -167,8 +241,31 @@ export default function QuizAttempt() {
     }, 1500); // Small dramatic pause
   };
 
-  if (api.loading && !quiz) return <Loading />;
-  if (!quiz) return <Loading text="Loading quiz..." />;
+  if (accessBlock) {
+    return (
+      <div className="max-w-lg mx-auto card text-center space-y-4">
+        <h1 className="text-xl font-bold">{accessBlock.title}</h1>
+        <p className="text-gray-600 dark:text-gray-300 text-sm">{accessBlock.reason}</p>
+        <p className="text-xs text-gray-500">
+          If you think this is a mistake, contact your educator. They can extend the window, add attempts, or clear a block on your account.
+        </p>
+        <Link to={-1} className="btn-secondary inline-block">
+          Back
+        </Link>
+      </div>
+    );
+  }
+
+  if (api.loading && !quiz && !accessBlock) return <Loading />;
+  if (!quiz && !accessBlock && !api.loading) {
+    return (
+      <div className="max-w-lg mx-auto card text-center">
+        <p className="text-gray-600">This quiz could not be loaded.</p>
+        <Link to={-1} className="btn-secondary inline-block mt-4">Back</Link>
+      </div>
+    );
+  }
+  if (!quiz && !accessBlock) return <Loading text="Loading quiz..." />;
 
   if (adaptiveLoading) {
     return (
@@ -315,15 +412,50 @@ export default function QuizAttempt() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div
+      className="max-w-2xl mx-auto space-y-6 select-none"
+      onContextMenu={(e) => e.preventDefault()}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onPaste={(e) => e.preventDefault()}
+    >
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             {quiz.title}
             {isAdaptiveMode && <span className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full border border-purple-200 uppercase tracking-widest font-black flex items-center gap-1"><Sparkles size={12} /> AI EXTENSION</span>}
           </h1>
           <p className="text-sm text-gray-500">{quiz.questions.length} questions {isAdaptiveMode ? '• Adaptive Difficulty' : ''}</p>
+          {!isAdaptiveMode && attemptStatus && (
+            <p className="text-xs text-gray-500 mt-1">
+              Attempts used: {attemptStatus.attemptsUsed} / {attemptStatus.totalAttemptsAllowed}
+            </p>
+          )}
         </div>
+        {!isAdaptiveMode && attemptStatus && (
+          <div
+            className={
+              'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium ' +
+              (timeUp
+                ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100'
+                : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200')
+            }
+          >
+            <Clock size={16} className="shrink-0" aria-hidden />
+            <span>
+              {timeUp
+                ? 'Time limit reached — submit now.'
+                : (() => {
+                    const limitMin = attemptStatus.timeLimitMinutes ?? quiz.timeLimit ?? 15;
+                    const limitSec = Math.max(60, Math.floor(Number(limitMin) * 60));
+                    const remain = Math.max(0, limitSec - elapsedSec);
+                    const m = Math.floor(remain / 60);
+                    const s = remain % 60;
+                    return `Time left: ${m}:${String(s).padStart(2, '0')}`;
+                  })()}
+            </span>
+          </div>
+        )}
       </div>
 
       {quiz.questions.map((q, qi) => (
@@ -365,7 +497,11 @@ export default function QuizAttempt() {
         </div>
         <button
           onClick={submit}
-          disabled={submitting || Object.keys(answers).length < quiz.questions.length}
+          disabled={
+            submitting ||
+            (isAdaptiveMode && Object.keys(answers).length < quiz.questions.length) ||
+            (!isAdaptiveMode && !timeUp && Object.keys(answers).length < quiz.questions.length)
+          }
           className={isAdaptiveMode ? "btn-primary bg-purple-600 hover:bg-purple-700 border-purple-700" : "btn-primary"}
         >
           {submitting ? 'Submitting...' : (isAdaptiveMode ? 'Submit Challenge' : 'Submit Quiz')}

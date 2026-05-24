@@ -3,9 +3,150 @@ import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { ArrowLeft, Plus, Trash2, Brain, X, CheckCircle2, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Brain, X, CheckCircle2, Pencil, Users } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
+import { unwrapApiData } from '../../utils/apiData';
+
+function toDatetimeLocalValue(iso) {
+  if (!iso) return '';
+  const x = new Date(iso);
+  if (Number.isNaN(x.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}T${pad(x.getHours())}:${pad(x.getMinutes())}`;
+}
+
+function LearnerAccessEditor({ row, quizId, api, toast, onSaved }) {
+  const o = row.override || {};
+  const [extra, setExtra] = useState(String(o.extraAttempts ?? 0));
+  const [blocked, setBlocked] = useState(Boolean(o.blocked));
+  const [blockReason, setBlockReason] = useState(o.blockReason || '');
+  const [note, setNote] = useState(o.educatorNote || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const o2 = row.override || {};
+    setExtra(String(o2.extraAttempts ?? 0));
+    setBlocked(Boolean(o2.blocked));
+    setBlockReason(o2.blockReason || '');
+    setNote(o2.educatorNote || '');
+  }, [row]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put(`/quizzes/${quizId}/learner-access/${row.learner._id}`, {
+        extraAttempts: Math.max(0, parseInt(extra, 10) || 0),
+        blocked,
+        blockReason,
+        educatorNote: note,
+      });
+      toast.success(`Saved for ${row.learner.name}`);
+      onSaved();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Save failed');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+      <div className="flex flex-wrap justify-between gap-2">
+        <div>
+          <p className="font-medium text-sm">{row.learner.name}</p>
+          <p className="text-xs text-gray-500">{row.learner.email}</p>
+        </div>
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          Submitted attempts: {row.attemptsUsed} / {row.totalAttemptsAllowed}
+        </p>
+      </div>
+      <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-2 items-end">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Extra attempts (add-on)</label>
+          <input className="input-field !py-1.5 text-sm" type="number" min={0} max={20} value={extra} onChange={(e) => setExtra(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-2 pt-5 sm:pt-6">
+          <input id={`blk-${row.learner._id}`} type="checkbox" checked={blocked} onChange={(e) => setBlocked(e.target.checked)} />
+          <label htmlFor={`blk-${row.learner._id}`} className="text-sm">
+            Block access
+          </label>
+        </div>
+        <div className="sm:col-span-2 md:col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Reason (shown to learner if blocked)</label>
+          <input
+            className="input-field !py-1.5 text-sm"
+            value={blockReason}
+            onChange={(e) => setBlockReason(e.target.value)}
+            disabled={!blocked}
+            placeholder="e.g. Contact me before retaking"
+          />
+        </div>
+        <div className="sm:col-span-2 md:col-span-4">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Educator note (private)</label>
+          <input className="input-field !py-1.5 text-sm" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Internal notes" />
+        </div>
+      </div>
+      <button type="button" className="btn-primary text-sm py-1.5" disabled={saving} onClick={save}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+    </div>
+  );
+}
+
+function LearnerAccessModal({ quizId, onClose, api, toast }) {
+  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    api
+      .get(`/quizzes/${quizId}/learner-access`)
+      .then((res) => setOverview(unwrapApiData(res)))
+      .catch((e) => toast.error(e?.response?.data?.message || 'Failed to load'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, [quizId]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl max-w-4xl w-full max-h-[88vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h3 className="font-semibold text-base">Resolve learner access</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{overview?.quiz?.title}</p>
+          </div>
+          <button type="button" className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" onClick={onClose} aria-label="Close">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="overflow-auto p-4">
+          {loading ? (
+            <p className="text-sm text-gray-500">Loading enrolled learners…</p>
+          ) : !overview?.learners?.length ? (
+            <p className="text-sm text-gray-500">No learners enrolled in this course yet.</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-xs text-gray-500">
+                Add extra attempts, unblock a learner, or set a block with a short message they will see. Extend quiz dates from the quiz editor.
+              </p>
+              {overview.learners.map((row) => (
+                <LearnerAccessEditor key={row.learner._id} row={row} quizId={quizId} api={api} toast={toast} onSaved={load} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CreateQuiz() {
   usePageTitle('Create Quiz');
@@ -23,10 +164,22 @@ export default function CreateQuiz() {
     description: '',
     difficulty: 'medium',
     timeLimit: 15,
+    maxAttempts: 1,
+    availableFrom: '',
+    availableUntil: '',
     questions: [{ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }],
   });
-  const [aiForm, setAiForm] = useState({ topic: '', difficulty: 'medium', numQuestions: 5 });
+  const [aiForm, setAiForm] = useState({
+    topic: '',
+    difficulty: 'medium',
+    numQuestions: 5,
+    timeLimit: 15,
+    maxAttempts: 1,
+    availableFrom: '',
+    availableUntil: '',
+  });
   const [editingQuizId, setEditingQuizId] = useState(null);
+  const [accessQuizId, setAccessQuizId] = useState(null);
 
   useEffect(() => {
     api.get('/courses/' + courseId).then((res) => setCourseName(res.data?.title || ''));
@@ -38,7 +191,7 @@ export default function CreateQuiz() {
   }, []);
 
   const loadQuizzes = () => {
-    api.get('/quizzes/course/' + courseId).then((res) => setQuizzes(res.data || []));
+    api.get('/quizzes/course/' + courseId).then((res) => setQuizzes(unwrapApiData(res) || []));
   };
 
   const addQuestion = () => {
@@ -84,6 +237,9 @@ export default function CreateQuiz() {
       description: '',
       difficulty: 'medium',
       timeLimit: 15,
+      maxAttempts: 1,
+      availableFrom: '',
+      availableUntil: '',
       questions: [{ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }],
     });
   };
@@ -91,7 +247,7 @@ export default function CreateQuiz() {
   const startEditQuiz = async (qid) => {
     try {
       const res = await api.get('/quizzes/' + qid);
-      const q = res.data;
+      const q = unwrapApiData(res);
       if (!q) return;
       setEditingQuizId(qid);
       setMode('manual');
@@ -106,6 +262,9 @@ export default function CreateQuiz() {
         description: q.description || '',
         difficulty: q.difficulty || 'medium',
         timeLimit: q.timeLimit ?? 15,
+        maxAttempts: q.maxAttempts ?? 1,
+        availableFrom: toDatetimeLocalValue(q.availableFrom),
+        availableUntil: toDatetimeLocalValue(q.availableUntil),
         questions: mappedQs.length ? mappedQs : [{ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }],
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -118,18 +277,28 @@ export default function CreateQuiz() {
     e.preventDefault();
     setSaving(true);
     try {
+      const apiForm = {
+        ...form,
+        course: courseId,
+        maxAttempts: Math.max(1, parseInt(form.maxAttempts, 10) || 1),
+        availableFrom: form.availableFrom ? new Date(form.availableFrom).toISOString() : null,
+        availableUntil: form.availableUntil ? new Date(form.availableUntil).toISOString() : null,
+      };
       if (editingQuizId) {
-        await api.put('/quizzes/' + editingQuizId, { ...form, course: courseId });
+        await api.put('/quizzes/' + editingQuizId, apiForm);
         showQuizCreated('Quiz updated successfully. Learners will see the latest version on the course page.');
         cancelQuizEdit();
       } else {
-        await api.post('/quizzes', { ...form, course: courseId });
+        await api.post('/quizzes', apiForm);
         showQuizCreated('Quiz created successfully. Learners can take it from the course page.');
         setForm({
           title: '',
           description: '',
           difficulty: 'medium',
           timeLimit: 15,
+          maxAttempts: 1,
+          availableFrom: '',
+          availableUntil: '',
           questions: [{ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }],
         });
       }
@@ -145,10 +314,27 @@ export default function CreateQuiz() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post('/ai/generate-quiz', { courseId, ...aiForm });
+      await api.post('/ai/generate-quiz', {
+        courseId,
+        topic: aiForm.topic,
+        difficulty: aiForm.difficulty,
+        numQuestions: aiForm.numQuestions,
+        timeLimit: aiForm.timeLimit,
+        maxAttempts: aiForm.maxAttempts,
+        availableFrom: aiForm.availableFrom || undefined,
+        availableUntil: aiForm.availableUntil || undefined,
+      });
       showQuizCreated('Quiz created successfully. This quiz was generated with AI and added to your course.');
       loadQuizzes();
-      setAiForm({ topic: '', difficulty: 'medium', numQuestions: 5 });
+      setAiForm({
+        topic: '',
+        difficulty: 'medium',
+        numQuestions: 5,
+        timeLimit: 15,
+        maxAttempts: 1,
+        availableFrom: '',
+        availableUntil: '',
+      });
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Could not generate quiz';
       toast.error(msg);
@@ -246,6 +432,26 @@ export default function CreateQuiz() {
                 <input type="number" className="input-field" min={3} max={15} value={aiForm.numQuestions} onChange={(e) => setAiForm({ ...aiForm, numQuestions: parseInt(e.target.value) || 5 })} />
               </div>
             </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Time per attempt (minutes)</label>
+                <input type="number" className="input-field" min={1} max={180} value={aiForm.timeLimit} onChange={(e) => setAiForm({ ...aiForm, timeLimit: parseInt(e.target.value, 10) || 15 })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Max attempts per learner</label>
+                <input type="number" className="input-field" min={1} max={20} value={aiForm.maxAttempts} onChange={(e) => setAiForm({ ...aiForm, maxAttempts: parseInt(e.target.value, 10) || 1 })} />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Available from (optional)</label>
+                <input type="datetime-local" className="input-field" value={aiForm.availableFrom} onChange={(e) => setAiForm({ ...aiForm, availableFrom: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Available until (optional)</label>
+                <input type="datetime-local" className="input-field" value={aiForm.availableUntil} onChange={(e) => setAiForm({ ...aiForm, availableUntil: e.target.value })} />
+              </div>
+            </div>
             <button type="submit" disabled={saving} className="btn-primary">
               {saving ? 'Generating...' : 'Generate with AI'}
             </button>
@@ -277,6 +483,20 @@ export default function CreateQuiz() {
               <div>
                 <label className="block text-sm font-medium mb-1.5">Time limit (minutes)</label>
                 <input type="number" min={1} max={180} className="input-field" value={form.timeLimit} onChange={(e) => setForm({ ...form, timeLimit: parseInt(e.target.value, 10) || 15 })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Max attempts per learner</label>
+                <input type="number" min={1} max={20} className="input-field" value={form.maxAttempts} onChange={(e) => setForm({ ...form, maxAttempts: parseInt(e.target.value, 10) || 1 })} />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Available from (optional)</label>
+                <input type="datetime-local" className="input-field" value={form.availableFrom} onChange={(e) => setForm({ ...form, availableFrom: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Available until (optional)</label>
+                <input type="datetime-local" className="input-field" value={form.availableUntil} onChange={(e) => setForm({ ...form, availableUntil: e.target.value })} />
               </div>
             </div>
 
@@ -329,6 +549,9 @@ export default function CreateQuiz() {
                   <Badge variant={q.difficulty === 'easy' ? 'success' : q.difficulty === 'hard' ? 'danger' : 'warning'}>
                     {q.difficulty}
                   </Badge>
+                  <button type="button" onClick={() => setAccessQuizId(q._id)} className="p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg" title="Learner access & issues">
+                    <Users size={16} />
+                  </button>
                   <button type="button" onClick={() => startEditQuiz(q._id)} className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg" title="Edit quiz">
                     <Pencil size={16} />
                   </button>
@@ -341,6 +564,8 @@ export default function CreateQuiz() {
           </div>
         )}
       </Card>
+
+      {accessQuizId && <LearnerAccessModal quizId={accessQuizId} onClose={() => setAccessQuizId(null)} api={api} toast={toast} />}
     </div>
   );
 }

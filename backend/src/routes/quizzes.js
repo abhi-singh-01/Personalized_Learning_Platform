@@ -5,6 +5,8 @@ const role = require('../middleware/role');
 
 router.get('/course/:courseId', auth, c.getByCourse);
 router.get('/teaching', auth, role('educator'), c.getEducatorQuizzes);
+router.get('/:id/learner-access', auth, role('educator'), c.getLearnerAccessOverview);
+router.put('/:id/learner-access/:learnerId', auth, role('educator'), c.putLearnerAccess);
 router.get('/:id', auth, c.getById);
 router.post('/', auth, role('educator'), c.create);
 router.put('/:id', auth, role('educator'), c.update);

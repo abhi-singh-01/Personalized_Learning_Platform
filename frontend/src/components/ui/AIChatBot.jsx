@@ -19,6 +19,9 @@ import '../../styles/AIChatBot.css';
 const SUMMARIZE_FILE_PROMPT =
   'Please summarize this attached file in plain language. Use short paragraphs and highlight the main ideas. If something is unclear from the file, say so briefly.';
 
+/** Must match `.chatbot-input` max-height in AIChatBot.css */
+const CHAT_INPUT_MAX_HEIGHT_PX = 160;
+
 // ── Simple Markdown renderer ──
 function renderMarkdown(text) {
   if (!text) return '';
@@ -115,6 +118,13 @@ export default function AIChatBot() {
       setTimeout(() => inputRef.current?.focus(), 350);
     }
   }, [isOpen]);
+
+  // Reset textarea height after send clears input (inline height would otherwise persist)
+  useEffect(() => {
+    if (!input && inputRef.current) {
+      inputRef.current.style.removeProperty('height');
+    }
+  }, [input]);
 
   // ── Load suggestions ──
   const loadSuggestions = useCallback(async () => {
@@ -342,8 +352,9 @@ export default function AIChatBot() {
   // ── Auto-resize textarea ──
   const handleInputChange = (e) => {
     setInput(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px';
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, CHAT_INPUT_MAX_HEIGHT_PX)}px`;
   };
 
   return (

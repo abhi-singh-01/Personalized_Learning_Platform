@@ -66,6 +66,10 @@ exports.generateAIQuiz = async (req, res, next) => {
     });
 
     if (req.user.role === 'educator') {
+      const maxAttempts =
+        req.body.maxAttempts != null ? Math.max(1, Math.floor(Number(req.body.maxAttempts))) : 1;
+      const timeLimit =
+        req.body.timeLimit != null ? Math.max(1, Math.floor(Number(req.body.timeLimit))) : 15;
       const quiz = await Quiz.create({
         title: aiQuiz.title,
         description: aiQuiz.description,
@@ -74,6 +78,10 @@ exports.generateAIQuiz = async (req, res, next) => {
         difficulty,
         questions: aiQuiz.questions,
         isAIGenerated: true,
+        maxAttempts,
+        timeLimit,
+        availableFrom: req.body.availableFrom ? new Date(req.body.availableFrom) : null,
+        availableUntil: req.body.availableUntil ? new Date(req.body.availableUntil) : null,
       });
 
       await AIInteractionLog.create({

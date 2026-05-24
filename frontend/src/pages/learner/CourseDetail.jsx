@@ -9,6 +9,7 @@ import {
   BookOpen, Sparkles, Video, Radio, ClipboardList, FolderOpen, Brain
 } from 'lucide-react';
 import AIVideoPanel from '../../components/ui/AIVideoPanel';
+import { unwrapApiData } from '../../utils/apiData';
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -28,7 +29,7 @@ export default function CourseDetail() {
   useEffect(() => {
     api.get('/courses/' + id).then((res) => setCourse(res.data));
     api.get('/materials/course/' + id).then((res) => setMaterials(res.data || []));
-    api.get('/quizzes/course/' + id).then((res) => setQuizzes(res.data || []));
+    api.get('/quizzes/course/' + id).then((res) => setQuizzes(unwrapApiData(res) || []));
     api.get('/courses/' + id + '/progress').then((res) => setProgress(res.data || { completedMaterials: [] }));
     api.get('/courses/' + id + '/comments').then((res) => setComments(res.data || []));
   }, [id]);
@@ -367,37 +368,67 @@ export default function CourseDetail() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {quizzes.map((q) => (
-                    <Link
-                      key={q._id}
-                      to={'/learner/quiz/' + q._id}
-                      className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-900/20">
-                          <ClipboardList size={18} className="text-purple-500" />
+                  {quizzes.map((q) => {
+                    const can = q.attemptStatus?.canStart !== false;
+                    const inner = (
+                      <div className="flex items-center justify-between w-full gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-900/20 shrink-0">
+                            <ClipboardList size={18} className="text-purple-500" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm group-hover:text-primary-600 transition-colors truncate">{q.title}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {q.questions?.length || 0} questions
+                              {q.isAIGenerated && <span className="ml-2 text-purple-400">✦ AI Generated</span>}
+                              {q.attemptStatus && (
+                                <span className="ml-2 text-gray-500">
+                                  · {q.attemptStatus.attemptsUsed}/{q.attemptStatus.totalAttemptsAllowed} attempts
+                                </span>
+                              )}
+                            </p>
+                            {(q.availableFrom || q.availableUntil) && (
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {q.availableFrom && `Opens ${new Date(q.availableFrom).toLocaleString()} `}
+                                {q.availableUntil && `· Due ${new Date(q.availableUntil).toLocaleString()}`}
+                              </p>
+                            )}
+                            {!can && q.attemptStatus?.reason && (
+                              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{q.attemptStatus.reason}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-sm group-hover:text-primary-600 transition-colors">{q.title}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {q.questions?.length || 0} questions
-                            {q.isAIGenerated && <span className="ml-2 text-purple-400">✦ AI Generated</span>}
-                          </p>
-                        </div>
+                        <Badge
+                          variant={
+                            q.difficulty === 'easy'
+                              ? 'success'
+                              : q.difficulty === 'hard'
+                                ? 'danger'
+                                : 'warning'
+                          }
+                          className="shrink-0"
+                        >
+                          {q.difficulty}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={
-                          q.difficulty === 'easy'
-                            ? 'success'
-                            : q.difficulty === 'hard'
-                              ? 'danger'
-                              : 'warning'
-                        }
+                    );
+                    return can ? (
+                      <Link
+                        key={q._id}
+                        to={'/learner/quiz/' + q._id}
+                        className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all group"
                       >
-                        {q.difficulty}
-                      </Badge>
-                    </Link>
-                  ))}
+                        {inner}
+                      </Link>
+                    ) : (
+                      <div
+                        key={q._id}
+                        className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50/80 dark:bg-gray-800/50 opacity-90 cursor-not-allowed"
+                      >
+                        {inner}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
