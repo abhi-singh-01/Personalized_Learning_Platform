@@ -6,7 +6,7 @@ import { Flag, Star, Check, X, Eye, MessageSquare, AlertTriangle } from 'lucide-
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function ContentModeration() {
-  usePageTitle('Content Moderation');
+  usePageTitle('Review Moderation');
   const api = useApi();
   const [reviews, setReviews] = useState([]);
   const [tab, setTab] = useState('flagged');
@@ -38,17 +38,34 @@ export default function ContentModeration() {
   return (
     <div className="space-y-6">
       <div>
-      <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-          <Flag className="text-orange-500" /> Content Moderation
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+          <Flag className="text-orange-500" /> Review Moderation
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review flagged course reviews</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
+          When a learner reports a course review as inappropriate, it appears here for your decision.
+          Approve to keep it visible, or reject to hide it from the course page.
+        </p>
       </div>
+
+      <Card className="!p-4 bg-orange-50/50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900/40">
+        <div className="flex gap-3 text-sm text-gray-600 dark:text-gray-300">
+          <AlertTriangle size={18} className="text-orange-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-gray-800 dark:text-gray-200">What does &quot;flagged&quot; mean?</p>
+            <p className="mt-1 leading-relaxed">
+              A <strong>flag</strong> is a report from a learner — not an error. It means someone marked a review
+              as spam, offensive, or misleading. You review it and choose Approve or Reject. If there are no reports,
+              this page stays empty (which is normal).
+            </p>
+          </div>
+        </div>
+      </Card>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="text-center">
           <p className="text-2xl font-bold text-orange-500">{reviews.length}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Flagged Reviews</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Reported by learners</p>
         </Card>
         <Card className="text-center">
           <p className="text-2xl font-bold text-red-500">{reviews.filter(r => !r.isApproved).length}</p>
@@ -61,7 +78,7 @@ export default function ContentModeration() {
         {reviews.length === 0 && (
           <Card className="text-center py-8">
             <Check size={40} className="mx-auto text-green-400 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">No flagged content! Everything looks clean.</p>
+            <p className="text-gray-500 dark:text-gray-400">No reported reviews right now — nothing for you to review.</p>
           </Card>
         )}
         {reviews.map(review => (

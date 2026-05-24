@@ -7,6 +7,7 @@ import {
   AlertTriangle, RefreshCw
 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { formatElapsedDuration } from '../../utils/helpers';
 
 export default function LiveClassMonitor() {
   usePageTitle('Live Monitor');
@@ -41,11 +42,13 @@ export default function LiveClassMonitor() {
     }
   };
 
-  const formatDuration = (start) => {
-    if (!start) return '—';
-    const mins = Math.floor((Date.now() - new Date(start)) / 60000);
-    if (mins < 60) return `${mins}m`;
-    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  const formatClassDuration = (cls) => {
+    if (!cls.startedAt) return '—';
+    const start = new Date(cls.startedAt).getTime();
+    const end = cls.status === 'ended' && cls.endedAt
+      ? new Date(cls.endedAt).getTime()
+      : Date.now();
+    return formatElapsedDuration(end - start);
   };
 
   if (api.loading && classes.length === 0) return <Loading />;
@@ -121,7 +124,11 @@ export default function LiveClassMonitor() {
                 <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
                   <span className="flex items-center gap-1"><Users size={12} /> {cls.currentAttendees || 0} learners</span>
                   <span className="flex items-center gap-1"><Monitor size={12} /> Peak: {cls.peakAttendance || 0}</span>
-                  <span className="flex items-center gap-1"><Clock size={12} /> {formatDuration(cls.startedAt)}</span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} />
+                    {cls.status === 'ended' ? 'Duration: ' : 'Elapsed: '}
+                    {formatClassDuration(cls)}
+                  </span>
                   <span>👤 {cls.educator?.name}</span>
                 </div>
               </div>

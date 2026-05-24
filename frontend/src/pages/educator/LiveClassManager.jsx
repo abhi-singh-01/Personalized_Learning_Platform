@@ -9,6 +9,7 @@ import {
   Calendar, Eye, History, AlertCircle
 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { formatElapsedDuration } from '../../utils/helpers';
 
 export default function LiveClassManager() {
   usePageTitle('Live Classes');
@@ -78,10 +79,13 @@ export default function LiveClassManager() {
     }
   };
 
-  const formatDuration = (start) => {
-    if (!start) return '—';
-    const mins = Math.floor((Date.now() - new Date(start)) / 60000);
-    return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  const formatClassDuration = (cls) => {
+    if (!cls.startedAt) return '—';
+    const start = new Date(cls.startedAt).getTime();
+    const end = cls.status === 'ended' && cls.endedAt
+      ? new Date(cls.endedAt).getTime()
+      : Date.now();
+    return formatElapsedDuration(end - start);
   };
 
   return (
@@ -146,7 +150,9 @@ export default function LiveClassManager() {
                   <p className="text-sm text-gray-500">{cls.course?.title}</p>
                   <div className="flex gap-4 mt-2 text-xs text-gray-400">
                     <span className="flex items-center gap-1"><Users size={12} /> {cls.currentAttendees || 0} learners</span>
-                    <span className="flex items-center gap-1"><Clock size={12} /> {formatDuration(cls.startedAt)}</span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={12} /> {formatClassDuration(cls)}
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2">
