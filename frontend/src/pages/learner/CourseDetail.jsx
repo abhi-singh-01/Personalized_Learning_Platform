@@ -6,20 +6,24 @@ import Loading from '../../components/ui/Loading';
 import Badge from '../../components/ui/Badge';
 import {
   Play, FileText, Presentation, ArrowLeft, CheckCircle, MessageSquare,
-  BookOpen, Sparkles, Video, Radio, ClipboardList, FolderOpen, Brain
+  BookOpen, Sparkles, Video, Radio, ClipboardList, FolderOpen, Brain, ExternalLink
 } from 'lucide-react';
 import AIVideoPanel from '../../components/ui/AIVideoPanel';
 import { unwrapApiData } from '../../utils/apiData';
+import { resolveMaterialUrl } from '../../utils/materialUrl';
+import { useToast } from '../../context/ToastContext';
 
 export default function CourseDetail() {
   const { id } = useParams();
   const api = useApi();
+  const toast = useToast();
   const [course, setCourse] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
   const [activeUploadedVideo, setActiveUploadedVideo] = useState(null);
   const [activeArticle, setActiveArticle] = useState(null);
+  const [activeDocument, setActiveDocument] = useState(null);
   const [progress, setProgress] = useState({ completedMaterials: [] });
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -27,8 +31,8 @@ export default function CourseDetail() {
   usePageTitle(course?.title || 'Course');
 
   useEffect(() => {
-    api.get('/courses/' + id).then((res) => setCourse(res.data));
-    api.get('/materials/course/' + id).then((res) => setMaterials(res.data || []));
+    api.get('/courses/' + id).then((res) => setCourse(unwrapApiData(res)));
+    api.get('/materials/course/' + id).then((res) => setMaterials(unwrapApiData(res) || []));
     api.get('/quizzes/course/' + id).then((res) => setQuizzes(unwrapApiData(res) || []));
     api.get('/courses/' + id + '/progress').then((res) => setProgress(res.data || { completedMaterials: [] }));
     api.get('/courses/' + id + '/comments').then((res) => setComments(res.data || []));
@@ -75,37 +79,29 @@ export default function CourseDetail() {
     ? Math.round((progress.completedMaterials.length / materials.length) * 100)
     : 0;
 
-  const resolveMaterialUrl = (url) => {
-    if (!url) return '';
-    if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
-    if (!url.startsWith('/')) return url;
-    const apiBase = import.meta.env.VITE_API_URL || '/api';
-    if (apiBase.startsWith('http')) {
-      try {
-        return `${new URL(apiBase).origin}${url}`;
-      } catch {
-        return url;
-      }
-    }
-    return url;
-  };
-
   const openMaterial = (m) => {
     trackView(m._id);
+    setActiveVideo(null);
+    setActiveUploadedVideo(null);
+    setActiveArticle(null);
+    setActiveDocument(null);
+
     if (m.type === 'youtube') {
       setActiveVideo(m.videoId);
-      setActiveUploadedVideo(null);
-      setActiveArticle(null);
     } else if (m.type === 'video') {
       setActiveUploadedVideo(m);
-      setActiveVideo(null);
-      setActiveArticle(null);
     } else if (m.type === 'article') {
       setActiveArticle(m);
-      setActiveVideo(null);
-      setActiveUploadedVideo(null);
+    } else if (m.type === 'pdf' || m.type === 'ppt') {
+      if (!m.fileUrl) {
+        toast.error('This document has no file. Ask your educator to re-upload it.');
+        return;
+      }
+      setActiveDocument(m);
+      setActiveTab('documents');
     } else if (m.fileUrl) {
-      window.open(resolveMaterialUrl(m.fileUrl), '_blank', 'noopener,noreferrer');
+      const docUrl = resolveMaterialUrl(m.fileUrl);
+      window.open(docUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -228,8 +224,8 @@ export default function CourseDetail() {
         </Link>
       </div>
 
-      {/* Video/Article Player */}
-      {(activeVideo || activeArticle || activeUploadedVideo) && (
+      {/* Video / document / article player */}
+      {(activeVideo || activeArticle || activeUploadedVideo || activeDocument) && (
         <div className="card">
           {activeVideo && (
             <div className="aspect-video rounded-lg bg-black relative overflow-hidden">
@@ -266,6 +262,51 @@ export default function CourseDetail() {
             <div className="prose dark:prose-invert max-w-none">
               <h2 className="text-2xl font-bold mb-4">{activeArticle.title}</h2>
               <div dangerouslySetInnerHTML={{ __html: activeArticle.content }} />
+            </div>
+          )}
+          {activeDocument && (
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-lg font-bold">{activeDocument.title}</h2>
+                  <p className="text-xs text-gray-500 capitalize mt-0.5">
+                    {activeDocument.type === 'pdf' ? 'PDF document' : 'Presentation file'}
+                  </p>
+                </div>
+                <a
+                  href={resolveMaterialUrl(activeDocument.fileUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
+                >
+                  <ExternalLink size={14} />
+                  Open in new tab
+                </a>
+              </div>
+              {activeDocument.type === 'pdf' ? (
+                <iframe
+                  key={activeDocument._id}
+                  src={resolveMaterialUrl(activeDocument.fileUrl)}
+                  title={activeDocument.title}
+                  className="w-full h-[70vh] min-h-[420px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                />
+              ) : (
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-8 text-center">
+                  <Presentation size={40} className="mx-auto text-orange-400 mb-3" />
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                    Presentations open best in PowerPoint or Google Slides.
+                  </p>
+                  <a
+                    href={resolveMaterialUrl(activeDocument.fileUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary inline-flex items-center gap-2"
+                  >
+                    <ExternalLink size={16} />
+                    Download / open file
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>

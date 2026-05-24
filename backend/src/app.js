@@ -119,6 +119,9 @@ app.use('/uploads', (req, res, next) => {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  // Allow learner course page (frontend) to embed PDFs in an iframe
+  res.setHeader('Content-Security-Policy', 'frame-ancestors *');
+  res.removeHeader('X-Frame-Options');
   next();
 }, express.static(path.join(__dirname, '..', 'uploads')));
 

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { FileText, BookOpen, List, Loader2, Copy, Check, Download, ArrowRight, AlertCircle, Map, Clock, CheckCircle2, BookMarked, Sparkles } from 'lucide-react';
+import { FileText, BookOpen, List, Loader2, Copy, Check, Download, ArrowRight, Map, Clock, CheckCircle2, BookMarked, Sparkles } from 'lucide-react';
 import useApi from '../../hooks/useApi';
+import { friendlyAiMessage } from '../../utils/aiErrors';
 
 export default function AIVideoPanel({ materialId, materialTitle }) {
   const api = useApi();
   const [activeTab, setActiveTab] = useState('transcript');
   const [transcript, setTranscript] = useState(null);
   const [loading, setLoading] = useState({ transcribe: false, notes: false, syllabus: false, roadmap: false });
-  const [error, setError] = useState('');
+  const [userNotice, setUserNotice] = useState('');
+  const [transcriptUnavailable, setTranscriptUnavailable] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const fetchExisting = async () => {
@@ -18,19 +20,26 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     } catch { return null; }
   };
 
-  const requestTranscription = async ({ switchToTranscriptTab = true } = {}) => {
-    setLoading(l => ({ ...l, transcribe: true }));
-    setError('');
+  const requestTranscription = async ({ switchToTranscriptTab = true, silent = false } = {}) => {
+    setLoading((l) => ({ ...l, transcribe: true }));
+    if (!silent) setUserNotice('');
+    setTranscriptUnavailable(false);
     try {
       const res = await api.post('/ai/transcribe/' + materialId);
       setTranscript(res.data);
+      setTranscriptUnavailable(false);
       if (switchToTranscriptTab) setActiveTab('transcript');
       return res.data;
     } catch (err) {
-      setError(err.response?.data?.message || 'Transcription failed. Please try again.');
+      const raw = err.response?.data?.message || '';
+      setTranscriptUnavailable(true);
+      if (!silent) {
+        setUserNotice(friendlyAiMessage(raw) || 'Transcript is not available right now. Please try again.');
+      }
       return null;
+    } finally {
+      setLoading((l) => ({ ...l, transcribe: false }));
     }
-    setLoading(l => ({ ...l, transcribe: false }));
   };
 
   const handleTranscribe = async () => {
@@ -46,17 +55,17 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   const handleGenerateNotes = async () => {
     const existing = await ensureTranscript();
     if (!existing?.translatedText) {
-      setError('Transcription failed. Please try again.');
+      setUserNotice('Generate a transcript first using the Transcribe button.');
       return;
     }
     setLoading(l => ({ ...l, notes: true }));
-    setError('');
+    setUserNotice('');
     try {
       const res = await api.post('/ai/generate-notes/' + materialId);
       setTranscript(res.data);
       setActiveTab('notes');
     } catch (err) {
-      setError(err.response?.data?.message || 'Notes generation failed.');
+      setUserNotice(friendlyAiMessage(err.response?.data?.message) || 'Notes could not be generated. Try again.');
     }
     setLoading(l => ({ ...l, notes: false }));
   };
@@ -64,17 +73,17 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   const handleExtractSyllabus = async () => {
     const existing = await ensureTranscript();
     if (!existing?.translatedText) {
-      setError('Transcription failed. Please try again.');
+      setUserNotice('Generate a transcript first using the Transcribe button.');
       return;
     }
     setLoading(l => ({ ...l, syllabus: true }));
-    setError('');
+    setUserNotice('');
     try {
       const res = await api.post('/ai/extract-syllabus/' + materialId);
       setTranscript(res.data);
       setActiveTab('syllabus');
     } catch (err) {
-      setError(err.response?.data?.message || 'Syllabus extraction failed.');
+      setUserNotice(friendlyAiMessage(err.response?.data?.message) || 'Syllabus could not be extracted. Try again.');
     }
     setLoading(l => ({ ...l, syllabus: false }));
   };
@@ -82,17 +91,17 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   const handleGenerateRoadmap = async () => {
     const existing = await ensureTranscript();
     if (!existing?.translatedText) {
-      setError('Transcription failed. Please try again.');
+      setUserNotice('Generate a transcript first using the Transcribe button.');
       return;
     }
     setLoading(l => ({ ...l, roadmap: true }));
-    setError('');
+    setUserNotice('');
     try {
       const res = await api.post('/ai/generate-roadmap/' + materialId);
       setTranscript(res.data);
       setActiveTab('roadmap');
     } catch (err) {
-      setError(err.response?.data?.message || 'Roadmap generation failed.');
+      setUserNotice(friendlyAiMessage(err.response?.data?.message) || 'Roadmap could not be built. Try again.');
     }
     setLoading(l => ({ ...l, roadmap: false }));
   };
@@ -155,11 +164,12 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     let mounted = true;
     const init = async () => {
       setTranscript(null);
-      setError('');
+      setUserNotice('');
+      setTranscriptUnavailable(false);
       const existing = await fetchExisting();
       if (!mounted) return;
       if (!existing?.translatedText) {
-        await requestTranscription({ switchToTranscriptTab: false });
+        await requestTranscription({ switchToTranscriptTab: false, silent: true });
       }
     };
     init();
@@ -221,11 +231,9 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
         </button>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm flex items-center gap-2">
-          <AlertCircle size={16} /> {error}
-        </div>
+      {/* Gentle notice (only after user actions — auto-transcribe failures stay quiet) */}
+      {userNotice && (
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">{userNotice}</p>
       )}
 
       {/* Loading Skeleton */}
@@ -288,9 +296,23 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-gray-400 text-center py-6">
-                  Click "📝 Transcribe" to generate the transcript from this video.
-                </p>
+                <div className="text-center py-6 space-y-3">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {transcriptUnavailable
+                      ? 'Transcript is not ready yet. You can still watch the video and use Transcribe when you want AI notes.'
+                      : 'Click Transcribe to generate a transcript from this video.'}
+                  </p>
+                  {transcriptUnavailable && (
+                    <button
+                      type="button"
+                      onClick={handleTranscribe}
+                      disabled={isAnyLoading}
+                      className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                    >
+                      Try transcribe again
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}

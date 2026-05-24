@@ -138,10 +138,27 @@ Be thorough — capture every spoken word. Do NOT summarize. Provide the complet
     ],
   });
 
-  const text = result.text;
+  const text = result.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI returned invalid transcript format');
-  return JSON.parse(jsonMatch[0]);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      const body = parsed.transcript || parsed.translatedText || parsed.text;
+      if (typeof body === 'string' && body.trim()) {
+        return {
+          language: parsed.language || 'en',
+          transcript: body.trim(),
+        };
+      }
+    } catch {
+      /* try plain-text fallback below */
+    }
+  }
+  const trimmed = text.trim();
+  if (trimmed.length > 80) {
+    return { language: 'en', transcript: trimmed };
+  }
+  throw new Error('AI returned invalid transcript format');
 };
 
 /**

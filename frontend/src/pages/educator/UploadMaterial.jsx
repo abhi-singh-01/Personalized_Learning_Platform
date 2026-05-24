@@ -8,20 +8,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 
 const JoditEditor = lazy(() => import('jodit-react'));
 
-function resolveMaterialUrl(url) {
-  if (!url) return '';
-  if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (!url.startsWith('/')) return url;
-  const apiBase = import.meta.env.VITE_API_URL || '/api';
-  if (apiBase.startsWith('http')) {
-    try {
-      return `${new URL(apiBase).origin}${url}`;
-    } catch {
-      return url;
-    }
-  }
-  return url;
-}
+import { resolveMaterialUrl } from '../../utils/materialUrl';
 
 function youtubeWatchUrl(m) {
   if (!m) return '';

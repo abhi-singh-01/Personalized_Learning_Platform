@@ -11,6 +11,11 @@ const {
   resolveLocalVideoPathForTranscription,
 } = require('../services/transcriptService');
 
+/** User-safe message — technical details stay in logs / transcript.error only. */
+function transcriptionUserMessage() {
+  return 'We could not prepare a transcript for this video right now. Please try again later.';
+}
+
 /**
  * POST /api/ai/transcribe/:materialId
  * Transcribe a video material to English using Gemini.
@@ -54,10 +59,11 @@ exports.transcribe = async (req, res, next) => {
 
       sendResponse(res, 200, 'Video transcribed successfully', transcript);
     } catch (aiError) {
+      console.error('[transcribe]', material._id, aiError.message);
       transcript.status = 'failed';
       transcript.error = aiError.message;
       await transcript.save();
-      throw new AppError('Transcription failed: ' + aiError.message, 500);
+      throw new AppError(transcriptionUserMessage(), 500);
     } finally {
       await cleanup();
     }
