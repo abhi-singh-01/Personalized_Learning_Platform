@@ -32,7 +32,10 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   // ── Not authenticated → redirect to login ──
   if (!user) {
-    return <Navigate to="/login" replace />;
+    const reason = sessionStorage.getItem('authLogoutReason');
+    sessionStorage.removeItem('authLogoutReason');
+    const loginPath = reason === 'idle' ? '/login?expired=1' : '/login';
+    return <Navigate to={loginPath} replace />;
   }
 
   // ── Role mismatch → redirect to correct dashboard ──

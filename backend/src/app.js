@@ -33,6 +33,11 @@ const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 
+// Render/Vercel/nginx set X-Forwarded-For; required for express-rate-limit + req.ip
+if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {

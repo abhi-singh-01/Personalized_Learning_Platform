@@ -206,8 +206,6 @@ exports.updateSettings = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-const Progress = require('../models/Progress');
-
 exports.getAnalytics = async (req, res, next) => {
     try {
         const thirtyDaysAgo = new Date();

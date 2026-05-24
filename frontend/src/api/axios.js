@@ -12,19 +12,19 @@ API.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      // Don't redirect if already on auth endpoints
       const isAuthRoute = err.config?.url?.includes('/auth/');
       if (!isAuthRoute) {
         const message = err.response?.data?.message || '';
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('loginTime');
+        localStorage.removeItem('lastActivityAt');
 
-        // If session was evicted by another device login, show a clear message
         if (message.includes('Session expired') || message.includes('logged out')) {
-          window.location.href = '/login?reason=session_expired';
+          window.location.replace('/login?reason=session_expired');
         } else {
-          window.location.href = '/login';
+          sessionStorage.setItem('authLogoutReason', 'idle');
+          window.location.replace('/login?expired=1');
         }
       }
     }
