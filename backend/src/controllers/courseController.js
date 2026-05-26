@@ -2,10 +2,74 @@ const Course = require('../models/Course');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
+const storageService = require('../services/storageService');
+
+const COURSE_FIELDS = [
+  'title',
+  'description',
+  'category',
+  'difficulty',
+  'price',
+  'currency',
+  'shortDescription',
+  'previewVideoUrl',
+  'refundPolicy',
+  'maxEnrollments',
+  'enrollmentDeadline',
+  'isPublished',
+  'status',
+];
+
+function buildCoursePayload(body = {}) {
+  const payload = {};
+  COURSE_FIELDS.forEach((field) => {
+    if (body[field] !== undefined) payload[field] = body[field];
+  });
+
+  if (payload.price !== undefined) payload.price = Number(payload.price) || 0;
+  if (payload.maxEnrollments !== undefined) payload.maxEnrollments = Number(payload.maxEnrollments) || 0;
+  if (typeof payload.isPublished === 'string') payload.isPublished = payload.isPublished === 'true';
+  if (payload.enrollmentDeadline === '') delete payload.enrollmentDeadline;
+
+  if (body.tags !== undefined) {
+    payload.tags = Array.isArray(body.tags)
+      ? body.tags
+      : String(body.tags).split(',').map((tag) => tag.trim()).filter(Boolean);
+  }
+
+  return payload;
+}
+
+async function resolveUploadedThumbnail(file) {
+  if (!file) return '';
+
+  let thumbnailUrl = `/uploads/${file.filename}`;
+  if (storageService.isMaterialCloudUploadEnabled()) {
+    try {
+      const cloudUrl = await storageService.uploadCourseThumbnailFromDisk({
+        localPath: file.path,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+      });
+      if (cloudUrl) {
+        thumbnailUrl = cloudUrl;
+        await storageService.unlinkLocalUploadsPath(file.path);
+      }
+    } catch (err) {
+      console.error('Course thumbnail cloud upload failed; using local /uploads path:', err.message);
+    }
+  }
+
+  return thumbnailUrl;
+}
 
 exports.create = async (req, res, next) => {
   try {
-    const course = await Course.create({ ...req.body, educator: req.user._id });
+    const payload = buildCoursePayload(req.body);
+    const thumbnailUrl = await resolveUploadedThumbnail(req.file);
+    if (thumbnailUrl) payload.thumbnail = thumbnailUrl;
+
+    const course = await Course.create({ ...payload, educator: req.user._id });
     sendResponse(res, 201, 'Course created', course);
   } catch (err) { next(err); }
 };
@@ -34,12 +98,22 @@ exports.getById = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const course = await Course.findOneAndUpdate(
-      { _id: req.params.id, educator: req.user._id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const course = await Course.findOne({ _id: req.params.id, educator: req.user._id });
     if (!course) throw new AppError('Course not found or not authorized', 404);
+
+    const previousThumbnail = course.thumbnail;
+    Object.assign(course, buildCoursePayload(req.body));
+
+    const thumbnailUrl = await resolveUploadedThumbnail(req.file);
+    if (thumbnailUrl) {
+      course.thumbnail = thumbnailUrl;
+      if (previousThumbnail && previousThumbnail !== thumbnailUrl) {
+        await storageService.deleteMaterialAtUrlIfCloud(previousThumbnail);
+        await storageService.unlinkLocalUploadsPath(previousThumbnail);
+      }
+    }
+
+    await course.save();
     sendResponse(res, 200, 'Course updated', course);
   } catch (err) { next(err); }
 };
@@ -48,6 +122,8 @@ exports.remove = async (req, res, next) => {
   try {
     const course = await Course.findOneAndDelete({ _id: req.params.id, educator: req.user._id });
     if (!course) throw new AppError('Course not found or not authorized', 404);
+    await storageService.deleteMaterialAtUrlIfCloud(course.thumbnail);
+    await storageService.unlinkLocalUploadsPath(course.thumbnail);
     sendResponse(res, 200, 'Course deleted');
   } catch (err) { next(err); }
 };

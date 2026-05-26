@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import usePageTitle from '../../hooks/usePageTitle';
 import Card from '../../components/ui/Card';
 import Loading from '../../components/ui/Loading';
-import { ArrowLeft, Upload, FileQuestion, Trash2, IndianRupee } from 'lucide-react';
+import { ArrowLeft, Upload, FileQuestion, Trash2, IndianRupee, Image, X } from 'lucide-react';
 
 export default function ManageCourse() {
   const { id } = useParams();
@@ -22,6 +22,9 @@ export default function ManageCourse() {
   usePageTitle(isEdit ? 'Edit Course' : 'New Course');
   const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState([]);
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [existingThumbnail, setExistingThumbnail] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -35,10 +38,19 @@ export default function ManageCourse() {
           tags: (c.tags || []).join(', '),
           price: c.price || 0,
         });
+        setExistingThumbnail(c.thumbnail || '');
+        setThumbnailPreview(c.thumbnail || '');
       });
     }
     api.get('/courses/teaching').then((res) => setCourses(res.data || []));
   }, [id]);
+
+  useEffect(() => {
+    if (!thumbnailFile) return undefined;
+    const objectUrl = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [thumbnailFile]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,10 +61,17 @@ export default function ManageCourse() {
         price: Number(form.price) || 0,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       };
+      const payload = thumbnailFile ? new FormData() : body;
+      if (thumbnailFile) {
+        Object.entries(body).forEach(([key, value]) => {
+          payload.append(key, Array.isArray(value) ? value.join(',') : value);
+        });
+        payload.append('thumbnail', thumbnailFile);
+      }
       if (isEdit) {
-        await api.put('/courses/' + id, body);
+        await api.put('/courses/' + id, payload);
       } else {
-        await api.post('/courses', body);
+        await api.post('/courses', payload);
       }
       nav('/educator/dashboard');
     } catch (e) {
@@ -71,6 +90,17 @@ export default function ManageCourse() {
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
+  const handleThumbnailChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setThumbnailFile(file);
+  };
+
+  const clearSelectedThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview(existingThumbnail);
+  };
+
   return (
     <div className="space-y-6">
       <Link to="/educator/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-primary-600">
@@ -83,6 +113,34 @@ export default function ManageCourse() {
           <div>
             <label className="block text-sm font-medium mb-1.5">Course Title</label>
             <input className="input-field" placeholder="e.g., Introduction to Data Structures" value={form.title} onChange={set('title')} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Course Thumbnail</label>
+            <div className="grid gap-3 sm:grid-cols-[180px_1fr] sm:items-center">
+              <div className="h-28 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
+                {thumbnailPreview ? (
+                  <img src={thumbnailPreview} alt="Course thumbnail preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="text-center text-gray-400">
+                    <Image size={28} className="mx-auto mb-1" />
+                    <span className="text-xs">No image selected</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <Upload size={16} />
+                  Upload thumbnail
+                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" onChange={handleThumbnailChange} className="hidden" />
+                </label>
+                {thumbnailFile && (
+                  <button type="button" onClick={clearSelectedThumbnail} className="inline-flex items-center gap-1.5 ml-2 text-sm text-gray-500 hover:text-red-500">
+                    <X size={14} /> Remove selection
+                  </button>
+                )}
+                <p className="text-xs text-gray-500">PNG, JPG, WebP, or GIF. Max 5MB. Stored in S3 when AWS storage is configured.</p>
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5">Description</label>

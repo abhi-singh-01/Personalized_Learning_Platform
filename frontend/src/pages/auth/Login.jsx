@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, Clock } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
@@ -26,16 +26,9 @@ export default function Login() {
   const { login, googleLogin } = useAuth();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
-  const sessionExpired =
-    searchParams.get('expired') === '1' ||
-    (typeof window !== 'undefined' && sessionStorage.getItem('authLogoutReason') === 'idle');
   const sessionEvicted = searchParams.get('reason') === 'session_expired';
   const isEducatorFlow = searchParams.get('role') === 'educator';
   usePageTitle(isEducatorFlow ? 'Educator Sign In' : 'Sign In');
-
-  useEffect(() => {
-    sessionStorage.removeItem('authLogoutReason');
-  }, []);
 
   const toast = useToast();
 
@@ -171,22 +164,6 @@ export default function Login() {
                   : 'Enter your credentials to access your account'}
               </p>
             </div>
-
-            {sessionExpired && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-4 rounded-xl mb-5 text-sm border border-amber-200 dark:border-amber-800/40">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 shrink-0">
-                    <Clock size={18} className="text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-amber-800 dark:text-amber-200">Session timed out</p>
-                    <p className="mt-1 text-amber-700/90 dark:text-amber-300/90 leading-relaxed">
-                      You were signed out after 30 minutes of inactivity. Please sign in again to continue.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {sessionEvicted && (
               <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-4 py-3 rounded-xl mb-5 text-sm border border-blue-200 dark:border-blue-800/40 flex items-center gap-2">

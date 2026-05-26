@@ -23,8 +23,7 @@ API.interceptors.response.use(
         if (message.includes('Session expired') || message.includes('logged out')) {
           window.location.replace('/login?reason=session_expired');
         } else {
-          sessionStorage.setItem('authLogoutReason', 'idle');
-          window.location.replace('/login?expired=1');
+          window.location.replace('/login');
         }
       }
     }

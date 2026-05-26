@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import usePageTitle from '../../hooks/usePageTitle';
 import Loading from '../../components/ui/Loading';
+import { resolveMaterialUrl } from '../../utils/materialUrl';
 import {
   BookOpen, PlusCircle, Search, Pencil, Trash2, Copy, Eye, EyeOff,
   Upload, FileQuestion, Video, Users, Calendar, Tag, Filter,
@@ -184,7 +185,7 @@ export default function MyCourses() {
                 {/* Thumbnail / Gradient Placeholder */}
                 <div className="relative h-36 sm:h-40 overflow-hidden">
                   {course.thumbnail ? (
-                    <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <img src={resolveMaterialUrl(course.thumbnail)} alt={course.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
                       <GraduationCap size={48} className="text-white/30" />

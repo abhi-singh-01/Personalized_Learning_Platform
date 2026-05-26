@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import Loading from '../../components/ui/Loading';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
+import { resolveMaterialUrl } from '../../utils/materialUrl';
 
 export default function LearnerMyCourses() {
   usePageTitle('My Courses');
@@ -73,8 +74,19 @@ export default function LearnerMyCourses() {
                          transition-all duration-300 overflow-hidden flex flex-col"
             >
               <div className="relative h-36 sm:h-40 bg-gradient-to-br from-primary-500 via-primary-600 to-violet-600 dark:from-primary-500/80 dark:via-violet-500/80 dark:to-purple-500/80 flex items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.14),transparent_60%)]" />
-                <BookOpen size={36} className="text-white/80 group-hover:scale-110 transition-transform duration-300" />
+                {course.thumbnail ? (
+                  <img
+                    src={resolveMaterialUrl(course.thumbnail)}
+                    alt={course.title}
+                    className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.14),transparent_60%)]" />
+                    <BookOpen size={36} className="text-white/80 group-hover:scale-110 transition-transform duration-300" />
+                  </>
+                )}
+                <div className="absolute inset-0 bg-black/10" />
               </div>
 
               <div className="flex flex-col flex-1 p-4 sm:p-5">

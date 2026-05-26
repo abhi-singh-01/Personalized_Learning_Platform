@@ -7,6 +7,7 @@ import Loading from '../../components/ui/Loading';
 import BDUIPanel from '../../components/ui/BDUIPanel';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
+import { resolveMaterialUrl } from '../../utils/materialUrl';
 import {
   Search, BookOpen, Users, IndianRupee, CreditCard,
   Tag, X, CheckCircle, AlertCircle, Sparkles, TicketPercent,
@@ -375,8 +376,19 @@ export default function Courses() {
               >
                 {/* ── Thumbnail ── */}
                 <div className="relative h-36 sm:h-40 bg-gradient-to-br from-primary-500 via-primary-600 to-violet-600 dark:from-primary-600 dark:via-violet-600 dark:to-purple-700 flex items-center justify-center overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.12),transparent_60%)]" />
-                  <BookOpen size={36} className="text-white/70 group-hover:scale-110 transition-transform duration-300" />
+                  {course.thumbnail ? (
+                    <img
+                      src={resolveMaterialUrl(course.thumbnail)}
+                      alt={course.title}
+                      className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.12),transparent_60%)]" />
+                      <BookOpen size={36} className="text-white/70 group-hover:scale-110 transition-transform duration-300" />
+                    </>
+                  )}
+                  <div className="absolute inset-0 bg-black/10" />
                   {course.price > 0 && (
                     <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full
                                      bg-white/20 backdrop-blur-md text-white text-xs font-semibold tracking-wide shadow-lg">

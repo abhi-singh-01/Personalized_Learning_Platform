@@ -41,15 +41,16 @@ function publicUrlForKey(key) {
 }
 
 /**
- * @param {{ localPath: string, originalName?: string, mimeType?: string }} opts
+ * @param {{ localPath: string, originalName?: string, mimeType?: string, keyPrefix?: string }} opts
  * @returns {Promise<string|null>} Public URL or null if cloud upload not configured / skipped
  */
-async function uploadMaterialFromDisk(opts) {
+async function uploadFileFromDisk(opts) {
   if (!isMaterialCloudUploadEnabled()) return null;
 
-  const { localPath, originalName, mimeType } = opts;
+  const { localPath, originalName, mimeType, keyPrefix = 'materials' } = opts;
   const ext = path.extname(originalName || localPath || '');
-  const key = `materials/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  const cleanPrefix = keyPrefix.replace(/^\/+|\/+$/g, '') || 'materials';
+  const key = `${cleanPrefix}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
 
   const client = getS3Client();
   const Body = fs.createReadStream(localPath);
@@ -65,6 +66,14 @@ async function uploadMaterialFromDisk(opts) {
   );
 
   return publicUrlForKey(key);
+}
+
+function uploadMaterialFromDisk(opts) {
+  return uploadFileFromDisk({ ...opts, keyPrefix: 'materials' });
+}
+
+function uploadCourseThumbnailFromDisk(opts) {
+  return uploadFileFromDisk({ ...opts, keyPrefix: 'course-thumbnails' });
 }
 
 /**
@@ -117,7 +126,9 @@ async function unlinkLocalUploadsPath(localPathOrRelative) {
 
 module.exports = {
   isMaterialCloudUploadEnabled,
+  uploadFileFromDisk,
   uploadMaterialFromDisk,
+  uploadCourseThumbnailFromDisk,
   deleteMaterialAtUrlIfCloud,
   unlinkLocalUploadsPath,
 };

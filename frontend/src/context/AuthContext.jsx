@@ -7,7 +7,6 @@ export const useAuth = () => useContext(AuthContext);
 export const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes idle
 const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours max session
 const LAST_ACTIVITY_KEY = 'lastActivityAt';
-const LOGOUT_REASON_KEY = 'authLogoutReason';
 
 function isAuthenticatedArea(pathname) {
   return /^\/(learner|educator|admin|profile|notifications)(\/|$)/.test(pathname);
@@ -57,7 +56,7 @@ export function AuthProvider({ children }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const logout = useCallback(async (options = {}) => {
-    const { reason, redirect } = options;
+    const { redirect } = options;
 
     try {
       const t = localStorage.getItem('token');
@@ -66,10 +65,6 @@ export function AuthProvider({ children }) {
       }
     } catch { /* clear local state regardless */ }
 
-    if (reason === 'idle') {
-      sessionStorage.setItem(LOGOUT_REASON_KEY, 'idle');
-    }
-
     clearLocalAuth();
     setUser(null);
     setSessionWarning(false);
@@ -77,7 +72,7 @@ export function AuthProvider({ children }) {
     clearTimeout(warningTimerRef.current);
 
     if (redirect === 'login') {
-      window.location.replace(reason === 'idle' ? '/login?expired=1' : '/login');
+      window.location.replace('/login');
     }
   }, []);
 
@@ -149,11 +144,10 @@ export function AuthProvider({ children }) {
     }
 
     if (isIdleExpired() || isTokenMaxAgeExpired()) {
-      sessionStorage.setItem(LOGOUT_REASON_KEY, 'idle');
       clearLocalAuth();
       setLoading(false);
       if (isAuthenticatedArea(window.location.pathname)) {
-        window.location.replace('/login?expired=1');
+        window.location.replace('/login');
       }
       return;
     }
