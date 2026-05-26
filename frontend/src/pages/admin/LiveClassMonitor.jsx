@@ -15,6 +15,8 @@ export default function LiveClassMonitor() {
   const [classes, setClasses] = useState([]);
   const [statusFilter, setStatusFilter] = useState('live');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [message, setMessage] = useState('');
+  const [confirmEndId, setConfirmEndId] = useState(null);
 
   const fetchClasses = async () => {
     try {
@@ -33,12 +35,18 @@ export default function LiveClassMonitor() {
   }, [autoRefresh, statusFilter]);
 
   const handleForceEnd = async (classId) => {
-    if (!window.confirm('Force-end this live class? All learners will be disconnected.')) return;
+    if (confirmEndId !== classId) {
+      setConfirmEndId(classId);
+      setMessage('Click Force End again to confirm disconnecting learners.');
+      return;
+    }
     try {
       await api.put(`/live-classes/admin/${classId}/force-end`);
+      setConfirmEndId(null);
+      setMessage('Live class ended.');
       fetchClasses();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error ending class');
+      setMessage(err.response?.data?.message || 'Error ending class');
     }
   };
 
@@ -72,6 +80,11 @@ export default function LiveClassMonitor() {
           </button>
         </div>
       </div>
+      {message && (
+        <div className="rounded-xl px-4 py-3 text-sm bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          {message}
+        </div>
+      )}
 
       {/* Status Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -135,7 +148,7 @@ export default function LiveClassMonitor() {
               {cls.status === 'live' && (
                 <button onClick={() => handleForceEnd(cls._id)}
                   className="flex items-center gap-1 px-3 py-2 text-sm bg-red-100 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
-                  <StopCircle size={14} /> Force End
+                  <StopCircle size={14} /> {confirmEndId === cls._id ? 'Confirm End' : 'Force End'}
                 </button>
               )}
             </div>

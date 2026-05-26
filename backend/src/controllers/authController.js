@@ -7,6 +7,13 @@ const Setting = require('../models/Setting');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const { JWT_SECRET, JWT_EXPIRES_IN, GOOGLE_CLIENT_ID } = require('../config/env');
+const {
+  hashOtp,
+  isOtpCoolingDown,
+  isPasswordResetOtpCoolingDown,
+  issueEmailOtp,
+  issuePasswordResetOtp,
+} = require('../services/emailOtpService');
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -27,6 +34,35 @@ const parseDeviceInfo = (userAgent) => {
 // Sign JWT with embedded tokenId for session tracking
 const signToken = (id, role, tokenId) =>
   jwt.sign({ id, role, tokenId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+const normalizePortalRole = (role) => {
+  if (role === 'teacher') return 'educator';
+  if (role === 'student') return 'learner';
+  if (role === 'educator' || role === 'learner') return role;
+  return null;
+};
+
+const assertPortalRoleAccess = (user, requestedRole) => {
+  const portalRole = normalizePortalRole(requestedRole);
+  if (!portalRole) return;
+
+  const userRole = normalizePortalRole(user.role);
+  if (userRole === portalRole) return;
+
+  if (user.role === 'admin') {
+    throw new AppError('Admin accounts must use the admin sign in page', 403);
+  }
+
+  if (userRole === 'learner' && portalRole === 'educator') {
+    throw new AppError('This is a learner account. Please sign in as a learner or switch to educator from your account.', 403);
+  }
+
+  if (userRole === 'educator' && portalRole === 'learner') {
+    throw new AppError('This is an educator account. Please use the educator sign in page.', 403);
+  }
+
+  throw new AppError('This account cannot access the selected portal', 403);
+};
 
 // Register a new device session, enforcing the device limit
 const registerSession = async (user, tokenId, req) => {
@@ -76,15 +112,15 @@ exports.register = async (req, res, next) => {
       name, email, password, role, authProvider: 'local',
       phone: phone || '', country: country || '', state: state || '', city: city || '',
       profileComplete: !!(phone && country && state && city),
+      emailVerified: false,
     });
 
-    const tokenId = generateTokenId();
-    await registerSession(user, tokenId, req);
-    const token = signToken(user._id, user.role, tokenId);
+    await issueEmailOtp(user);
 
-    sendResponse(res, 201, 'Registration successful', {
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, profileComplete: user.profileComplete },
+    sendResponse(res, 201, 'Verification code sent to your email', {
+      verificationRequired: true,
+      email: user.email,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, profileComplete: user.profileComplete, emailVerified: false },
     });
   } catch (err) { next(err); }
 };
@@ -92,11 +128,12 @@ exports.register = async (req, res, next) => {
 exports.loginValidation = [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
+  body('role').optional().isIn(['learner', 'educator']).withMessage('Role must be learner or educator'),
 ];
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password)))
       throw new AppError('Invalid email or password', 401);
@@ -106,9 +143,16 @@ exports.login = async (req, res, next) => {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }
 
+    if (user.authProvider === 'local' && user.emailVerified === false && (user.emailOtpHash || user.emailOtpExpiresAt)) {
+      if (!isOtpCoolingDown(user)) await issueEmailOtp(user);
+      throw new AppError('Please verify your email with the OTP sent to your inbox', 403);
+    }
+
     // Auto-migrate legacy roles
     if (user.role === 'teacher') user.role = 'educator';
     if (user.role === 'student') user.role = 'learner';
+
+    assertPortalRoleAccess(user, role);
 
     const settings = await Setting.findOne();
     if (settings && settings.maintenanceMode && user.role !== 'admin') {
@@ -143,7 +187,8 @@ exports.googleLogin = async (req, res, next) => {
       audience: GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
+    const { sub: googleId, email, name, picture, email_verified: emailVerified } = payload;
+    if (!emailVerified) throw new AppError('Google account email is not verified', 403);
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -157,6 +202,8 @@ exports.googleLogin = async (req, res, next) => {
       // Auto-migrate legacy roles
       if (user.role === 'teacher') user.role = 'educator';
       if (user.role === 'student') user.role = 'learner';
+
+      assertPortalRoleAccess(user, role);
 
       // Existing user — update googleId if not set
       const needsSave = !user.googleId || user.isModified('role');
@@ -180,7 +227,13 @@ exports.googleLogin = async (req, res, next) => {
         avatar: picture || '',
         role: selectedRole,
         authProvider: 'google',
+        emailVerified: true,
       });
+    }
+
+    if (!user.emailVerified) {
+      user.emailVerified = true;
+      await user.save();
     }
 
     // Maintenance check
@@ -211,10 +264,135 @@ exports.googleLogin = async (req, res, next) => {
   }
 };
 
+exports.verifyEmailOtp = async (req, res, next) => {
+  try {
+    const { email, otp, role } = req.body;
+    if (!email || !otp) throw new AppError('Email and OTP are required', 400);
+
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (!user) throw new AppError('Invalid verification request', 400);
+    if (user.isBlocked) {
+      throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
+    }
+    assertPortalRoleAccess(user, role);
+    if (user.emailVerified) throw new AppError('Email already verified', 400);
+    if (!user.emailOtpHash || !user.emailOtpExpiresAt) throw new AppError('Verification code has expired. Request a new code.', 400);
+    if (new Date(user.emailOtpExpiresAt).getTime() < Date.now()) {
+      throw new AppError('Verification code has expired. Request a new code.', 400);
+    }
+    if (user.emailOtpAttempts >= 5) {
+      throw new AppError('Too many incorrect attempts. Request a new code.', 429);
+    }
+
+    if (hashOtp(otp) !== user.emailOtpHash) {
+      user.emailOtpAttempts += 1;
+      await user.save();
+      throw new AppError('Invalid verification code', 400);
+    }
+
+    user.emailVerified = true;
+    user.emailOtpHash = '';
+    user.emailOtpExpiresAt = null;
+    user.emailOtpLastSentAt = null;
+    user.emailOtpAttempts = 0;
+
+    const tokenId = generateTokenId();
+    await registerSession(user, tokenId, req);
+    const token = signToken(user._id, user.role, tokenId);
+
+    sendResponse(res, 200, 'Email verified successfully', {
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        aiLevel: user.aiLevel,
+        profileComplete: user.profileComplete,
+        authProvider: user.authProvider,
+        emailVerified: true,
+      },
+    });
+  } catch (err) { next(err); }
+};
+
+exports.resendEmailOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) throw new AppError('Email is required', 400);
+
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (!user) throw new AppError('Invalid verification request', 400);
+    if (user.emailVerified) throw new AppError('Email already verified', 400);
+    if (isOtpCoolingDown(user)) throw new AppError('Please wait a minute before requesting another code', 429);
+
+    await issueEmailOtp(user);
+    sendResponse(res, 200, 'Verification code sent');
+  } catch (err) { next(err); }
+};
+
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) throw new AppError('Email is required', 400);
+
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (user && user.authProvider === 'local' && user.password && !user.isBlocked) {
+      if (isPasswordResetOtpCoolingDown(user)) {
+        throw new AppError('Please wait a minute before requesting another code', 429);
+      }
+      await issuePasswordResetOtp(user);
+    }
+
+    sendResponse(res, 200, 'If an account exists, a password reset code has been sent');
+  } catch (err) { next(err); }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, password } = req.body;
+    if (!email || !otp || !password) throw new AppError('Email, OTP and new password are required', 400);
+    if (String(password).length < 6) throw new AppError('Password must be at least 6 characters', 400);
+
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (!user || user.authProvider !== 'local' || !user.password) {
+      throw new AppError('Invalid password reset request', 400);
+    }
+    if (user.isBlocked) {
+      throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
+    }
+    if (!user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
+      throw new AppError('Reset code has expired. Request a new code.', 400);
+    }
+    if (new Date(user.passwordResetOtpExpiresAt).getTime() < Date.now()) {
+      throw new AppError('Reset code has expired. Request a new code.', 400);
+    }
+    if (user.passwordResetOtpAttempts >= 5) {
+      throw new AppError('Too many incorrect attempts. Request a new code.', 429);
+    }
+    if (hashOtp(otp) !== user.passwordResetOtpHash) {
+      user.passwordResetOtpAttempts += 1;
+      await user.save();
+      throw new AppError('Invalid reset code', 400);
+    }
+
+    user.password = password;
+    user.passwordResetOtpHash = '';
+    user.passwordResetOtpExpiresAt = null;
+    user.passwordResetOtpLastSentAt = null;
+    user.passwordResetOtpAttempts = 0;
+    user.activeSessions = [];
+    await user.save();
+
+    sendResponse(res, 200, 'Password reset successful. Please sign in again.');
+  } catch (err) { next(err); }
+};
+
 exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id)
-      .select('-password -activeSessions')
+      .select('-password -activeSessions -emailOtpHash -emailOtpExpiresAt -emailOtpLastSentAt -emailOtpAttempts -passwordResetOtpHash -passwordResetOtpExpiresAt -passwordResetOtpLastSentAt -passwordResetOtpAttempts')
       .populate('enrolledCourses', 'title category thumbnail')
       .populate('assignedLearners', 'name email aiLevel engagementScore averageScore streak');
     sendResponse(res, 200, 'User profile', user);
@@ -281,6 +459,9 @@ exports.switchRole = async (req, res, next) => {
       const payload = ticket.getPayload();
       if (payload.email !== user.email) {
         throw new AppError('Google account does not match your account email', 401);
+      }
+      if (!payload.email_verified) {
+        throw new AppError('Google account email is not verified', 403);
       }
     } else {
       // Local user (or Google user who also has a password) — verify password

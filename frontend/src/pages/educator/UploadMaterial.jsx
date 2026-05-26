@@ -5,10 +5,10 @@ import Card from '../../components/ui/Card';
 import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, X, ExternalLink, BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
 import API from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { createProtectedMaterialObjectUrl, resolveMaterialUrl } from '../../utils/materialUrl';
 
 const JoditEditor = lazy(() => import('jodit-react'));
-
-import { resolveMaterialUrl } from '../../utils/materialUrl';
 
 function youtubeWatchUrl(m) {
   if (!m) return '';
@@ -17,15 +17,12 @@ function youtubeWatchUrl(m) {
   return '';
 }
 
-function materialFileHref(m) {
-  if (!m?.fileUrl) return '';
-  return resolveMaterialUrl(m.fileUrl);
-}
-
 export default function UploadMaterial() {
   usePageTitle('Upload Material');
   const { courseId } = useParams();
   const api = useApi();
+  const editor = useRef(null);
+  const objectUrlsRef = useRef([]);
   const [materials, setMaterials] = useState([]);
   const [form, setForm] = useState({ title: '', description: '', type: 'youtube', url: '', content: '' });
   const [file, setFile] = useState(null);
@@ -34,10 +31,12 @@ export default function UploadMaterial() {
   const [editingId, setEditingId] = useState(null);
   const [editingFileUrl, setEditingFileUrl] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [previewArticle, setPreviewArticle] = useState(null);
   const [reorderBusy, setReorderBusy] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (courseId) {
@@ -47,6 +46,13 @@ export default function UploadMaterial() {
       loadMaterials();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsRef.current = [];
+    };
+  }, []);
 
   const loadMaterials = () => {
     api.get('/materials/course/' + courseId).then((res) => setMaterials(res.data || []));
@@ -62,7 +68,7 @@ export default function UploadMaterial() {
       setMaterials(res.data || orderedList);
     } catch (e) {
       console.error(e);
-      alert(e.response?.data?.message || e.message || 'Could not reorder materials');
+      setMessage(e.response?.data?.message || e.message || 'Could not reorder materials');
       loadMaterials();
     } finally {
       setReorderBusy(false);
@@ -122,7 +128,7 @@ export default function UploadMaterial() {
       loadMaterials();
     } catch (e) {
       console.error(e);
-      alert(e.response?.data?.message || e.message);
+      setMessage(e.response?.data?.message || e.message || 'Could not save material');
     }
     setSaving(false);
   };
@@ -154,14 +160,19 @@ export default function UploadMaterial() {
 
   const remove = async (id) => {
     const m = materials.find((x) => x._id === id);
-    if (!confirm(`Delete “${m?.title || 'this material'}”? Learners lose access. This cannot be undone.`)) return;
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      setMessage(`Click delete again to confirm removing "${m?.title || 'this material'}".`);
+      return;
+    }
     setDeletingId(id);
     try {
       await api.del('/materials/' + id);
+      setConfirmDeleteId(null);
       if (editingId === id) cancelEdit();
       loadMaterials();
     } catch (e) {
-      alert(e.response?.data?.message || e.message || 'Could not delete material');
+      setMessage(e.response?.data?.message || e.message || 'Could not delete material');
     } finally {
       setDeletingId(null);
     }
@@ -169,10 +180,18 @@ export default function UploadMaterial() {
 
   const icons = { youtube: Play, pdf: FileText, ppt: Presentation, video: Video, article: BookOpen };
 
-  const openUploadedFile = (m) => {
-    const href = materialFileHref(m);
-    if (!href) return;
-    window.open(href, '_blank', 'noopener,noreferrer');
+  const openUploadedFile = async (m) => {
+    if (!m?._id && !m?.fileUrl) return;
+    try {
+      const href = m?._id
+        ? await createProtectedMaterialObjectUrl(m._id)
+        : resolveMaterialUrl(m.fileUrl);
+      objectUrlsRef.current.push(href);
+      window.open(href, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      console.error(e);
+      setMessage(e.response?.data?.message || e.message || 'Could not open this file');
+    }
   };
 
   const openYoutube = (m) => {
@@ -190,6 +209,11 @@ export default function UploadMaterial() {
       </Link>
 
       <h1 className="text-2xl font-bold">Upload Materials — {courseName}</h1>
+      {message && (
+        <div className="rounded-xl px-4 py-3 text-sm bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          {message}
+        </div>
+      )}
 
       <Card>
         <div className="flex justify-between items-center mb-4">
@@ -238,14 +262,13 @@ export default function UploadMaterial() {
                   <p className="font-medium text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-300/90 mb-1">
                     {form.type === 'video' ? 'Current video' : 'Current file'}
                   </p>
-                  <a
-                    href={resolveMaterialUrl(editingFileUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openUploadedFile({ _id: editingId, fileUrl: editingFileUrl })}
                     className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                   >
                     Open / preview in new tab
-                  </a>
+                  </button>
                   <p className="text-xs text-emerald-800/75 dark:text-emerald-200/60 mt-2">
                     Leave the picker empty to keep this file. Choose a new file only to replace it (old file is removed from storage when save succeeds).
                   </p>
@@ -436,7 +459,7 @@ export default function UploadMaterial() {
                       title="Delete this material permanently"
                     >
                       <Trash2 size={14} />
-                      <span className="hidden sm:inline">{busy ? '…' : 'Delete'}</span>
+                      <span className="hidden sm:inline">{busy ? '…' : confirmDeleteId === m._id ? 'Confirm' : 'Delete'}</span>
                     </button>
                   </div>
                 </div>
@@ -469,7 +492,7 @@ export default function UploadMaterial() {
               </button>
             </div>
             <div className="overflow-y-auto p-4 sm:p-6 text-sm leading-relaxed text-gray-800 dark:text-gray-200 max-w-none break-words [&_img]:max-w-full [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary-600 [&_a]:underline">
-              <div dangerouslySetInnerHTML={{ __html: previewArticle.content || '' }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewArticle.content || '') }} />
             </div>
           </div>
         </div>

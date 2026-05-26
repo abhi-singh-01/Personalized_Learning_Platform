@@ -137,6 +137,10 @@
 .page-transition {
   animation: page-enter 0.3s ease both;
 }
+.gsap-route-transition .page-transition,
+.gsap-route-transition .stagger-children > * {
+  animation: none;
+}
 
 /* Staggered children animation */
 .stagger-children > * {

@@ -43,6 +43,7 @@ An **AI-powered full-stack Learning Management System** that delivers personaliz
 | **MongoDB + Mongoose** | Database & ODM |
 | **JWT (jsonwebtoken)** | Authentication & authorization |
 | **bcryptjs** | Password hashing |
+| **Nodemailer** | Email OTP delivery through SMTP |
 | **Google Gemini AI** (`gemini-2.5-flash`) | Study plans, quizzes, feedback |
 | **Multer** (+ optional **AWS S3** client) | File uploads; durable object storage when configured |
 | **Helmet** | HTTP security headers |
@@ -168,6 +169,16 @@ GEMINI_API_KEY=your_google_gemini_api_key
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 
+# Optional: email OTP delivery through free SMTP-compatible providers
+# APP_NAME=PLP
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_SECURE=false
+# SMTP_USER=your_email@example.com
+# SMTP_PASS=your_app_password
+# SMTP_FROM="PLP <your_email@example.com>"
+# EMAIL_OTP_TTL_MINUTES=10
+
 # Optional: durable uploads (see “Durable uploads” below)
 # AWS_REGION=us-east-1
 # AWS_S3_BUCKET=
@@ -216,7 +227,9 @@ The app will be available at `http://localhost:5173`.
 
 | Prefix | Description |
 |---|---|
-| `POST /api/auth/register` | Register a new user (`learner` or `educator`) |
+| `POST /api/auth/register` | Register a new user (`learner` or `educator`) and send email OTP |
+| `POST /api/auth/verify-email` | Verify email OTP and issue a JWT |
+| `POST /api/auth/resend-email-otp` | Resend email verification OTP |
 | `POST /api/auth/login` | Login and receive a JWT |
 | `GET/POST /api/courses` | List or create courses |
 | `GET/POST /api/materials` | Fetch or upload course materials |

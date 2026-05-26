@@ -56,6 +56,15 @@ const userSchema = new mongoose.Schema({
   blockedReason: { type: String, default: '' },
   lastLoginAt: { type: Date },
   lastLoginIP: { type: String, default: '' },
+  emailVerified: { type: Boolean, default: false },
+  emailOtpHash: { type: String, default: '' },
+  emailOtpExpiresAt: { type: Date, default: null },
+  emailOtpLastSentAt: { type: Date, default: null },
+  emailOtpAttempts: { type: Number, default: 0 },
+  passwordResetOtpHash: { type: String, default: '' },
+  passwordResetOtpExpiresAt: { type: Date, default: null },
+  passwordResetOtpLastSentAt: { type: Date, default: null },
+  passwordResetOtpAttempts: { type: Number, default: 0 },
 }, { timestamps: true });
 
 // userSchema.index({ email: 1 });

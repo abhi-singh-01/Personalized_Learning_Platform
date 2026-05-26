@@ -11,13 +11,22 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = [
-    '.pdf', '.doc', '.docx', '.txt',
-    '.png', '.jpg', '.jpeg', '.webp', '.gif',
-  ];
+  const allowed = {
+    '.pdf': ['application/pdf'],
+    '.doc': ['application/msword'],
+    '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    '.txt': ['text/plain'],
+    '.png': ['image/png'],
+    '.jpg': ['image/jpeg'],
+    '.jpeg': ['image/jpeg'],
+    '.webp': ['image/webp'],
+    '.gif': ['image/gif'],
+  };
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowed.includes(ext)) cb(null, true);
-  else cb(new AppError('Only PDF, DOC, DOCX, TXT, and image files are allowed', 400), false);
+  const allowedTypes = allowed[ext];
+  const mime = String(file.mimetype || '').split(';')[0].toLowerCase();
+  if (allowedTypes && allowedTypes.includes(mime)) cb(null, true);
+  else cb(new AppError('Only valid PDF, DOC, DOCX, TXT, and image files are allowed', 400), false);
 };
 
 const chatUpload = multer({

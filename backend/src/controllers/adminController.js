@@ -130,7 +130,7 @@ exports.getAllCourses = async (req, res, next) => {
 
 exports.updateCourseAdmin = async (req, res, next) => {
     try {
-        const { title, description, category, difficulty, isPublished, educator } = req.body;
+        const { title, description, category, difficulty, isPublished, status, educator } = req.body;
 
         const course = await Course.findById(req.params.id);
         if (!course) throw new AppError('Course not found', 404);
@@ -139,7 +139,17 @@ exports.updateCourseAdmin = async (req, res, next) => {
         if (description) course.description = description;
         if (category) course.category = category;
         if (difficulty) course.difficulty = difficulty;
-        if (isPublished !== undefined) course.isPublished = isPublished;
+        if (isPublished !== undefined) {
+            course.isPublished = Boolean(isPublished);
+            course.status = course.isPublished ? 'published' : 'draft';
+        }
+        if (status !== undefined) {
+            if (!['draft', 'pending_review', 'published', 'archived', 'rejected'].includes(status)) {
+                throw new AppError('Invalid course status', 400);
+            }
+            course.status = status;
+            course.isPublished = status === 'published';
+        }
 
         // Admin reassigning a course to a different educator
         if (educator && educator !== course.educator.toString()) {

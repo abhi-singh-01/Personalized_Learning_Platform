@@ -21,6 +21,12 @@ const sharedFileSchema = new mongoose.Schema({
   sharedAt: { type: Date, default: Date.now },
 }, { _id: false });
 
+const raisedHandSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, default: '' },
+  raisedAt: { type: Date, default: Date.now },
+}, { _id: false });
+
 const liveClassSchema = new mongoose.Schema({
   schedule: { type: mongoose.Schema.Types.ObjectId, ref: 'Schedule' },
   course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
@@ -54,6 +60,7 @@ const liveClassSchema = new mongoose.Schema({
 
   // Shared files during class
   sharedFiles: [sharedFileSchema],
+  raisedHands: [raisedHandSchema],
 
   // Metadata
   topic: { type: String, default: '' },

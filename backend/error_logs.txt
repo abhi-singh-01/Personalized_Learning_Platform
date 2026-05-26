@@ -106,3 +106,48 @@ Details: {}
 [2026-04-18T07:09:33.281Z] 401 - Invalid email or password
 Details: {}
 
+[2026-05-26T11:55:06.300Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T11:55:06.577Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T11:55:07.249Z] 404 - Payment record not found
+Details: {}
+
+[2026-05-26T12:24:58.573Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:24:58.814Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:24:59.135Z] 404 - Payment record not found
+Details: {}
+
+[2026-05-26T12:26:26.784Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:26:27.009Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:26:27.077Z] 404 - Payment record not found
+Details: {}
+
+[2026-05-26T12:42:58.633Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:42:58.758Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:42:58.794Z] 404 - Payment record not found
+Details: {}
+
+[2026-05-26T12:43:40.606Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:43:40.693Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-26T12:43:40.721Z] 404 - Payment record not found
+Details: {}
+

@@ -24,6 +24,12 @@ const {
   FAILED_PAYMENT_RETENTION_HOURS,
 } = require('../config/env');
 const { buildSupportSnapshot } = require('../utils/paymentFailure');
+const {
+  assertCoursePurchasable,
+  assertPaymentBelongsToLearner,
+  enrollLearnerInCourse,
+  isCoursePublished,
+} = require('../services/courseAccessService');
 
 const isRazorpayConfigured = () => Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
 
@@ -103,7 +109,7 @@ async function normalizeCouponCourseScope({ applicableCourses = [], user }) {
 
   if (user.role === 'educator') {
     if (courseIds.length !== 1) {
-      throw new AppError('Select exactly one course for this coupon', 400);
+      throw new AppError('Please select the course this coupon belongs to', 400);
     }
 
     const course = await Course.findOne({ _id: courseIds[0], educator: user._id }).select('_id');
@@ -169,11 +175,8 @@ exports.createOrder = async (req, res, next) => {
 
     const course = await Course.findById(courseId).populate('educator', 'name');
     if (!course) throw new AppError('Course not found', 404);
+    await assertCoursePurchasable(course, req.user);
     if (course.price <= 0) throw new AppError('This is a free course — enroll directly', 400);
-
-    // Check if already enrolled
-    if (course.learners.includes(req.user._id))
-      throw new AppError('Already enrolled in this course', 400);
 
     // Check if there's already a successful payment
     const existingPayment = await Payment.findOne({ user: req.user._id, course: courseId, status: 'captured' });
@@ -212,11 +215,7 @@ exports.createOrder = async (req, res, next) => {
         metadata: { couponCode: coupon?.code || '', couponDiscount: discount },
       });
 
-      if (!course.learners.includes(req.user._id)) {
-        course.learners.push(req.user._id);
-        await course.save();
-      }
-      await User.findByIdAndUpdate(req.user._id, { $addToSet: { enrolledCourses: course._id } });
+      await enrollLearnerInCourse({ learnerId: req.user._id, courseId: course._id });
       if (coupon) {
         await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
         await CouponUsage.create({
@@ -349,7 +348,7 @@ exports.dummyVerify = async (req, res, next) => {
     }
 
     const payment = await Payment.findOne({ razorpayOrderId: orderId });
-    if (!payment) throw new AppError('Payment record not found', 404);
+    await assertPaymentBelongsToLearner(payment, req.user);
     if (payment.status === 'captured') throw new AppError('Payment already verified', 400);
 
     // Auto-capture the payment
@@ -379,14 +378,7 @@ exports.dummyVerify = async (req, res, next) => {
     }
 
     // Enroll learner
-    const course = await Course.findById(payment.course);
-    if (course && !course.learners.includes(payment.user)) {
-      course.learners.push(payment.user);
-      await course.save();
-    }
-    await User.findByIdAndUpdate(payment.user, {
-      $addToSet: { enrolledCourses: payment.course },
-    });
+    await enrollLearnerInCourse({ learnerId: payment.user, courseId: payment.course });
 
     // Create pending payout
     const scheduledAt = new Date();
@@ -422,7 +414,7 @@ exports.verifyPayment = async (req, res, next) => {
 
     // Update payment record
     const payment = await Payment.findOne({ razorpayOrderId });
-    if (!payment) throw new AppError('Payment record not found', 404);
+    await assertPaymentBelongsToLearner(payment, req.user);
     if (payment.status === 'captured') throw new AppError('Payment already verified', 400);
 
     payment.razorpayPaymentId = razorpayPaymentId;
@@ -451,14 +443,7 @@ exports.verifyPayment = async (req, res, next) => {
     }
 
     // Enroll learner
-    const course = await Course.findById(payment.course);
-    if (course && !course.learners.includes(payment.user)) {
-      course.learners.push(payment.user);
-      await course.save();
-    }
-    await User.findByIdAndUpdate(payment.user, {
-      $addToSet: { enrolledCourses: payment.course },
-    });
+    await enrollLearnerInCourse({ learnerId: payment.user, courseId: payment.course });
 
     // Create pending payout (delayed by PAYOUT_DELAY_DAYS)
     const scheduledAt = new Date();
@@ -555,6 +540,7 @@ exports.raisePaymentQuery = async (req, res, next) => {
 
     payment.paymentQueryRaisedAt = new Date();
     payment.paymentQueryMessage = String(message || '').trim().slice(0, 2000);
+    payment.paymentQueryStatus = 'open';
     if (!payment.supportSnapshot) {
       payment.supportSnapshot = await buildSupportSnapshot(payment);
     }
@@ -563,6 +549,40 @@ exports.raisePaymentQuery = async (req, res, next) => {
     sendResponse(res, 200, 'Support query recorded. This payment will be kept in your history.', {
       paymentId: payment._id,
     });
+  } catch (err) { next(err); }
+};
+
+exports.getPaymentQueriesAdmin = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') throw new AppError('Only admins can view payment support queries', 403);
+    const { status = 'open' } = req.query;
+    const filter = { status: 'failed', paymentQueryRaisedAt: { $ne: null } };
+    if (status !== 'all') filter.paymentQueryStatus = status;
+
+    const payments = await Payment.find(filter)
+      .populate('user', 'name email')
+      .populate('course', 'title price thumbnail')
+      .populate('educator', 'name email')
+      .sort({ paymentQueryRaisedAt: -1 })
+      .lean();
+
+    sendResponse(res, 200, 'Payment support queries fetched', payments);
+  } catch (err) { next(err); }
+};
+
+exports.resolvePaymentQueryAdmin = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') throw new AppError('Only admins can resolve payment support queries', 403);
+    const { resolution = '' } = req.body || {};
+    const payment = await Payment.findOne({ _id: req.params.id, status: 'failed', paymentQueryRaisedAt: { $ne: null } });
+    if (!payment) throw new AppError('Payment support query not found', 404);
+
+    payment.paymentQueryStatus = 'resolved';
+    payment.paymentQueryResolution = String(resolution || '').trim().slice(0, 2000);
+    payment.paymentQueryResolvedAt = new Date();
+    await payment.save();
+
+    sendResponse(res, 200, 'Payment support query resolved', payment);
   } catch (err) { next(err); }
 };
 
@@ -615,6 +635,7 @@ exports.calculateFees = async (req, res, next) => {
   try {
     const course = await Course.findById(req.params.courseId);
     if (!course) throw new AppError('Course not found', 404);
+    if (!isCoursePublished(course)) throw new AppError('Course is not available', 403);
     if (course.price <= 0) return sendResponse(res, 200, 'Free course', { coursePrice: 0, platformFee: 0, gst: 0, totalAmount: 0 });
     sendResponse(res, 200, 'Fee breakdown', calculateFees(course.price));
   } catch (err) { next(err); }
@@ -676,6 +697,7 @@ exports.validateCoupon = async (req, res, next) => {
     if (!courseId || !code) throw new AppError('courseId and code are required', 400);
     const course = await Course.findById(courseId).populate('educator', 'name');
     if (!course) throw new AppError('Course not found', 404);
+    if (!isCoursePublished(course)) throw new AppError('Course is not available', 403);
     if (course.price <= 0) throw new AppError('Coupons are not needed for free courses', 400);
 
     const { coupon, discount } = await validateAndComputeDiscount({

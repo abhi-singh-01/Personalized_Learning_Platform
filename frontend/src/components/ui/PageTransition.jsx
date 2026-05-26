@@ -1,29 +1,65 @@
 import { useLocation } from 'react-router-dom';
 import { useRef, useLayoutEffect } from 'react';
+import gsap from 'gsap';
 
 /**
- * Wraps child content with a smooth fade-in-up animation
- * every time the route changes. Uses CSS animation + key trick
- * for zero-latency feel (no JS animation libraries needed).
+ * GSAP route transition. It also animates existing `.stagger-children`
+ * containers so cards enter with a polished but lightweight sequence.
  */
 export default function PageTransition({ children }) {
   const location = useLocation();
   const ref = useRef(null);
 
-  // Re-trigger animation on route change
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    // Force re-trigger by removing and re-adding class
-    el.classList.remove('page-transition');
-    // Force reflow to ensure the class removal is processed
-    void el.offsetHeight;
-    el.classList.add('page-transition');
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      gsap.set(el, { autoAlpha: 1, clearProps: 'transform,filter' });
+      return undefined;
+    }
+
+    const ctx = gsap.context(() => {
+      const staggerTargets = gsap.utils.toArray('.stagger-children > *', el);
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      gsap.killTweensOf([el, ...staggerTargets]);
+
+      tl.fromTo(
+        el,
+        { autoAlpha: 0, y: 18, filter: 'blur(6px)' },
+        {
+          autoAlpha: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          duration: 0.45,
+          clearProps: 'transform,filter,opacity,visibility',
+        }
+      );
+
+      if (staggerTargets.length) {
+        tl.fromTo(
+          staggerTargets,
+          { autoAlpha: 0, y: 18, scale: 0.985 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.42,
+            stagger: 0.055,
+            clearProps: 'transform,opacity,visibility',
+          },
+          '-=0.2'
+        );
+      }
+    }, el);
+
+    return () => ctx.revert();
   }, [location.pathname]);
 
   return (
-    <div ref={ref} className="page-transition">
+    <div ref={ref} className="gsap-route-transition">
       {children}
     </div>
   );

@@ -14,6 +14,8 @@ const AIChatBot = lazy(() => import('./components/ui/AIChatBot'));
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 const CompleteProfile = lazy(() => import('./pages/auth/CompleteProfile'));
 const About = lazy(() => import('./pages/About'));
 const Features = lazy(() => import('./pages/Features'));
@@ -52,6 +54,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const LiveClassMonitor = lazy(() => import('./pages/admin/LiveClassMonitor'));
 const ContentModeration = lazy(() => import('./pages/admin/ContentModeration'));
 const UIConfigManager = lazy(() => import('./pages/admin/UIConfigManager'));
+const PaymentSupport = lazy(() => import('./pages/admin/PaymentSupport'));
 
 // ── Shared ──
 const Profile = lazy(() => import('./pages/Profile'));
@@ -125,6 +128,8 @@ export default function App() {
             )
           }
         />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/about" element={<About />} />
         <Route path="/features" element={<Features />} />
         <Route path="/tracks" element={<Tracks />} />
@@ -172,6 +177,7 @@ export default function App() {
           <Route path="/admin/live-monitor" element={<ProtectedRoute allowedRoles={['admin']}><LiveClassMonitor /></ProtectedRoute>} />
           <Route path="/admin/moderation" element={<ProtectedRoute allowedRoles={['admin']}><ContentModeration /></ProtectedRoute>} />
           <Route path="/admin/ui-config" element={<ProtectedRoute allowedRoles={['admin']}><UIConfigManager /></ProtectedRoute>} />
+          <Route path="/admin/payment-support" element={<ProtectedRoute allowedRoles={['admin']}><PaymentSupport /></ProtectedRoute>} />
           {/* Legacy admin URLs → dashboard */}
           <Route path="/admin/analytics" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/offers" element={<Navigate to="/admin/dashboard" replace />} />

@@ -7,6 +7,7 @@ const Refund  = require('../models/Refund');
 const Payout = require('../models/Payout');
 const razorpay = require('../services/razorpayService');
 const { buildSupportSnapshot } = require('../utils/paymentFailure');
+const { enrollLearnerInCourse } = require('../services/courseAccessService');
 
 exports.handleWebhook = async (req, res) => {
   try {
@@ -25,10 +26,14 @@ exports.handleWebhook = async (req, res) => {
         const rpPaymentId = payload.payment?.entity?.id;
         const orderId     = payload.payment?.entity?.order_id;
         if (rpPaymentId && orderId) {
-          await Payment.findOneAndUpdate(
+          const payment = await Payment.findOneAndUpdate(
             { razorpayOrderId: orderId, status: 'created' },
-            { status: 'captured', razorpayPaymentId: rpPaymentId, paidAt: new Date() }
+            { status: 'captured', razorpayPaymentId: rpPaymentId, paidAt: new Date() },
+            { new: true }
           );
+          if (payment) {
+            await enrollLearnerInCourse({ learnerId: payment.user, courseId: payment.course });
+          }
         }
         break;
       }

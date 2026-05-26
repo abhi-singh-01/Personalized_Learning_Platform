@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -6,17 +6,21 @@ import Loading from '../../components/ui/Loading';
 import Badge from '../../components/ui/Badge';
 import {
   Play, FileText, Presentation, ArrowLeft, CheckCircle, MessageSquare,
-  BookOpen, Sparkles, Video, Radio, ClipboardList, FolderOpen, Brain, ExternalLink
+  BookOpen, Sparkles, Video, ClipboardList, FolderOpen, Brain, ExternalLink,
+  Star, ThumbsUp, Flag, Trash2
 } from 'lucide-react';
 import AIVideoPanel from '../../components/ui/AIVideoPanel';
 import { unwrapApiData } from '../../utils/apiData';
-import { resolveMaterialUrl } from '../../utils/materialUrl';
+import { createProtectedMaterialObjectUrl, resolveMaterialUrl } from '../../utils/materialUrl';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 export default function CourseDetail() {
   const { id } = useParams();
   const api = useApi();
   const toast = useToast();
+  const { user } = useAuth();
   const [course, setCourse] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
@@ -26,8 +30,11 @@ export default function CourseDetail() {
   const [activeDocument, setActiveDocument] = useState(null);
   const [progress, setProgress] = useState({ completedMaterials: [] });
   const [comments, setComments] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState('lectures');
+  const objectUrlsRef = useRef([]);
   usePageTitle(course?.title || 'Course');
 
   useEffect(() => {
@@ -36,7 +43,15 @@ export default function CourseDetail() {
     api.get('/quizzes/course/' + id).then((res) => setQuizzes(unwrapApiData(res) || []));
     api.get('/courses/' + id + '/progress').then((res) => setProgress(res.data || { completedMaterials: [] }));
     api.get('/courses/' + id + '/comments').then((res) => setComments(res.data || []));
+    api.get('/reviews/course/' + id).then((res) => setReviews(res.data?.reviews || []));
   }, [id]);
+
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsRef.current = [];
+    };
+  }, []);
 
   const toggleComplete = async (materialId, e) => {
     e.stopPropagation();
@@ -60,6 +75,53 @@ export default function CourseDetail() {
     }
   };
 
+  const submitReview = async (e) => {
+    e.preventDefault();
+    try {
+      const own = reviews.find((r) => (r.learner?._id || r.learner) === user?.id);
+      const payload = { courseId: id, ...reviewForm, rating: Number(reviewForm.rating) };
+      const res = own
+        ? await api.put(`/reviews/${own._id}`, payload)
+        : await api.post('/reviews', payload);
+      const saved = res.data;
+      const learnerRef = { _id: user?.id, name: user?.name, avatar: user?.avatar };
+      setReviews((prev) => own ? prev.map((r) => r._id === own._id ? { ...r, ...saved, learner: r.learner } : r) : [{ ...saved, learner: learnerRef }, ...prev]);
+      toast.success(own ? 'Review updated' : 'Review submitted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not submit review');
+    }
+  };
+
+  const deleteReview = async (reviewId) => {
+    try {
+      await api.del(`/reviews/${reviewId}`);
+      setReviews((prev) => prev.filter((r) => r._id !== reviewId));
+      toast.success('Review deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not delete review');
+    }
+  };
+
+  const markHelpful = async (reviewId) => {
+    try {
+      const res = await api.post(`/reviews/${reviewId}/helpful`);
+      setReviews((prev) => prev.map((r) => r._id === reviewId ? { ...r, helpful: res.data?.helpful ?? r.helpful } : r));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update helpful vote');
+    }
+  };
+
+  const reportReview = async (reviewId) => {
+    const reason = window.prompt('Why are you reporting this review?') || '';
+    if (!reason.trim()) return;
+    try {
+      await api.post(`/reviews/${reviewId}/report`, { reason });
+      toast.success('Review reported for moderation');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not report review');
+    }
+  };
+
   const trackView = async (materialId) => {
     try {
       await api.post('/materials/' + materialId + '/view');
@@ -79,29 +141,47 @@ export default function CourseDetail() {
     ? Math.round((progress.completedMaterials.length / materials.length) * 100)
     : 0;
 
-  const openMaterial = (m) => {
+  const loadProtectedMaterialUrl = async (m) => {
+    if (!m?._id) return resolveMaterialUrl(m?.fileUrl);
+    const objectUrl = await createProtectedMaterialObjectUrl(m._id);
+    objectUrlsRef.current.push(objectUrl);
+    return objectUrl;
+  };
+
+  const openMaterial = async (m) => {
     trackView(m._id);
     setActiveVideo(null);
     setActiveUploadedVideo(null);
     setActiveArticle(null);
     setActiveDocument(null);
 
-    if (m.type === 'youtube') {
-      setActiveVideo(m.videoId);
-    } else if (m.type === 'video') {
-      setActiveUploadedVideo(m);
-    } else if (m.type === 'article') {
-      setActiveArticle(m);
-    } else if (m.type === 'pdf' || m.type === 'ppt') {
-      if (!m.fileUrl) {
-        toast.error('This document has no file. Ask your educator to re-upload it.');
-        return;
+    try {
+      if (m.type === 'youtube') {
+        setActiveVideo(m.videoId);
+      } else if (m.type === 'video') {
+        if (!m.fileUrl) {
+          toast.error('This video has no file. Ask your educator to re-upload it.');
+          return;
+        }
+        const protectedUrl = await loadProtectedMaterialUrl(m);
+        setActiveUploadedVideo({ ...m, protectedUrl });
+      } else if (m.type === 'article') {
+        setActiveArticle(m);
+      } else if (m.type === 'pdf' || m.type === 'ppt') {
+        if (!m.fileUrl) {
+          toast.error('This document has no file. Ask your educator to re-upload it.');
+          return;
+        }
+        const protectedUrl = await loadProtectedMaterialUrl(m);
+        setActiveDocument({ ...m, protectedUrl });
+        setActiveTab('documents');
+      } else if (m.fileUrl) {
+        const protectedUrl = await loadProtectedMaterialUrl(m);
+        window.open(protectedUrl, '_blank', 'noopener,noreferrer');
       }
-      setActiveDocument(m);
-      setActiveTab('documents');
-    } else if (m.fileUrl) {
-      const docUrl = resolveMaterialUrl(m.fileUrl);
-      window.open(docUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not open this material. Please try again.');
     }
   };
 
@@ -145,6 +225,7 @@ export default function CourseDetail() {
     { key: 'documents', label: 'Documents', icon: FolderOpen, count: documentMaterials.length + articleMaterials.length },
     { key: 'quizzes', label: 'Quizzes', icon: ClipboardList, count: quizzes.length },
     { key: 'discussion', label: 'Discussion', icon: MessageSquare, count: comments.length },
+    { key: 'reviews', label: 'Reviews', icon: Star, count: reviews.length },
   ];
 
   return (
@@ -246,7 +327,7 @@ export default function CourseDetail() {
               <div className="aspect-video rounded-lg bg-black relative">
                 <video
                   key={activeUploadedVideo._id}
-                  src={resolveMaterialUrl(activeUploadedVideo.fileUrl)}
+                  src={activeUploadedVideo.protectedUrl || resolveMaterialUrl(activeUploadedVideo.fileUrl)}
                   className="w-full h-full absolute top-0 left-0 rounded-lg"
                   controls
                   autoPlay
@@ -261,7 +342,7 @@ export default function CourseDetail() {
           {activeArticle && (
             <div className="prose dark:prose-invert max-w-none">
               <h2 className="text-2xl font-bold mb-4">{activeArticle.title}</h2>
-              <div dangerouslySetInnerHTML={{ __html: activeArticle.content }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(activeArticle.content) }} />
             </div>
           )}
           {activeDocument && (
@@ -274,7 +355,7 @@ export default function CourseDetail() {
                   </p>
                 </div>
                 <a
-                  href={resolveMaterialUrl(activeDocument.fileUrl)}
+                  href={activeDocument.protectedUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
@@ -286,7 +367,7 @@ export default function CourseDetail() {
               {activeDocument.type === 'pdf' ? (
                 <iframe
                   key={activeDocument._id}
-                  src={resolveMaterialUrl(activeDocument.fileUrl)}
+                  src={activeDocument.protectedUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                   title={activeDocument.title}
                   className="w-full h-[70vh] min-h-[420px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
                 />
@@ -297,7 +378,7 @@ export default function CourseDetail() {
                     Presentations open best in PowerPoint or Google Slides.
                   </p>
                   <a
-                    href={resolveMaterialUrl(activeDocument.fileUrl)}
+                    href={activeDocument.protectedUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-primary inline-flex items-center gap-2"
@@ -508,6 +589,79 @@ export default function CourseDetail() {
                 {comments.length === 0 && (
                   <p className="text-center text-gray-400 text-sm py-4">Be the first to start the discussion!</p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <div className="space-y-6">
+              <form onSubmit={submitReview} className="rounded-2xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <h3 className="font-semibold">Your review</h3>
+                <div className="grid sm:grid-cols-[140px_1fr] gap-3">
+                  <select
+                    className="input-field"
+                    value={reviewForm.rating}
+                    onChange={(e) => setReviewForm({ ...reviewForm, rating: e.target.value })}
+                  >
+                    {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} stars</option>)}
+                  </select>
+                  <input
+                    className="input-field"
+                    placeholder="Short title"
+                    value={reviewForm.title}
+                    onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
+                  />
+                </div>
+                <textarea
+                  className="input-field min-h-[90px]"
+                  placeholder="Share what helped you or what could improve..."
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  required
+                />
+                <button className="btn-primary" type="submit">Submit review</button>
+              </form>
+
+              <div className="space-y-4">
+                {reviews.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-4">No reviews yet.</p>
+                ) : reviews.map((review) => {
+                  const own = (review.learner?._id || review.learner) === user?.id;
+                  return (
+                    <div key={review._id} className="rounded-2xl bg-gray-50 dark:bg-gray-800 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-1 text-amber-500 mb-1">
+                            {Array.from({ length: review.rating || 0 }).map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
+                          </div>
+                          <h4 className="font-semibold">{review.title || 'Course review'}</h4>
+                          <p className="text-xs text-gray-500">By {review.learner?.name || 'Learner'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => markHelpful(review._id)} className="text-xs flex items-center gap-1 text-gray-500 hover:text-primary-600">
+                            <ThumbsUp size={14} /> {review.helpful || 0}
+                          </button>
+                          {!own && (
+                            <button onClick={() => reportReview(review._id)} className="text-xs flex items-center gap-1 text-gray-500 hover:text-red-500">
+                              <Flag size={14} /> Report
+                            </button>
+                          )}
+                          {own && (
+                            <button onClick={() => deleteReview(review._id)} className="text-xs flex items-center gap-1 text-red-500 hover:underline">
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-3">{review.comment}</p>
+                      {review.educatorReply && (
+                        <div className="mt-3 rounded-xl bg-white dark:bg-gray-900 p-3 text-sm">
+                          <span className="font-semibold">Educator reply:</span> {review.educatorReply}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

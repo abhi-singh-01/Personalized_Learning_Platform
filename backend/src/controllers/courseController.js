@@ -1,8 +1,15 @@
 const Course = require('../models/Course');
-const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const storageService = require('../services/storageService');
+const {
+  assertCanManageCourse,
+  assertCanViewCourse,
+  assertCanViewCourseContent,
+  assertCoursePurchasable,
+  hasCapturedCoursePayment,
+  enrollLearnerInCourse,
+} = require('../services/courseAccessService');
 
 const COURSE_FIELDS = [
   'title',
@@ -76,7 +83,7 @@ exports.create = async (req, res, next) => {
 
 exports.getAll = async (req, res, next) => {
   try {
-    const filter = { isPublished: true };
+    const filter = { isPublished: true, status: 'published' };
     if (req.query.category) filter.category = req.query.category;
     if (req.query.search) filter.title = { $regex: req.query.search, $options: 'i' };
     const courses = await Course.find(filter)
@@ -92,14 +99,14 @@ exports.getById = async (req, res, next) => {
       .populate('educator', 'name avatar bio')
       .populate('learners', 'name avatar aiLevel');
     if (!course) throw new AppError('Course not found', 404);
+    await assertCanViewCourse(req.user, course);
     sendResponse(res, 200, 'Course details', course);
   } catch (err) { next(err); }
 };
 
 exports.update = async (req, res, next) => {
   try {
-    const course = await Course.findOne({ _id: req.params.id, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    const course = await assertCanManageCourse(req.user, req.params.id);
 
     const previousThumbnail = course.thumbnail;
     Object.assign(course, buildCoursePayload(req.body));
@@ -120,8 +127,8 @@ exports.update = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
-    const course = await Course.findOneAndDelete({ _id: req.params.id, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    const course = await assertCanManageCourse(req.user, req.params.id);
+    await course.deleteOne();
     await storageService.deleteMaterialAtUrlIfCloud(course.thumbnail);
     await storageService.unlinkLocalUploadsPath(course.thumbnail);
     sendResponse(res, 200, 'Course deleted');
@@ -130,8 +137,7 @@ exports.remove = async (req, res, next) => {
 
 exports.duplicateCourse = async (req, res, next) => {
   try {
-    const original = await Course.findOne({ _id: req.params.id, educator: req.user._id });
-    if (!original) throw new AppError('Course not found or not authorized', 404);
+    const original = await assertCanManageCourse(req.user, req.params.id);
     const clone = await Course.create({
       title: original.title + ' (Copy)',
       description: original.description,
@@ -154,8 +160,7 @@ exports.duplicateCourse = async (req, res, next) => {
 
 exports.togglePublish = async (req, res, next) => {
   try {
-    const course = await Course.findOne({ _id: req.params.id, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    const course = await assertCanManageCourse(req.user, req.params.id);
     const isNowPublished = !course.isPublished;
     course.isPublished = isNowPublished;
     course.status = isNowPublished ? 'published' : 'draft';
@@ -166,30 +171,16 @@ exports.togglePublish = async (req, res, next) => {
 
 exports.enroll = async (req, res, next) => {
   try {
-    const course = await Course.findById(req.params.id);
-    if (!course) throw new AppError('Course not found', 404);
-    if (course.learners.includes(req.user._id))
-      throw new AppError('Already enrolled', 400);
+    const course = await assertCoursePurchasable(req.params.id, req.user);
 
     // If course is paid, require a verified payment
     if (course.price > 0) {
-      const Payment = require('../models/Payment');
-      const payment = await Payment.findOne({
-        user: req.user._id,
-        course: course._id,
-        status: 'captured',
-      });
-      if (!payment) throw new AppError('Payment required to enroll in this course', 402);
+      const hasPayment = await hasCapturedCoursePayment(req.user._id, course._id);
+      if (!hasPayment) throw new AppError('Payment required to enroll in this course', 402);
     }
 
-    course.learners.push(req.user._id);
-    await course.save();
-
-    await User.findByIdAndUpdate(req.user._id, {
-      $addToSet: { enrolledCourses: course._id },
-    });
-
-    sendResponse(res, 200, 'Enrolled successfully', course);
+    const enrolledCourse = await enrollLearnerInCourse({ learnerId: req.user._id, courseId: course._id });
+    sendResponse(res, 200, 'Enrolled successfully', enrolledCourse);
   } catch (err) { next(err); }
 };
 
@@ -206,6 +197,10 @@ const CourseProgress = require('../models/CourseProgress');
 exports.toggleMaterialComplete = async (req, res, next) => {
   try {
     const { id: courseId, materialId } = req.params;
+    const course = await assertCanViewCourseContent(req.user, courseId);
+    const Material = require('../models/Material');
+    const material = await Material.findOne({ _id: materialId, course: course._id }).select('_id');
+    if (!material) throw new AppError('Material not found in this course', 404);
     let progress = await CourseProgress.findOne({ learner: req.user._id, course: courseId });
     if (!progress) {
       progress = new CourseProgress({ learner: req.user._id, course: courseId, completedMaterials: [] });
@@ -225,6 +220,7 @@ exports.toggleMaterialComplete = async (req, res, next) => {
 
 exports.getCourseProgress = async (req, res, next) => {
   try {
+    await assertCanViewCourseContent(req.user, req.params.id);
     const progress = await CourseProgress.findOne({ learner: req.user._id, course: req.params.id });
     sendResponse(res, 200, 'Course progress', progress || { completedMaterials: [] });
   } catch (err) { next(err); }
@@ -233,6 +229,7 @@ exports.getCourseProgress = async (req, res, next) => {
 const Comment = require('../models/Comment');
 exports.getComments = async (req, res, next) => {
   try {
+    await assertCanViewCourseContent(req.user, req.params.id);
     const comments = await Comment.find({ course: req.params.id })
       .populate('user', 'name role avatar')
       .sort({ createdAt: -1 });
@@ -242,6 +239,7 @@ exports.getComments = async (req, res, next) => {
 
 exports.addComment = async (req, res, next) => {
   try {
+    await assertCanViewCourseContent(req.user, req.params.id);
     const comment = await Comment.create({
       course: req.params.id,
       user: req.user._id,

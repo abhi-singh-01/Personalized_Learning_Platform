@@ -4,6 +4,7 @@ const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const { updateLearnerMetrics, updateLearnerStreak } = require('../services/analyticsService');
 const { assertLearnerMaySubmit } = require('../services/quizAccessService');
+const { assertCanViewCourseContent, assertCanViewQuiz } = require('../services/courseAccessService');
 
 exports.submitQuiz = async (req, res, next) => {
   try {
@@ -11,6 +12,7 @@ exports.submitQuiz = async (req, res, next) => {
     const quiz = await Quiz.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404);
 
+    await assertCanViewQuiz(req.user, quiz);
     await assertLearnerMaySubmit(quiz, req.user._id);
 
     const graded = answers.map((a, i) => ({
@@ -85,6 +87,7 @@ exports.getLearnerProgress = async (req, res, next) => {
 
 exports.getCourseProgress = async (req, res, next) => {
   try {
+    await assertCanViewCourseContent(req.user, req.params.courseId);
     const progress = await Progress.find({
       learner: req.user._id,
       course: req.params.courseId,

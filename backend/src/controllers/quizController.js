@@ -5,13 +5,18 @@ const QuizLearnerAccess = require('../models/QuizLearnerAccess');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const { buildLearnerAttemptStatus } = require('../services/quizAccessService');
-
-const isEducatorRole = (role) => role === 'educator' || role === 'teacher';
+const {
+  assertCanManageCourse,
+  assertCanViewCourseContent,
+  assertCanViewQuiz,
+  isAdminUser,
+  isCourseOwner,
+  isLearnerUser,
+} = require('../services/courseAccessService');
 
 exports.create = async (req, res, next) => {
   try {
-    const course = await Course.findOne({ _id: req.body.course, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    await assertCanManageCourse(req.user, req.body.course);
     const quiz = await Quiz.create({ ...req.body, educator: req.user._id });
     sendResponse(res, 201, 'Quiz created', quiz);
   } catch (err) { next(err); }
@@ -19,24 +24,17 @@ exports.create = async (req, res, next) => {
 
 exports.getByCourse = async (req, res, next) => {
   try {
-    const course = await Course.findById(req.params.courseId).select('educator');
-    if (!course) throw new AppError('Course not found', 404);
-
-    const ownerId = course.educator?.toString();
-    const isOwner =
-      req.user &&
-      ownerId &&
-      isEducatorRole(req.user.role) &&
-      req.user._id.toString() === ownerId;
+    const course = await assertCanViewCourseContent(req.user, req.params.courseId);
+    const canSeeAnswers = isAdminUser(req.user) || isCourseOwner(req.user, course);
 
     const quizzes = await Quiz.find({ course: req.params.courseId }).sort({ createdAt: -1 }).lean();
 
-    if (isOwner) {
+    if (canSeeAnswers) {
       sendResponse(res, 200, 'Quizzes fetched', quizzes);
       return;
     }
 
-    const isLearner = req.user?.role === 'learner' || req.user?.role === 'student';
+    const isLearner = isLearnerUser(req.user);
     const sanitized = await Promise.all(
       (quizzes || []).map(async (q) => {
         const base = {
@@ -60,8 +58,11 @@ exports.getById = async (req, res, next) => {
   try {
     const quiz = await Quiz.findById(req.params.id);
     if (!quiz) throw new AppError('Quiz not found', 404);
+    await assertCanViewQuiz(req.user, quiz);
+    const course = await Course.findById(quiz.course).select('educator');
+    const canSeeAnswers = isAdminUser(req.user) || isCourseOwner(req.user, course);
     const quizObj = quiz.toObject();
-    if (req.user?.role === 'learner' || req.user?.role === 'student') {
+    if (!canSeeAnswers) {
       quizObj.questions = quizObj.questions.map((q) => ({
         ...q,
         correctAnswer: undefined,
@@ -84,11 +85,10 @@ exports.getEducatorQuizzes = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, educator: req.user._id });
-    if (!quiz) throw new AppError('Quiz not found or not authorized', 404);
+    const quiz = await Quiz.findById(req.params.id);
+    if (!quiz) throw new AppError('Quiz not found', 404);
 
-    const course = await Course.findOne({ _id: quiz.course, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    await assertCanManageCourse(req.user, quiz.course);
 
     const { title, description, difficulty, timeLimit, maxAttempts, availableFrom, availableUntil, questions } = req.body;
     if (title !== undefined) quiz.title = title;
@@ -126,8 +126,10 @@ exports.update = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
-    const quiz = await Quiz.findOneAndDelete({ _id: req.params.id, educator: req.user._id });
-    if (!quiz) throw new AppError('Quiz not found or not authorized', 404);
+    const quiz = await Quiz.findById(req.params.id);
+    if (!quiz) throw new AppError('Quiz not found', 404);
+    await assertCanManageCourse(req.user, quiz.course);
+    await quiz.deleteOne();
     await QuizLearnerAccess.deleteMany({ quiz: quiz._id });
     sendResponse(res, 200, 'Quiz deleted');
   } catch (err) { next(err); }
@@ -135,8 +137,9 @@ exports.remove = async (req, res, next) => {
 
 exports.getLearnerAccessOverview = async (req, res, next) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, educator: req.user._id });
-    if (!quiz) throw new AppError('Quiz not found or not authorized', 404);
+    const quiz = await Quiz.findById(req.params.id);
+    if (!quiz) throw new AppError('Quiz not found', 404);
+    await assertCanManageCourse(req.user, quiz.course);
 
     const course = await Course.findById(quiz.course).populate('learners', 'name email');
     if (!course) throw new AppError('Course not found', 404);
@@ -202,8 +205,9 @@ exports.getLearnerAccessOverview = async (req, res, next) => {
 
 exports.putLearnerAccess = async (req, res, next) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, educator: req.user._id });
-    if (!quiz) throw new AppError('Quiz not found or not authorized', 404);
+    const quiz = await Quiz.findById(req.params.id);
+    if (!quiz) throw new AppError('Quiz not found', 404);
+    await assertCanManageCourse(req.user, quiz.course);
 
     const course = await Course.findById(quiz.course);
     if (!course) throw new AppError('Course not found', 404);

@@ -47,6 +47,7 @@ export default function PaymentHistory() {
   const [message, setMessage] = useState('');
   const [summary, setSummary] = useState({ total: 0, count: 0 });
   const [queryModal, setQueryModal] = useState(null);
+  const [refundModal, setRefundModal] = useState(null);
   const [queryText, setQueryText] = useState('');
   const [querySubmitting, setQuerySubmitting] = useState(false);
 
@@ -108,11 +109,11 @@ export default function PaymentHistory() {
   };
 
   const requestRefund = async (paymentId) => {
-    if (!confirm('Are you sure you want to request a refund? You will be un-enrolled from the course.')) return;
     setRefunding(paymentId);
     setMessage('');
     try {
       await api.post('/payments/refund', { paymentId, reason: 'Requested by learner' });
+      setRefundModal(null);
       setMessage('Refund initiated successfully. It may take 5-7 business days to process.');
       loadPayments();
     } catch (e) {
@@ -243,7 +244,7 @@ export default function PaymentHistory() {
                       <td className="px-5 py-4 text-center">
                         {canRefund(p) ? (
                           <button
-                            onClick={() => requestRefund(p._id)}
+                            onClick={() => setRefundModal(p)}
                             disabled={refunding === p._id}
                             className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
                           >
@@ -365,6 +366,23 @@ export default function PaymentHistory() {
           </button>
           <button type="button" className="btn-primary" disabled={querySubmitting} onClick={submitRaiseQuery}>
             {querySubmitting ? 'Submitting…' : 'Submit query'}
+          </button>
+        </div>
+      </Modal>
+      <Modal
+        open={!!refundModal}
+        onClose={() => !refunding && setRefundModal(null)}
+        title="Request refund"
+      >
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Are you sure you want to request a refund for {refundModal?.course?.title || 'this course'}? You will be un-enrolled after approval.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <button type="button" className="btn-secondary" disabled={!!refunding} onClick={() => setRefundModal(null)}>
+            Cancel
+          </button>
+          <button type="button" className="bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-5 rounded-xl" disabled={!!refunding} onClick={() => requestRefund(refundModal._id)}>
+            {refunding ? 'Processing...' : 'Request refund'}
           </button>
         </div>
       </Modal>

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { isLearnerRole } from '../../utils/rolePaths';
 import API from '../../api/axios';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import {
   MessageCircle,
   X,
@@ -431,7 +432,7 @@ export default function AIChatBot() {
                       )}
                     </div>
                   ) : msg.content ? (
-                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(msg.content)) }} />
                   ) : (
                     msg.streaming && <TypingIndicator />
                   )}

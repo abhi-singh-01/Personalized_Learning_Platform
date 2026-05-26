@@ -3,6 +3,7 @@ import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import { PlusCircle, TicketPercent, Ban, Pencil, RotateCcw, Clock3 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import { unwrapApiData } from '../../utils/apiData';
 
 const initialForm = {
   code: '',
@@ -31,12 +32,12 @@ export default function EducatorCoupons() {
 
   const fetchCoupons = async () => {
     const res = await api.get('/payments/coupons');
-    setCoupons(res.data || []);
+    setCoupons(unwrapApiData(res) || []);
   };
 
   const fetchCourses = async () => {
     const res = await api.get('/courses/teaching');
-    setCourses(res.data || []);
+    setCourses(unwrapApiData(res) || []);
   };
 
   useEffect(() => {
@@ -57,6 +58,10 @@ export default function EducatorCoupons() {
   const createCoupon = async (e) => {
     e.preventDefault();
     setMessage('');
+    if (!form.courseId) {
+      setMessage('Please select the course this coupon belongs to.');
+      return;
+    }
     try {
       await api.post('/payments/coupons', {
         ...form,
@@ -114,6 +119,10 @@ export default function EducatorCoupons() {
     e.preventDefault();
     if (!editing || !editForm) return;
     setMessage('');
+    if (!editForm.courseId) {
+      setMessage('Please select the course this coupon belongs to.');
+      return;
+    }
     try {
       await api.patch(`/payments/coupons/${editing._id}`, {
         ...editForm,
@@ -175,7 +184,11 @@ export default function EducatorCoupons() {
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-gray-400 mt-1">This coupon will only work for the selected course.</p>
+            <p className="text-[11px] text-gray-400 mt-1">
+              {courses.length === 0
+                ? 'No courses found. Create a course first, then create its coupon.'
+                : 'This coupon will only work for the selected course.'}
+            </p>
           </div>
 
           {/* Code & Title */}
@@ -303,7 +316,7 @@ export default function EducatorCoupons() {
 
           {/* Submit */}
           <div className="flex items-center gap-3 pt-2">
-            <button className="btn-primary flex items-center gap-2" type="submit">
+            <button className="btn-primary flex items-center gap-2" type="submit" disabled={courses.length === 0}>
               <TicketPercent size={16} />
               Create Coupon
             </button>

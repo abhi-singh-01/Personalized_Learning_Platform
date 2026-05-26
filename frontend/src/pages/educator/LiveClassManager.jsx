@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
+import { useSocket } from '../../context/SocketContext';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
 import {
-  Radio, Play, StopCircle, Plus, Clock, Users, Video,
+  Radio, Play, StopCircle, Plus, Clock, Users, Video, Hand,
   Calendar, Eye, History, AlertCircle
 } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -14,7 +15,9 @@ import { formatElapsedDuration } from '../../utils/helpers';
 export default function LiveClassManager() {
   usePageTitle('Live Classes');
   const api = useApi();
+  const socketCtx = useSocket();
   const [activeClasses, setActiveClasses] = useState([]);
+  const [raisedHands, setRaisedHands] = useState({});
   const [courses, setCourses] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [history, setHistory] = useState([]);
@@ -22,6 +25,7 @@ export default function LiveClassManager() {
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [quickForm, setQuickForm] = useState({ courseId: '', topic: '', maxParticipants: 100 });
   const [error, setError] = useState('');
+  const [endConfirmId, setEndConfirmId] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -45,6 +49,39 @@ export default function LiveClassManager() {
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { if (tab === 'history') fetchHistory(); }, [tab]);
+
+  useEffect(() => {
+    if (!socketCtx?.socket || activeClasses.length === 0) return;
+    activeClasses.forEach((cls) => {
+      if (cls.roomId) socketCtx.emit('room:join', { roomId: cls.roomId });
+    });
+
+    const handleRaised = (data) => {
+      setRaisedHands((prev) => ({
+        ...prev,
+        [data.roomId || data.room]: [
+          ...(prev[data.roomId || data.room] || []).filter((u) => u.userId !== data.userId),
+          data,
+        ],
+      }));
+    };
+    const handleLowered = (data) => {
+      setRaisedHands((prev) => ({
+        ...prev,
+        [data.roomId || data.room]: (prev[data.roomId || data.room] || []).filter((u) => u.userId !== data.userId),
+      }));
+    };
+
+    socketCtx.on('room:hand-raised', handleRaised);
+    socketCtx.on('room:hand-lowered', handleLowered);
+    return () => {
+      socketCtx.off('room:hand-raised', handleRaised);
+      socketCtx.off('room:hand-lowered', handleLowered);
+      activeClasses.forEach((cls) => {
+        if (cls.roomId) socketCtx.emit('room:leave', { roomId: cls.roomId });
+      });
+    };
+  }, [socketCtx?.socket, activeClasses]);
 
   const handleStartFromSchedule = async (scheduleId) => {
     setError('');
@@ -70,9 +107,15 @@ export default function LiveClassManager() {
   };
 
   const handleEndClass = async (classId) => {
-    if (!window.confirm('End this live class?')) return;
+    if (endConfirmId !== classId) {
+      setEndConfirmId(classId);
+      setError('Click End again to confirm ending this live class.');
+      return;
+    }
     try {
       await api.put(`/live-classes/${classId}/end`);
+      setEndConfirmId(null);
+      setError('');
       fetchData();
     } catch (err) {
       setError(err.response?.data?.message || 'Error ending class');
@@ -154,6 +197,16 @@ export default function LiveClassManager() {
                       <Clock size={12} /> {formatClassDuration(cls)}
                     </span>
                   </div>
+                  {(raisedHands[cls.roomId] || []).length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(raisedHands[cls.roomId] || []).map((u) => (
+                        <span key={u.userId} className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-2 py-1 text-xs font-medium">
+                          <Hand size={12} />
+                          {u.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Link to={`/educator/courses/${cls.course?._id || cls.course}/live`}
@@ -162,7 +215,7 @@ export default function LiveClassManager() {
                   </Link>
                   <button onClick={() => handleEndClass(cls._id)}
                     className="flex items-center gap-1 px-3 py-2 text-sm bg-red-100 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
-                    <StopCircle size={14} /> End
+                    <StopCircle size={14} /> {endConfirmId === cls._id ? 'Confirm End' : 'End'}
                   </button>
                 </div>
               </div>

@@ -34,7 +34,8 @@ export default function useApi() {
   const get = useCallback((url, config) => request('get', url, null, config), [request]);
   const post = useCallback((url, data, config) => request('post', url, data, config), [request]);
   const put = useCallback((url, data, config) => request('put', url, data, config), [request]);
+  const patch = useCallback((url, data, config) => request('patch', url, data, config), [request]);
   const del = useCallback((url, config) => request('delete', url, null, config), [request]);
 
-  return { loading, error, get, post, put, del, setError };
+  return { loading, error, get, post, put, patch, del, setError };
 }

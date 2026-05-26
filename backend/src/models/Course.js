@@ -9,7 +9,7 @@ const courseSchema = new mongoose.Schema({
   learners: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'beginner' },
   tags: [String],
-  isPublished: { type: Boolean, default: true },
+  isPublished: { type: Boolean, default: false },
   price: { type: Number, default: 0, min: 0 },        // 0 = free, > 0 = paid (INR)
   currency: { type: String, default: 'INR' },
 
@@ -30,7 +30,7 @@ const courseSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['draft', 'pending_review', 'published', 'archived', 'rejected'],
-    default: 'published',
+    default: 'draft',
   },
   rejectionReason: { type: String, default: '' },
 

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, RotateCcw } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
@@ -21,38 +21,46 @@ function GoogleIcon({ size = 20 }) {
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [show, setShow] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, googleLogin } = useAuth();
+  const [resendLoading, setResendLoading] = useState(false);
+  const { login, googleLogin, verifyEmailOtp, resendEmailOtp } = useAuth();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionEvicted = searchParams.get('reason') === 'session_expired';
   const isEducatorFlow = searchParams.get('role') === 'educator';
+  const portalRole = isEducatorFlow ? 'educator' : 'learner';
   usePageTitle(isEducatorFlow ? 'Educator Sign In' : 'Sign In');
 
   const toast = useToast();
+
+  const redirectAfterLogin = useCallback((user) => {
+    if (user.role === 'admin') {
+      toast.success('Welcome back, Administrator!');
+      nav('/admin/dashboard', { replace: true });
+    } else if (isEducatorFlow && isLearnerRole(user.role)) {
+      setError('This learner account cannot access the educator portal. Switch to educator from your account first.');
+    } else {
+      const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
+      toast.success(`Welcome back, ${greeting}!`);
+      nav(`/${roleHomeSegment(user.role)}/dashboard`, { replace: true });
+    }
+  }, [isEducatorFlow, nav, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
-      // Admin users — redirect to admin dashboard
-      if (user.role === 'admin') {
-        toast.success('Welcome back, Administrator!');
-        nav('/admin/dashboard', { replace: true });
-      } else if (isEducatorFlow && isLearnerRole(user.role)) {
-        // If user came from educator flow but is a learner, guide them — do NOT auto-upgrade
-        toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
-        nav('/become-educator', { replace: true });
-      } else {
-        const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
-        toast.success(`Welcome back, ${greeting}!`);
-        nav(`/${roleHomeSegment(user.role)}/dashboard`, { replace: true });
-      }
+      const user = await login(form.email, form.password, portalRole);
+      redirectAfterLogin(user);
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
+      if (err.response?.status === 403 && msg.toLowerCase().includes('verify')) {
+        setVerificationEmail(form.email);
+      }
       setError(msg);
       toast.error(msg);
     } finally {
@@ -63,20 +71,46 @@ export default function Login() {
   const handleGoogleCredential = useCallback(
     async (credential) => {
       setError('');
-      const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-      const user = await googleLogin(credential, selectedRole);
-      // If existing user logged in as learner via educator flow — guide them, don't auto-upgrade
-      if (isEducatorFlow && isLearnerRole(user.role)) {
-        toast.info('You are logged in as a Learner. Visit "Become an Educator" to switch roles.');
-        nav('/become-educator', { replace: true });
-      } else {
-        const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
-        toast.success(`Welcome back, ${greeting}!`);
-        nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
-      }
+      const user = await googleLogin(credential, portalRole);
+      redirectAfterLogin(user);
     },
-    [googleLogin, isEducatorFlow, nav, toast]
+    [googleLogin, portalRole, redirectAfterLogin]
   );
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    const cleanOtp = otp.replace(/\D/g, '').slice(0, 6);
+    if (cleanOtp.length !== 6) { setError('Enter the 6-digit verification code'); return; }
+
+    setLoading(true);
+    try {
+      const user = await verifyEmailOtp(verificationEmail, cleanOtp, portalRole);
+      toast.success('Email verified successfully');
+      redirectAfterLogin(user);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Verification failed';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError('');
+    setResendLoading(true);
+    try {
+      await resendEmailOtp(verificationEmail);
+      toast.success('A new verification code was sent');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Could not resend the code';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-[#0A0A0A]">
@@ -156,12 +190,12 @@ export default function Login() {
                 </div>
               )}
               <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
-                {isEducatorFlow ? 'Sign in as Educator' : 'Sign in'}
+                {isEducatorFlow ? 'Sign in as Educator' : 'Sign in as Learner'}
               </h2>
               <p className="text-gray-500 dark:text-gray-400">
                 {isEducatorFlow
                   ? 'Access your educator dashboard and start teaching'
-                  : 'Enter your credentials to access your account'}
+                  : 'Access your learner dashboard and courses'}
               </p>
             </div>
 
@@ -179,97 +213,154 @@ export default function Login() {
               </div>
             )}
 
-            {/* Google Sign-In */}
-            <div className="mb-5">
-              <GoogleSignInButton
-                mode="signin"
-                onCredential={handleGoogleCredential}
-                onGsiError={(msg) => setError(msg)}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
-              >
-                {(busy) =>
-                  busy ? (
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            {verificationEmail ? (
+              <form onSubmit={handleVerifyOtp} className="space-y-5">
+                <div className="rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800/40 p-4">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Verify your email</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 break-all">{verificationEmail}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">6-digit OTP</label>
+                  <input
+                    className="input-field text-center text-lg font-semibold tracking-[0.4em]"
+                    inputMode="numeric"
+                    placeholder="000000"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    maxLength={6}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Verifying...
+                    </>
                   ) : (
                     <>
-                      <GoogleIcon />
-                      Continue with Google
+                      <LogIn size={18} />
+                      Verify and sign in
                     </>
-                  )
-                }
-              </GoogleSignInButton>
-            </div>
+                  )}
+                </button>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 mb-5">
-              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">or</span>
-              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-            </div>
-
-            {/* Email form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    className="input-field pl-11"
-                    placeholder="you@example.com"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={show ? 'text' : 'password'}
-                    className="input-field pl-11 pr-11"
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShow(!show)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendLoading}
+                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 py-3 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <RotateCcw size={16} />
+                  {resendLoading ? 'Sending...' : 'Resend code'}
+                </button>
+              </form>
+            ) : (
+              <>
+                {/* Google Sign-In */}
+                <div className="mb-5">
+                  <GoogleSignInButton
+                    mode="signin"
+                    onCredential={handleGoogleCredential}
+                    onGsiError={(msg) => setError(msg)}
+                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
                   >
-                    {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                    {(busy) =>
+                      busy ? (
+                        <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <GoogleIcon />
+                          Continue with Google
+                        </>
+                      )
+                    }
+                  </GoogleSignInButton>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={18} />
-                    Sign in
-                  </>
-                )}
-              </button>
-            </form>
+                {/* Divider */}
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">or</span>
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                </div>
+
+                {/* Email form */}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="email"
+                        className="input-field pl-11"
+                        placeholder="you@example.com"
+                        value={form.email}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type={show ? 'text' : 'password'}
+                        className="input-field pl-11 pr-11"
+                        placeholder="••••••••"
+                        value={form.password}
+                        onChange={(e) =>
+                          setForm({ ...form, password: e.target.value })
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShow(!show)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      >
+                        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn size={18} />
+                        Sign in
+                      </>
+                    )}
+                  </button>
+                  <div className="text-right">
+                    <Link to="/forgot-password" className="text-sm font-semibold text-purple-600 dark:text-purple-400 hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+                </form>
+              </>
+            )}
 
             {/* Sign up link */}
             <div className="flex items-center gap-4 my-6">
@@ -287,6 +378,16 @@ export default function Login() {
                 className="font-semibold text-purple-600 dark:text-purple-400 hover:underline"
               >
                 {isEducatorFlow ? 'Create educator account' : 'Sign up for free'}
+              </Link>
+            </p>
+
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
+              {isEducatorFlow ? 'Using a learner account?' : 'Are you an educator?'}{' '}
+              <Link
+                to={isEducatorFlow ? '/login?role=learner' : '/login?role=educator'}
+                className="font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                {isEducatorFlow ? 'Sign in as learner' : 'Sign in as educator'}
               </Link>
             </p>
 

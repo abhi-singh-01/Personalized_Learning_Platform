@@ -11,10 +11,23 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ['.pdf', '.ppt', '.pptx', '.mp4', '.mpeg', '.mov', '.avi', '.webm', '.wmv', '.mkv'];
+  const allowed = {
+    '.pdf': ['application/pdf'],
+    '.ppt': ['application/vnd.ms-powerpoint'],
+    '.pptx': ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+    '.mp4': ['video/mp4'],
+    '.mpeg': ['video/mpeg'],
+    '.mov': ['video/quicktime'],
+    '.avi': ['video/x-msvideo'],
+    '.webm': ['video/webm'],
+    '.wmv': ['video/x-ms-wmv'],
+    '.mkv': ['video/x-matroska', 'application/octet-stream'],
+  };
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowed.includes(ext)) cb(null, true);
-  else cb(new AppError('Only PDF, PPT, and Video files are allowed', 400), false);
+  const allowedTypes = allowed[ext];
+  const mime = String(file.mimetype || '').split(';')[0].toLowerCase();
+  if (allowedTypes && allowedTypes.includes(mime)) cb(null, true);
+  else cb(new AppError('Only valid PDF, PPT, and video files are allowed', 400), false);
 };
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 200 * 1024 * 1024 } });

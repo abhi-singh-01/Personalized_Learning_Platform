@@ -10,6 +10,7 @@ export default function ContentModeration() {
   const api = useApi();
   const [reviews, setReviews] = useState([]);
   const [tab, setTab] = useState('flagged');
+  const [message, setMessage] = useState('');
 
   const fetchFlagged = async () => {
     try {
@@ -23,9 +24,10 @@ export default function ContentModeration() {
   const handleModerate = async (reviewId, action) => {
     try {
       await api.put(`/reviews/${reviewId}/moderate`, { action });
+      setMessage(`Review ${action === 'approve' ? 'approved' : 'rejected'}.`);
       fetchFlagged();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error moderating review');
+      setMessage(err.response?.data?.message || 'Error moderating review');
     }
   };
 
@@ -60,6 +62,11 @@ export default function ContentModeration() {
           </div>
         </div>
       </Card>
+      {message && (
+        <div className="rounded-xl px-4 py-3 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          {message}
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">

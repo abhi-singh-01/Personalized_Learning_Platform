@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import useApi from '../../hooks/useApi';
 import Loading from '../../components/ui/Loading';
 import Card from '../../components/ui/Card';
-import { DollarSign, TrendingUp, Clock, Calendar, IndianRupee, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { DollarSign, TrendingUp, Calendar, IndianRupee, Landmark } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function EarningsDashboard() {
   usePageTitle('Earnings');
   const api = useApi();
   const [earnings, setEarnings] = useState(null);
+  const [onboarding, setOnboarding] = useState({ name: '', email: '', accountNumber: '', ifscCode: '', pan: '', gst: '' });
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     const fetch = async () => {
@@ -22,6 +24,8 @@ export default function EarningsDashboard() {
 
   if (api.loading && !earnings) return <Loading />;
   if (!earnings) return <Loading />;
+  const summary = earnings.summary || earnings;
+  const payments = earnings.payments || earnings.recentPayments || [];
 
   return (
     <div className="space-y-6">
@@ -35,6 +39,38 @@ export default function EarningsDashboard() {
         <p className="text-sm text-gray-500 mt-1">Track your revenue and payout history</p>
       </div>
 
+      <Card>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+            <Landmark size={20} className="text-blue-600" />
+          </div>
+          <div>
+            <h2 className="font-bold">Payout account</h2>
+            <p className="text-sm text-gray-500">Add bank and PAN details so future payouts can be processed.</p>
+          </div>
+        </div>
+        {message && <div className="mb-4 text-sm text-green-600 dark:text-green-400">{message}</div>}
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setMessage('');
+            await api.post('/payments/educator/onboard', onboarding);
+            setMessage('Payout details saved successfully.');
+          }}
+          className="grid sm:grid-cols-2 gap-3"
+        >
+          <input className="input-field" placeholder="Beneficiary name" value={onboarding.name} onChange={(e) => setOnboarding({ ...onboarding, name: e.target.value })} required />
+          <input type="email" className="input-field" placeholder="Email" value={onboarding.email} onChange={(e) => setOnboarding({ ...onboarding, email: e.target.value })} required />
+          <input className="input-field" placeholder="Account number" value={onboarding.accountNumber} onChange={(e) => setOnboarding({ ...onboarding, accountNumber: e.target.value })} required />
+          <input className="input-field" placeholder="IFSC code" value={onboarding.ifscCode} onChange={(e) => setOnboarding({ ...onboarding, ifscCode: e.target.value.toUpperCase() })} required />
+          <input className="input-field" placeholder="PAN" value={onboarding.pan} onChange={(e) => setOnboarding({ ...onboarding, pan: e.target.value.toUpperCase() })} required />
+          <input className="input-field" placeholder="GST (optional)" value={onboarding.gst} onChange={(e) => setOnboarding({ ...onboarding, gst: e.target.value.toUpperCase() })} />
+          <button type="submit" className="btn-primary sm:col-span-2" disabled={api.loading}>
+            {api.loading ? 'Saving...' : 'Save payout details'}
+          </button>
+        </form>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="space-y-1">
@@ -44,7 +80,7 @@ export default function EarningsDashboard() {
             </div>
             <span className="text-sm text-gray-500">Total Earnings</span>
           </div>
-          <p className="text-2xl font-bold">₹{(earnings.totalEarnings || 0).toLocaleString()}</p>
+          <p className="text-2xl font-bold">₹{(summary.totalEarnings || 0).toLocaleString()}</p>
         </Card>
 
         <Card className="space-y-1">
@@ -54,7 +90,7 @@ export default function EarningsDashboard() {
             </div>
             <span className="text-sm text-gray-500">Pending Payouts</span>
           </div>
-          <p className="text-2xl font-bold">₹{(earnings.pendingPayouts || 0).toLocaleString()}</p>
+          <p className="text-2xl font-bold">₹{(summary.pendingPayouts || 0).toLocaleString()}</p>
         </Card>
 
         <Card className="space-y-1">
@@ -64,7 +100,7 @@ export default function EarningsDashboard() {
             </div>
             <span className="text-sm text-gray-500">Processed Payouts</span>
           </div>
-          <p className="text-2xl font-bold">₹{(earnings.processedPayouts || 0).toLocaleString()}</p>
+          <p className="text-2xl font-bold">₹{(summary.processedPayouts || 0).toLocaleString()}</p>
         </Card>
 
         <Card className="space-y-1">
@@ -74,12 +110,12 @@ export default function EarningsDashboard() {
             </div>
             <span className="text-sm text-gray-500">Total Sales</span>
           </div>
-          <p className="text-2xl font-bold">{earnings.totalSales || 0}</p>
+          <p className="text-2xl font-bold">{payments.length || 0}</p>
         </Card>
       </div>
 
       {/* Recent Transactions */}
-      {earnings.recentPayments && earnings.recentPayments.length > 0 && (
+      {payments.length > 0 && (
         <Card className="!p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 font-semibold">
             Recent Transactions
@@ -96,7 +132,7 @@ export default function EarningsDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {earnings.recentPayments.map(p => (
+                {payments.map(p => (
                   <tr key={p._id} className="border-t border-gray-100 dark:border-gray-800">
                     <td className="px-4 py-3 text-xs text-gray-400">{new Date(p.paidAt || p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 font-medium">{p.course?.title || '—'}</td>

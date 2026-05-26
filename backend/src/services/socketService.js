@@ -2,6 +2,24 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/env');
 const User = require('../models/User');
 const LiveClass = require('../models/LiveClass');
+const {
+  assertCanManageCourse,
+  assertCanViewCourseContent,
+  isAdminUser,
+  isEducatorUser,
+} = require('./courseAccessService');
+
+async function getAuthorizedLiveClass(user, roomId) {
+  const liveClass = await LiveClass.findOne({ roomId, status: 'live' });
+  if (!liveClass) throw new Error('Live class not found or not active');
+  if (isAdminUser(user)) return liveClass;
+  if (isEducatorUser(user)) {
+    await assertCanManageCourse(user, liveClass.course);
+  } else {
+    await assertCanViewCourseContent(user, liveClass.course);
+  }
+  return liveClass;
+}
 
 function initializeSocket(io) {
   // Middleware: authenticate socket connections
@@ -16,6 +34,13 @@ function initializeSocket(io) {
       const user = await User.findById(decoded.id).select('-password');
       if (!user) {
         return next(new Error('User not found'));
+      }
+      if (user.isBlocked) {
+        return next(new Error('Account is blocked'));
+      }
+      if (decoded.tokenId) {
+        const sessionExists = user.activeSessions.some((s) => s.tokenId === decoded.tokenId);
+        if (!sessionExists) return next(new Error('Session expired'));
       }
 
       socket.user = user;
@@ -37,11 +62,7 @@ function initializeSocket(io) {
     // Join a live class room
     socket.on('room:join', async ({ roomId }) => {
       try {
-        const liveClass = await LiveClass.findOne({ roomId, status: 'live' });
-        if (!liveClass) {
-          socket.emit('error', { message: 'Live class not found or not active' });
-          return;
-        }
+        await getAuthorizedLiveClass(socket.user, roomId);
 
         socket.join(`room:${roomId}`);
         socket.currentRoom = roomId;
@@ -56,7 +77,7 @@ function initializeSocket(io) {
 
         console.log(`[Socket] ${socket.user.name} joined room ${roomId}`);
       } catch (err) {
-        socket.emit('error', { message: 'Failed to join room' });
+        socket.emit('error', { message: err.message || 'Failed to join room' });
       }
     });
 
@@ -76,6 +97,17 @@ function initializeSocket(io) {
     // Chat message in live class
     socket.on('chat:send', async ({ roomId, message }) => {
       if (!message || !message.trim()) return;
+      let liveClass;
+      try {
+        liveClass = await getAuthorizedLiveClass(socket.user, roomId);
+        if (!liveClass.chatEnabled) {
+          socket.emit('error', { message: 'Chat is disabled' });
+          return;
+        }
+      } catch (err) {
+        socket.emit('error', { message: err.message || 'Not authorized for this room' });
+        return;
+      }
 
       const chatMsg = {
         user: userId,
@@ -91,7 +123,7 @@ function initializeSocket(io) {
 
       // Persist to DB (fire-and-forget)
       LiveClass.findOneAndUpdate(
-        { roomId },
+        { _id: liveClass._id },
         {
           $push: {
             chatMessages: {
@@ -106,16 +138,31 @@ function initializeSocket(io) {
     });
 
     // Raise hand (learner feature)
-    socket.on('room:raise-hand', ({ roomId }) => {
+    socket.on('room:raise-hand', async ({ roomId }) => {
+      try {
+        await getAuthorizedLiveClass(socket.user, roomId);
+      } catch (err) {
+        socket.emit('error', { message: err.message || 'Not authorized for this room' });
+        return;
+      }
       io.to(`room:${roomId}`).emit('room:hand-raised', {
+        roomId,
         userId,
         name: socket.user.name,
+        role: socket.user.role,
       });
     });
 
     // Lower hand
-    socket.on('room:lower-hand', ({ roomId }) => {
+    socket.on('room:lower-hand', async ({ roomId }) => {
+      try {
+        await getAuthorizedLiveClass(socket.user, roomId);
+      } catch (err) {
+        socket.emit('error', { message: err.message || 'Not authorized for this room' });
+        return;
+      }
       io.to(`room:${roomId}`).emit('room:hand-lowered', {
+        roomId,
         userId,
         name: socket.user.name,
       });
@@ -123,14 +170,21 @@ function initializeSocket(io) {
 
     // Educator: toggle chat
     socket.on('room:toggle-chat', async ({ roomId, enabled }) => {
-      if (socket.user.role !== 'educator' && socket.user.role !== 'admin') return;
+      if (!isEducatorUser(socket.user) && !isAdminUser(socket.user)) return;
+      try {
+        const liveClass = await getAuthorizedLiveClass(socket.user, roomId);
+        await LiveClass.findByIdAndUpdate(liveClass._id, { chatEnabled: enabled });
+      } catch (err) {
+        socket.emit('error', { message: err.message || 'Not authorized for this room' });
+        return;
+      }
 
-      await LiveClass.findOneAndUpdate({ roomId }, { chatEnabled: enabled });
       io.to(`room:${roomId}`).emit('room:chat-toggled', { enabled });
     });
 
     // ─── Typing indicator ───
     socket.on('chat:typing', ({ roomId }) => {
+      if (socket.currentRoom !== roomId) return;
       socket.to(`room:${roomId}`).emit('chat:typing', {
         userId,
         name: socket.user.name,

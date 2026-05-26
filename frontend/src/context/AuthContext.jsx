@@ -178,8 +178,8 @@ export function AuthProvider({ children }) {
     setUser(u);
   };
 
-  const login = async (email, password) => {
-    const res = await API.post('/auth/login', { email, password });
+  const login = async (email, password, role) => {
+    const res = await API.post('/auth/login', { email, password, role });
     const { token: t, user: u } = res.data.data;
     persistLogin(t, u);
     return u;
@@ -194,9 +194,34 @@ export function AuthProvider({ children }) {
 
   const register = async (data) => {
     const res = await API.post('/auth/register', data);
+    const payload = res.data.data;
+    if (payload?.token && payload?.user) {
+      persistLogin(payload.token, payload.user);
+      return payload.user;
+    }
+    return payload;
+  };
+
+  const verifyEmailOtp = async (email, otp, role) => {
+    const res = await API.post('/auth/verify-email', { email, otp, role });
     const { token: t, user: u } = res.data.data;
     persistLogin(t, u);
     return u;
+  };
+
+  const resendEmailOtp = async (email) => {
+    const res = await API.post('/auth/resend-email-otp', { email });
+    return res.data.data;
+  };
+
+  const forgotPassword = async (email) => {
+    const res = await API.post('/auth/forgot-password', { email });
+    return res.data.data;
+  };
+
+  const resetPassword = async ({ email, otp, password }) => {
+    const res = await API.post('/auth/reset-password', { email, otp, password });
+    return res.data.data;
   };
 
   const refreshUserRef = useRef(false);
@@ -233,7 +258,8 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, role, token,
-      login, googleLogin, register, logout, refreshUser, switchRole,
+      login, googleLogin, register, verifyEmailOtp, resendEmailOtp,
+      forgotPassword, resetPassword, logout, refreshUser, switchRole,
       sessionWarning, extendSession,
     }}>
       {children}

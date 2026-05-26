@@ -1,3 +1,5 @@
+import API from '../api/axios';
+
 /**
  * Resolve a material file path to a full URL the browser can load.
  * /uploads/... must hit the backend host in production (not the Vercel SPA).
@@ -25,4 +27,9 @@ export function resolveMaterialUrl(url) {
   }
 
   return path;
+}
+
+export async function createProtectedMaterialObjectUrl(materialId) {
+  const res = await API.get(`/materials/${materialId}/file`, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
 }

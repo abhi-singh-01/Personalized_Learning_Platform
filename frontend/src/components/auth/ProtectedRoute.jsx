@@ -1,6 +1,14 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { roleHomeSegment, roleMatchesAllowed } from '../../utils/rolePaths';
+
+function loginPathForRoles(allowedRoles, pathname = '') {
+  if (allowedRoles?.includes('admin')) return '/admin/login';
+  if (allowedRoles?.includes('educator')) return '/login?role=educator';
+  if (pathname.startsWith('/admin')) return '/admin/login';
+  if (pathname.startsWith('/educator')) return '/login?role=educator';
+  return '/login?role=learner';
+}
 
 /**
  * ProtectedRoute — guards authenticated routes with role checks.
@@ -12,6 +20,7 @@ import { roleHomeSegment, roleMatchesAllowed } from '../../utils/rolePaths';
  */
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   // ── Still checking auth → show loading spinner (prevents blank screen) ──
   if (loading) {
@@ -32,7 +41,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   // ── Not authenticated → redirect to login ──
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginPathForRoles(allowedRoles, location.pathname)} replace />;
   }
 
   // ── Role mismatch → redirect to correct dashboard ──

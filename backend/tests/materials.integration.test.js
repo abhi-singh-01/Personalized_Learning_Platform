@@ -9,6 +9,8 @@ process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
@@ -30,6 +32,8 @@ let Material;
 let educator;
 let course;
 let seedMaterial;
+let protectedFileName;
+let uploadsDir;
 
 function authHeader(userDoc) {
   const token = jwt.sign(
@@ -54,6 +58,10 @@ describe('Materials API (integration)', { skip: !MongoMemoryServer, timeout: 120
     // Fresh app instance bound to this mongoose connection
     delete require.cache[require.resolve('../src/app')];
     app = require('../src/app');
+    uploadsDir = path.join(__dirname, '..', 'uploads');
+    protectedFileName = `protected-material-${Date.now()}.txt`;
+    await fs.mkdir(uploadsDir, { recursive: true });
+    await fs.writeFile(path.join(uploadsDir, protectedFileName), 'protected material content');
 
     educator = await User.create({
       name: 'Integration Educator',
@@ -79,12 +87,15 @@ describe('Materials API (integration)', { skip: !MongoMemoryServer, timeout: 120
       description: '',
       course: course._id,
       type: 'video',
-      fileUrl: '/uploads/nonexistent-test-file.bin',
+      fileUrl: `/uploads/${protectedFileName}`,
       order: 0,
     });
   });
 
   after(async () => {
+    if (protectedFileName && uploadsDir) {
+      await fs.unlink(path.join(uploadsDir, protectedFileName)).catch(() => {});
+    }
     await mongoose.disconnect();
     if (mongod) await mongod.stop();
   });
@@ -112,6 +123,18 @@ describe('Materials API (integration)', { skip: !MongoMemoryServer, timeout: 120
     assert.equal(updated.title, 'Lecture 1 (edited)');
     assert.equal(updated.description, 'Updated summary');
     assert.equal(updated.fileUrl, '/uploads/another-fake.bin');
+  });
+
+  it('blocks direct /uploads access for material files and serves them through auth', async () => {
+    const direct = await request(app).get(`/uploads/${protectedFileName}`);
+    assert.equal(direct.status, 404, direct.text);
+
+    const authed = await request(app)
+      .get(`/api/materials/${seedMaterial._id}/file`)
+      .set('Authorization', authHeader(educator));
+
+    assert.equal(authed.status, 200, authed.text);
+    assert.equal(authed.text, 'protected material content');
   });
 
   it('DELETE /api/materials/:id removes material for course owner', async () => {

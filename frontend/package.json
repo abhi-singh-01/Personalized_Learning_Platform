@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "axios": "^1.7.7",
+    "dompurify": "^3.4.5",
+    "gsap": "^3.15.0",
     "html2canvas": "^1.4.1",
     "jodit-react": "^5.3.21",
     "jspdf": "^4.2.0",

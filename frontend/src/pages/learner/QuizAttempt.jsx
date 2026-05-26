@@ -45,11 +45,19 @@ export default function QuizAttempt() {
   useEffect(() => {
     const randomizeOptions = (questions) => {
       return questions.map((q) => {
-        const optionsCopy = [...q.options];
-        const correctText = optionsCopy[q.correctAnswer];
-        optionsCopy.sort(() => Math.random() - 0.5);
-        const newCorrectIndex = optionsCopy.indexOf(correctText);
-        return { ...q, options: optionsCopy, correctAnswer: newCorrectIndex };
+        const shuffled = (q.options || [])
+          .map((text, originalIndex) => ({ text, originalIndex }))
+          .sort(() => Math.random() - 0.5);
+        const displayCorrectIndex =
+          typeof q.correctAnswer === 'number'
+            ? shuffled.findIndex((opt) => opt.originalIndex === q.correctAnswer)
+            : undefined;
+        return {
+          ...q,
+          options: shuffled.map((opt) => opt.text),
+          optionOrder: shuffled.map((opt) => opt.originalIndex),
+          correctAnswer: displayCorrectIndex,
+        };
       });
     };
 
@@ -209,7 +217,13 @@ export default function QuizAttempt() {
         clearDraft(quizAttemptDraftKey(id));
       } else {
         // Standard Database Submit
-        const orderedAnswers = activeQuiz.questions.map((_, i) => answers[i] ?? -1);
+        const orderedAnswers = activeQuiz.questions.map((q, i) => {
+          const selectedDisplayIndex = answers[i];
+          if (typeof selectedDisplayIndex !== 'number') return -1;
+          return Array.isArray(q.optionOrder)
+            ? q.optionOrder[selectedDisplayIndex] ?? -1
+            : selectedDisplayIndex;
+        });
         const res = await api.post('/progress/submit', {
           quizId: id,
           answers: orderedAnswers,
@@ -297,14 +311,29 @@ export default function QuizAttempt() {
         }));
       }
       if (!isAdaptiveMode && result && quiz?.questions?.length) {
-        return quiz.questions.map((q, i) => ({
-          question: q.question,
-          options: q.options,
-          selectedIndex: answers[i],
-          correctIndex: q.correctAnswer,
-          explanation: q.explanation,
-          isCorrect: answers[i] === q.correctAnswer,
-        }));
+        return quiz.questions.map((q, i) => {
+          const explanation = result.explanations?.[i] || {};
+          const submitted = result.answers?.[i] || {};
+          const selectedOriginalIndex =
+            typeof submitted.selectedAnswer === 'number' ? submitted.selectedAnswer : undefined;
+          const correctOriginalIndex =
+            typeof explanation.correctAnswer === 'number' ? explanation.correctAnswer : undefined;
+          const selectedDisplayIndex = Array.isArray(q.optionOrder)
+            ? q.optionOrder.indexOf(selectedOriginalIndex)
+            : selectedOriginalIndex;
+          const correctDisplayIndex = Array.isArray(q.optionOrder)
+            ? q.optionOrder.indexOf(correctOriginalIndex)
+            : correctOriginalIndex;
+
+          return {
+            question: q.question,
+            options: q.options,
+            selectedIndex: selectedDisplayIndex >= 0 ? selectedDisplayIndex : undefined,
+            correctIndex: correctDisplayIndex >= 0 ? correctDisplayIndex : undefined,
+            explanation: explanation.explanation || q.explanation,
+            isCorrect: Boolean(submitted.isCorrect),
+          };
+        });
       }
       return [];
     })();

@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const Material = require('./models/Material');
 const { NODE_ENV } = require('./config/env');
 const { isOriginAllowed } = require('./config/corsOrigins');
 const errorHandler = require('./middleware/errorHandler');
@@ -55,6 +56,7 @@ app.use(helmet({
         'https://api.razorpay.com',
         'https://checkout.razorpay.com',
         'https://*.razorpay.com',
+        'https://meet.jit.si',
       ],
       connectSrc: [
         "'self'",
@@ -112,7 +114,27 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), (req
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (NODE_ENV === 'development') app.use(morgan('dev'));
-app.use('/uploads', (req, res, next) => {
+
+async function blockDirectMaterialFileAccess(req, res, next) {
+  try {
+    const fileName = path.basename(req.path || '');
+    if (!fileName) return next();
+
+    const material = await Material.findOne({ fileUrl: `/uploads/${fileName}` })
+      .select('_id type')
+      .lean();
+
+    if (material && ['pdf', 'ppt', 'video'].includes(material.type)) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+app.use('/uploads', blockDirectMaterialFileAccess, (req, res, next) => {
   const origin = req.headers.origin;
   if (origin && isOriginAllowed(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -120,7 +142,8 @@ app.use('/uploads', (req, res, next) => {
   }
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   // Allow learner course page (frontend) to embed PDFs in an iframe
-  res.setHeader('Content-Security-Policy', 'frame-ancestors *');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' " + (origin && isOriginAllowed(origin) ? origin : ''));
   res.removeHeader('X-Frame-Options');
   next();
 }, express.static(path.join(__dirname, '..', 'uploads')));

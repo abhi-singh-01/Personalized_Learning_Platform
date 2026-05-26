@@ -17,6 +17,8 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [educators, setEducators] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [message, setMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -64,9 +66,10 @@ export default function AdminDashboard() {
       await api.post('/admin/users', newUser);
       setShowAddModal(false);
       setNewUser({ name: '', email: '', password: '', role: 'learner' });
+      setMessage('User created successfully.');
       fetchDashboardData();
     } catch (err) {
-      alert(err.message || 'Error creating user');
+      setMessage(err.message || 'Error creating user');
     }
   };
 
@@ -76,9 +79,10 @@ export default function AdminDashboard() {
       await api.put(`/admin/users/${selectedUser._id}/role`, { role: newRole });
       setShowRoleModal(false);
       setSelectedUser(null);
+      setMessage('User role updated.');
       fetchDashboardData();
     } catch (err) {
-      alert(err.message || 'Error changing role');
+      setMessage(err.message || 'Error changing role');
     }
   };
 
@@ -91,19 +95,25 @@ export default function AdminDashboard() {
       });
       setShowAssignModal(false);
       setSelectedUser(null);
-      alert('Learner assigned');
+      setMessage('Learner assigned.');
     } catch (err) {
-      alert(err.message || 'Error assigning learner');
+      setMessage(err.message || 'Error assigning learner');
     }
   };
 
   const handleDeleteUser = async (user) => {
-    if (!window.confirm(`Delete ${user.name}?`)) return;
+    if (confirmAction !== `user:${user._id}`) {
+      setConfirmAction(`user:${user._id}`);
+      setMessage(`Click delete again to confirm deleting ${user.name}.`);
+      return;
+    }
     try {
       await api.del(`/admin/users/${user._id}`);
+      setConfirmAction(null);
+      setMessage('User deleted.');
       fetchDashboardData();
     } catch (err) {
-      alert(err.message || 'Error deleting user');
+      setMessage(err.message || 'Error deleting user');
     }
   };
 
@@ -113,30 +123,43 @@ export default function AdminDashboard() {
       await api.put(`/admin/courses/${selectedCourse._id}`, courseFormData);
       setShowEditCourseModal(false);
       setSelectedCourse(null);
+      setMessage('Course updated successfully.');
       fetchDashboardData();
     } catch (err) {
-      alert(err.message || 'Error updating course');
+      setMessage(err.message || 'Error updating course');
     }
   };
 
   const handleDeleteCourse = async (course) => {
-    if (!window.confirm(`Delete course "${course.title}" and ALL its materials?`)) return;
+    if (confirmAction !== `course:${course._id}`) {
+      setConfirmAction(`course:${course._id}`);
+      setMessage(`Click delete again to confirm deleting "${course.title}" and all materials.`);
+      return;
+    }
     try {
       await api.del(`/admin/courses/${course._id}`);
+      setConfirmAction(null);
+      setMessage('Course deleted.');
       fetchDashboardData();
     } catch (err) {
-      alert(err.message || 'Error deleting course');
+      setMessage(err.message || 'Error deleting course');
     }
   };
 
   const handleDeleteMaterial = async (materialId) => {
-    if (!window.confirm('Delete this material?')) return;
+    if (confirmAction !== `material:${materialId}`) {
+      setConfirmAction(`material:${materialId}`);
+      setMessage('Click delete again to confirm deleting this material.');
+      return;
+    }
     try {
       await api.del(`/admin/materials/${materialId}`);
+      setConfirmAction(null);
+      setMessage('Material deleted.');
       fetchDashboardData();
       setShowMaterialsModal(false);
     } catch (err) {
-      alert(err.message || 'Error deleting material');
+      setMessage(err.message || 'Error deleting material');
     }
   };
 
@@ -157,6 +180,11 @@ export default function AdminDashboard() {
         </h1>
         <p className="text-gray-500 text-sm mt-1">Manage users, courses, and platform settings</p>
       </div>
+      {message && (
+        <div className="rounded-xl px-4 py-3 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          {message}
+        </div>
+      )}
 
       {activeTab !== 'analytics' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

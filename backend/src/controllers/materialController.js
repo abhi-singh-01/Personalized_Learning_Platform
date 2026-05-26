@@ -1,18 +1,23 @@
 const Material = require('../models/Material');
-const Course = require('../models/Course');
 const User = require('../models/User');
+const path = require('path');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const { extractYouTubeId } = require('../utils/helpers');
 const { updateLearnerStreak } = require('../services/analyticsService');
 const storageService = require('../services/storageService');
+const {
+  assertCanManageCourse,
+  assertCanViewCourseContent,
+  assertCanViewMaterial,
+  isLearnerUser,
+} = require('../services/courseAccessService');
 
 const FILE_TYPES = new Set(['pdf', 'ppt', 'video']);
 
 exports.create = async (req, res, next) => {
   try {
-    const course = await Course.findOne({ _id: req.body.course, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    await assertCanManageCourse(req.user, req.body.course);
 
     const data = { ...req.body };
     if (data.type === 'youtube' && data.url) {
@@ -47,6 +52,7 @@ exports.create = async (req, res, next) => {
 
 exports.getByCourse = async (req, res, next) => {
   try {
+    await assertCanViewCourseContent(req.user, req.params.courseId);
     const materials = await Material.find({ course: req.params.courseId }).sort({ order: 1 });
     sendResponse(res, 200, 'Materials fetched', materials);
   } catch (err) { next(err); }
@@ -60,8 +66,7 @@ exports.reorderCourse = async (req, res, next) => {
       throw new AppError('orderedIds must be a non-empty array', 400);
     }
 
-    const course = await Course.findOne({ _id: courseId, educator: req.user._id });
-    if (!course) throw new AppError('Course not found or not authorized', 404);
+    await assertCanManageCourse(req.user, courseId);
 
     const materials = await Material.find({ course: courseId }).select('_id').lean();
     if (materials.length !== orderedIds.length) {
@@ -87,9 +92,36 @@ exports.reorderCourse = async (req, res, next) => {
 
 exports.trackView = async (req, res, next) => {
   try {
+    await assertCanViewMaterial(req.user, req.params.id);
     await User.findByIdAndUpdate(req.user._id, { $inc: { totalMaterialsViewed: 1 } });
-    if (req.user.role === 'learner') await updateLearnerStreak(req.user._id);
+    if (isLearnerUser(req.user)) await updateLearnerStreak(req.user._id);
     sendResponse(res, 200, 'View tracked');
+  } catch (err) { next(err); }
+};
+
+exports.serveFile = async (req, res, next) => {
+  try {
+    const material = await assertCanViewMaterial(req.user, req.params.id);
+    if (!FILE_TYPES.has(material.type)) throw new AppError('This material does not have a protected file', 400);
+    if (!material.fileUrl) throw new AppError('No file found for this material', 404);
+
+    if (/^https?:\/\//i.test(material.fileUrl)) {
+      return res.redirect(material.fileUrl);
+    }
+
+    const relativePath = material.fileUrl.replace(/^\/+/, '');
+    if (!relativePath.startsWith('uploads/')) throw new AppError('Invalid file path', 400);
+
+    const fileName = path.basename(relativePath);
+    const absolutePath = path.join(__dirname, '..', '..', 'uploads', fileName);
+    const safeTitle = String(material.title || 'material').replace(/[^\w.\- ]+/g, '').trim() || 'material';
+    const ext = path.extname(fileName);
+
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', `inline; filename="${safeTitle}${ext}"`);
+    return res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) next(new AppError('File not found', 404));
+    });
   } catch (err) { next(err); }
 };
 
@@ -97,8 +129,7 @@ exports.update = async (req, res, next) => {
   try {
     const material = await Material.findById(req.params.id).populate('course');
     if (!material) throw new AppError('Material not found', 404);
-    if (material.course.educator.toString() !== req.user._id.toString())
-      throw new AppError('Not authorized', 403);
+    await assertCanManageCourse(req.user, material.course);
 
     const prevType = material.type;
     const prevFileUrl = material.fileUrl || '';
@@ -160,8 +191,7 @@ exports.remove = async (req, res, next) => {
   try {
     const material = await Material.findById(req.params.id).populate('course');
     if (!material) throw new AppError('Material not found', 404);
-    if (material.course.educator.toString() !== req.user._id.toString())
-      throw new AppError('Not authorized', 403);
+    await assertCanManageCourse(req.user, material.course);
     const { fileUrl } = material;
     await material.deleteOne();
     await storageService.deleteMaterialAtUrlIfCloud(fileUrl);

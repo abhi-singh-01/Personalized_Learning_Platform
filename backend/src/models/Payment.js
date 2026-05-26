@@ -33,6 +33,9 @@ const paymentSchema = new mongoose.Schema({
   /** If set, failed payment row is kept (not auto-deleted after retention window) */
   paymentQueryRaisedAt: { type: Date },
   paymentQueryMessage: { type: String, default: '' },
+  paymentQueryStatus: { type: String, enum: ['open', 'resolved'], default: 'open' },
+  paymentQueryResolution: { type: String, default: '' },
+  paymentQueryResolvedAt: { type: Date },
 }, { timestamps: true });
 
 paymentSchema.index({ user: 1 });

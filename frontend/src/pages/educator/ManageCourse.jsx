@@ -18,6 +18,7 @@ export default function ManageCourse() {
     difficulty: 'beginner',
     tags: '',
     price: 0,
+    status: 'draft',
   });
   usePageTitle(isEdit ? 'Edit Course' : 'New Course');
   const [saving, setSaving] = useState(false);
@@ -25,6 +26,8 @@ export default function ManageCourse() {
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
   const [existingThumbnail, setExistingThumbnail] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -37,6 +40,7 @@ export default function ManageCourse() {
           difficulty: c.difficulty,
           tags: (c.tags || []).join(', '),
           price: c.price || 0,
+          status: c.status || (c.isPublished ? 'published' : 'draft'),
         });
         setExistingThumbnail(c.thumbnail || '');
         setThumbnailPreview(c.thumbnail || '');
@@ -60,6 +64,7 @@ export default function ManageCourse() {
         ...form,
         price: Number(form.price) || 0,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        isPublished: form.status === 'published',
       };
       const payload = thumbnailFile ? new FormData() : body;
       if (thumbnailFile) {
@@ -81,11 +86,19 @@ export default function ManageCourse() {
   };
 
   const deleteCourse = async (courseId) => {
-    if (!confirm('Delete this course? This cannot be undone.')) return;
+    if (deleteConfirmId !== courseId) {
+      setDeleteConfirmId(courseId);
+      setMessage('Click delete again to confirm. This cannot be undone.');
+      return;
+    }
     try {
       await api.del('/courses/' + courseId);
       setCourses((prev) => prev.filter((c) => c._id !== courseId));
-    } catch (e) {}
+      setDeleteConfirmId(null);
+      setMessage('Course deleted.');
+    } catch (e) {
+      setMessage(e.response?.data?.message || 'Could not delete course.');
+    }
   };
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
@@ -106,6 +119,11 @@ export default function ManageCourse() {
       <Link to="/educator/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-primary-600">
         <ArrowLeft size={16} /> Back to Dashboard
       </Link>
+      {message && (
+        <div className="rounded-xl px-4 py-3 text-sm bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          {message}
+        </div>
+      )}
 
       <Card>
         <h2 className="text-xl font-bold mb-6">{isEdit ? 'Edit Course' : 'Create New Course'}</h2>
@@ -180,6 +198,16 @@ export default function ManageCourse() {
             <label className="block text-sm font-medium mb-1.5">Tags (comma separated)</label>
             <input className="input-field" placeholder="e.g., python, algorithms, DSA" value={form.tags} onChange={set('tags')} />
           </div>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/40">
+            <label className="block text-sm font-medium mb-1.5">Publish status</label>
+            <select className="input-field" value={form.status} onChange={set('status')}>
+              <option value="draft">Save as draft</option>
+              <option value="published">Publish now</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Draft courses stay hidden from learners until you publish them.
+            </p>
+          </div>
           <button type="submit" disabled={saving} className="btn-primary">
             {saving ? 'Saving...' : isEdit ? 'Update Course' : 'Create Course'}
           </button>
@@ -206,7 +234,7 @@ export default function ManageCourse() {
                   <Link to={'/educator/courses/' + c._id + '/edit'} className="text-xs text-primary-600 hover:underline">
                     Edit
                   </Link>
-                  <button onClick={() => deleteCourse(c._id)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500">
+                  <button onClick={() => deleteCourse(c._id)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500" title={deleteConfirmId === c._id ? 'Confirm delete' : 'Delete'}>
                     <Trash2 size={16} />
                   </button>
                 </div>

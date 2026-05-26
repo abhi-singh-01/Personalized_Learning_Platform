@@ -24,6 +24,10 @@ router.get('/refund/:id',     auth, refundCtrl.getRefundStatus);
 router.get('/coupons/usage-history', auth, role('learner'), paymentCtrl.getCouponUsageHistory);
 router.get('/coupons/validate', auth, role('learner'), paymentCtrl.validateCoupon);
 
+// Authenticated — admin support
+router.get('/admin/queries', auth, role('admin'), paymentCtrl.getPaymentQueriesAdmin);
+router.patch('/admin/queries/:id/resolve', auth, role('admin'), paymentCtrl.resolvePaymentQueryAdmin);
+
 // Authenticated — educator
 router.post('/educator/onboard', auth, role('educator'), paymentCtrl.onboardEducator);
 router.get('/earnings', auth, role('educator'), paymentCtrl.getEarnings);

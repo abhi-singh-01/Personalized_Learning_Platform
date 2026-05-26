@@ -31,6 +31,7 @@ const adminLinks = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/ui-config', label: 'UI Manager', icon: Layout },
   { to: '/admin/live-monitor', label: 'Live Monitor', icon: Monitor },
+  { to: '/admin/payment-support', label: 'Payment Support', icon: CreditCard },
   { to: '/admin/moderation', label: 'Review Reports', icon: Flag },
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/profile', label: 'Profile', icon: User },
