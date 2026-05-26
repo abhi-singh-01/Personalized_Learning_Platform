@@ -189,16 +189,7 @@ export default function UploadMaterial() {
         <ArrowLeft size={16} /> Back to Courses
       </Link>
 
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold">Upload Materials — {courseName}</h1>
-        <Link
-          to={`/educator/courses/${courseId}/live`}
-          className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-red-500/20 hover:shadow-lg transition-all duration-200"
-        >
-          <Video size={16} />
-          Record Live Lecture
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold">Upload Materials — {courseName}</h1>
 
       <Card>
         <div className="flex justify-between items-center mb-4">
