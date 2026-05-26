@@ -183,9 +183,9 @@ export default function MyCourses() {
             return (
               <div key={course._id} className="group card !p-0 overflow-hidden hover:shadow-lg dark:hover:shadow-gray-900/40 transition-all duration-300 hover:-translate-y-1 flex flex-col">
                 {/* Thumbnail / Gradient Placeholder */}
-                <div className="relative h-36 sm:h-40 overflow-hidden">
+                <div className="relative h-36 sm:h-40 overflow-hidden bg-white dark:bg-gray-900">
                   {course.thumbnail ? (
-                    <img src={resolveMaterialUrl(course.thumbnail)} alt={course.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <img src={resolveMaterialUrl(course.thumbnail)} alt={course.title} className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
                       <GraduationCap size={48} className="text-white/30" />

@@ -380,7 +380,7 @@ export default function Courses() {
                     <img
                       src={resolveMaterialUrl(course.thumbnail)}
                       alt={course.title}
-                      className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3 group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <>
@@ -388,7 +388,7 @@ export default function Courses() {
                       <BookOpen size={36} className="text-white/70 group-hover:scale-110 transition-transform duration-300" />
                     </>
                   )}
-                  <div className="absolute inset-0 bg-black/10" />
+                  {!course.thumbnail && <div className="absolute inset-0 bg-black/10" />}
                   {course.price > 0 && (
                     <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full
                                      bg-white/20 backdrop-blur-md text-white text-xs font-semibold tracking-wide shadow-lg">

@@ -78,7 +78,7 @@ export default function LearnerMyCourses() {
                   <img
                     src={resolveMaterialUrl(course.thumbnail)}
                     alt={course.title}
-                    className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3 group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
                   <>
@@ -86,7 +86,7 @@ export default function LearnerMyCourses() {
                     <BookOpen size={36} className="text-white/80 group-hover:scale-110 transition-transform duration-300" />
                   </>
                 )}
-                <div className="absolute inset-0 bg-black/10" />
+                {!course.thumbnail && <div className="absolute inset-0 bg-black/10" />}
               </div>
 
               <div className="flex flex-col flex-1 p-4 sm:p-5">

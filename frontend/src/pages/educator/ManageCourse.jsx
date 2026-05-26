@@ -117,9 +117,9 @@ export default function ManageCourse() {
           <div>
             <label className="block text-sm font-medium mb-1.5">Course Thumbnail</label>
             <div className="grid gap-3 sm:grid-cols-[180px_1fr] sm:items-center">
-              <div className="h-28 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
+              <div className="h-28 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden flex items-center justify-center">
                 {thumbnailPreview ? (
-                  <img src={thumbnailPreview} alt="Course thumbnail preview" className="h-full w-full object-cover" />
+                  <img src={thumbnailPreview} alt="Course thumbnail preview" className="h-full w-full object-contain p-2" />
                 ) : (
                   <div className="text-center text-gray-400">
                     <Image size={28} className="mx-auto mb-1" />
