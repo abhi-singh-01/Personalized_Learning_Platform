@@ -309,20 +309,6 @@ export default function Courses() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {filtered.length} course{filtered.length !== 1 ? 's' : ''} available
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-2xl leading-relaxed">
-            Paid courses may offer <strong className="font-medium text-gray-700 dark:text-gray-200">Razorpay</strong> checkout and/or a{' '}
-            <strong className="font-medium text-gray-700 dark:text-gray-200">test (mock)</strong> pay flow when enabled on the server (
-            <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">DUMMY_PAYMENT</code>
-            ). Use Razorpay <strong className="font-medium">Test mode</strong> keys for real gateway demos — see{' '}
-            <a
-              href="https://razorpay.com/docs/payments/payments/test-card-details/"
-              className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
-              target="_blank"
-              rel="noreferrer"
-            >
-              test payments
-            </a>.
-          </p>
         </div>
         <div className="relative w-full sm:w-72">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
@@ -380,7 +366,7 @@ export default function Courses() {
                     <img
                       src={resolveMaterialUrl(course.thumbnail)}
                       alt={course.title}
-                      className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3 group-hover:scale-105 transition-transform duration-300"
+                      className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3"
                     />
                   ) : (
                     <>
@@ -390,14 +376,24 @@ export default function Courses() {
                   )}
                   {!course.thumbnail && <div className="absolute inset-0 bg-black/10" />}
                   {course.price > 0 && (
-                    <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full
-                                     bg-white/20 backdrop-blur-md text-white text-xs font-semibold tracking-wide shadow-lg">
+                    <span
+                      className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide shadow-lg ${
+                        course.thumbnail
+                          ? 'bg-emerald-600 text-white ring-2 ring-white dark:ring-gray-900'
+                          : 'bg-white/20 backdrop-blur-md text-white'
+                      }`}
+                    >
                       <IndianRupee size={11} />{formatINR(course.price)}
                     </span>
                   )}
                   {course.price <= 0 && (
-                    <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full
-                                     bg-emerald-500/90 backdrop-blur-md text-white text-xs font-bold tracking-wide shadow-lg">
+                    <span
+                      className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg ${
+                        course.thumbnail
+                          ? 'bg-emerald-600 text-white ring-2 ring-white dark:ring-gray-900'
+                          : 'bg-emerald-500/90 backdrop-blur-md text-white'
+                      }`}
+                    >
                       <Sparkles size={11} /> FREE
                     </span>
                   )}
