@@ -379,7 +379,7 @@ export default function Courses() {
                     <span
                       className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide shadow-lg ${
                         course.thumbnail
-                          ? 'bg-emerald-600 text-white ring-2 ring-white dark:ring-gray-900'
+                          ? 'bg-emerald-600 text-white ring-2 ring-white shadow-md dark:bg-emerald-400 dark:text-gray-950 dark:ring-gray-950'
                           : 'bg-white/20 backdrop-blur-md text-white'
                       }`}
                     >
@@ -390,7 +390,7 @@ export default function Courses() {
                     <span
                       className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg ${
                         course.thumbnail
-                          ? 'bg-emerald-600 text-white ring-2 ring-white dark:ring-gray-900'
+                          ? 'bg-emerald-600 text-white ring-2 ring-white shadow-md dark:bg-emerald-400 dark:text-gray-950 dark:ring-gray-950'
                           : 'bg-emerald-500/90 backdrop-blur-md text-white'
                       }`}
                     >
