@@ -66,6 +66,9 @@ async function validateAndComputeDiscount({ couponCode, course, userId }) {
     if (!allowedByCreator && !allowedByScope) {
       throw new AppError('This educator coupon is not valid for this course', 400);
     }
+    if (!coupon.applicableCourses?.length) {
+      throw new AppError('This coupon is not linked to this course', 400);
+    }
   }
 
   if (coupon.applicableCourses?.length > 0 &&
@@ -91,6 +94,24 @@ async function validateAndComputeDiscount({ couponCode, course, userId }) {
   discount = Math.max(0, Math.min(course.price, Math.round(discount * 100) / 100));
 
   return { coupon, discount };
+}
+
+async function normalizeCouponCourseScope({ applicableCourses = [], user }) {
+  const courseIds = Array.isArray(applicableCourses)
+    ? applicableCourses.filter(Boolean)
+    : [applicableCourses].filter(Boolean);
+
+  if (user.role === 'educator') {
+    if (courseIds.length !== 1) {
+      throw new AppError('Select exactly one course for this coupon', 400);
+    }
+
+    const course = await Course.findOne({ _id: courseIds[0], educator: user._id }).select('_id');
+    if (!course) throw new AppError('Selected course not found or not owned by you', 404);
+    return [course._id];
+  }
+
+  return courseIds;
 }
 
 /* ─── 0. Educator onboarding for linked account ─── */
@@ -620,6 +641,8 @@ exports.createCoupon = async (req, res, next) => {
       throw new AppError('Only educator/admin can create coupon', 403);
     }
 
+    const scopedCourses = await normalizeCouponCourseScope({ applicableCourses, user: req.user });
+
     const payload = {
       code: String(code).trim().toUpperCase(),
       title: title || '',
@@ -634,7 +657,7 @@ exports.createCoupon = async (req, res, next) => {
       expiresAt: new Date(expiresAt),
       maxUses: Number(maxUses || 0),
       perUserLimit: Number(perUserLimit || 1),
-      applicableCourses,
+      applicableCourses: scopedCourses,
     };
 
     if (couponType === 'educator') {
@@ -694,7 +717,8 @@ exports.getCoupons = async (req, res, next) => {
 
     const coupons = await Coupon.find(filter)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'name email role');
+      .populate('createdBy', 'name email role')
+      .populate('applicableCourses', 'title price');
 
     sendResponse(res, 200, 'Coupons fetched', coupons);
   } catch (err) { next(err); }
@@ -765,7 +789,12 @@ exports.updateCoupon = async (req, res, next) => {
     if (coupon.type === 'educator' && req.user.role === 'educator') {
       // Keep educator-scoped coupons bound to the educator that owns them.
       delete req.body.applicableEducators;
-      if (applicableCourses !== undefined) coupon.applicableCourses = applicableCourses;
+      if (applicableCourses !== undefined) {
+        coupon.applicableCourses = await normalizeCouponCourseScope({
+          applicableCourses,
+          user: req.user,
+        });
+      }
     }
 
     if (title !== undefined) coupon.title = title;
@@ -778,7 +807,9 @@ exports.updateCoupon = async (req, res, next) => {
     if (expiresAt !== undefined) coupon.expiresAt = new Date(expiresAt);
     if (maxUses !== undefined) coupon.maxUses = Number(maxUses);
     if (perUserLimit !== undefined) coupon.perUserLimit = Number(perUserLimit);
-    if (applicableCourses !== undefined && Array.isArray(applicableCourses)) coupon.applicableCourses = applicableCourses;
+    if (applicableCourses !== undefined && Array.isArray(applicableCourses) && req.user.role === 'admin') {
+      coupon.applicableCourses = applicableCourses;
+    }
     if (isActive !== undefined) coupon.isActive = Boolean(isActive);
 
     await coupon.save();

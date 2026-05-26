@@ -8,6 +8,7 @@ const initialForm = {
   code: '',
   title: '',
   description: '',
+  courseId: '',
   discountType: 'percent',
   discountValue: 10,
   maxDiscount: 0,
@@ -21,6 +22,7 @@ export default function EducatorCoupons() {
   usePageTitle('Coupons');
   const api = useApi();
   const [coupons, setCoupons] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState('');
@@ -32,8 +34,14 @@ export default function EducatorCoupons() {
     setCoupons(res.data || []);
   };
 
+  const fetchCourses = async () => {
+    const res = await api.get('/courses/teaching');
+    setCourses(res.data || []);
+  };
+
   useEffect(() => {
     fetchCoupons().catch(() => {});
+    fetchCourses().catch(() => {});
   }, []);
 
   const activeCoupons = useMemo(() => coupons.filter((c) => c.isActive), [coupons]);
@@ -53,6 +61,7 @@ export default function EducatorCoupons() {
       await api.post('/payments/coupons', {
         ...form,
         code: form.code.toUpperCase(),
+        applicableCourses: [form.courseId],
       });
       setForm(initialForm);
       setShowForm(false);
@@ -97,6 +106,7 @@ export default function EducatorCoupons() {
       maxUses: coupon.maxUses ?? 0,
       perUserLimit: coupon.perUserLimit ?? 1,
       expiresAt: toDatetimeLocal(coupon.expiresAt),
+      courseId: String(coupon.applicableCourses?.[0]?._id || coupon.applicableCourses?.[0] || ''),
     });
   };
 
@@ -112,6 +122,7 @@ export default function EducatorCoupons() {
         minOrderAmount: Number(editForm.minOrderAmount),
         maxUses: Number(editForm.maxUses),
         perUserLimit: Number(editForm.perUserLimit),
+        applicableCourses: [editForm.courseId],
       });
       setEditing(null);
       setEditForm(null);
@@ -144,7 +155,27 @@ export default function EducatorCoupons() {
         <form onSubmit={createCoupon} className="card space-y-5">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Create New Coupon</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Fill in the details below. Fields marked * are required.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Each coupon is linked to one course. A code cannot be used on any other course.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Course <span className="text-red-500">*</span>
+            </label>
+            <select
+              className="input-field"
+              value={form.courseId}
+              onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+              required
+            >
+              <option value="">Select course for this coupon</option>
+              {courses.map((course) => (
+                <option key={course._id} value={course._id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-gray-400 mt-1">This coupon will only work for the selected course.</p>
           </div>
 
           {/* Code & Title */}
@@ -299,6 +330,9 @@ export default function EducatorCoupons() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 mb-1">{c.title || 'Untitled coupon'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Course: <span className="font-medium">{c.applicableCourses?.[0]?.title || 'Not linked'}</span>
+                </p>
                 <p className="text-xs text-gray-400 mb-3">
                   {c.discountType === 'percent'
                     ? `${c.discountValue}% OFF`
@@ -339,6 +373,9 @@ export default function EducatorCoupons() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 mb-1">{c.title || 'Untitled coupon'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Course: <span className="font-medium">{c.applicableCourses?.[0]?.title || 'Not linked'}</span>
+                </p>
                 <p className="text-xs text-gray-400 mb-3">
                   {c.discountType === 'percent'
                     ? `${c.discountValue}% OFF`
@@ -392,6 +429,24 @@ export default function EducatorCoupons() {
             </div>
 
             <form onSubmit={saveEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Course
+                </label>
+                <select
+                  className="input-field"
+                  value={editForm.courseId}
+                  onChange={(e) => setEditForm({ ...editForm, courseId: e.target.value })}
+                  required
+                >
+                  <option value="">Select course for this coupon</option>
+                  {courses.map((course) => (
+                    <option key={course._id} value={course._id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <input className="input-field" placeholder="Title" value={editForm.title}
                   onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
