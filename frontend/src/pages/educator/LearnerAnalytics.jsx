@@ -74,12 +74,12 @@ export default function LearnerAnalytics() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="text-2xl font-bold">Learner Analytics</h1>
-        <div className="flex gap-4 items-center">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input className="input-field pl-10 w-64" placeholder="Search learners..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input-field pl-10 w-full sm:w-64" placeholder="Search learners..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto">
             <UserPlus size={18} /> Add Learner
           </button>
         </div>

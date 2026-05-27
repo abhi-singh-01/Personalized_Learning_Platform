@@ -219,12 +219,12 @@ export default function ManageCourse() {
           <h2 className="text-lg font-semibold mb-4">Your Courses</h2>
           <div className="space-y-3">
             {courses.map((c) => (
-              <div key={c._id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div>
-                  <h3 className="font-medium">{c.title}</h3>
+              <div key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="min-w-0">
+                  <h3 className="font-medium truncate">{c.title}</h3>
                   <p className="text-xs text-gray-500">{c.learners?.length || 0} learners | {c.category}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   <Link to={'/educator/courses/' + c._id + '/materials'} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500" title="Upload Materials">
                     <Upload size={16} />
                   </Link>

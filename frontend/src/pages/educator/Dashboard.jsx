@@ -119,7 +119,7 @@ function ScheduleModal({ open, onClose, courses, onSubmit }) {
             <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Description</label>
             <textarea className="input-field" rows={2} placeholder="What will be covered..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Date & Time *</label>
               <input type="datetime-local" className="input-field" required value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} />
@@ -387,15 +387,15 @@ export default function EducatorDashboard() {
               </h2>
               <div className="space-y-3">
                 {data.topPerformers.map((s, i) => (
-                  <div key={s._id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                    <div className="flex items-center gap-3">
+                  <div key={s._id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                    <div className="flex items-center gap-3 min-w-0">
                       <span className="text-lg font-bold text-gray-300 dark:text-gray-600 w-6">#{i + 1}</span>
-                      <div>
-                        <p className="font-medium text-sm text-gray-900 dark:text-white">{s.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-900 dark:text-white truncate">{s.name}</p>
                         <span className={'px-2 py-0.5 rounded-full text-xs ' + (levelColors[s.aiLevel] || '')}>{s.aiLevel}</span>
                       </div>
                     </div>
-                    <span className="text-lg font-bold text-primary-600">{s.averageScore}%</span>
+                    <span className="text-base sm:text-lg font-bold text-primary-600 flex-shrink-0">{s.averageScore}%</span>
                   </div>
                 ))}
               </div>

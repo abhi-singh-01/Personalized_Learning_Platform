@@ -385,7 +385,7 @@ export default function LiveLecture() {
             <button
               onClick={startRecording}
               disabled={!stream}
-              className="flex items-center gap-2 px-8 py-3 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-red-500/25 hover:shadow-xl transition-all duration-200"
+              className="flex items-center gap-2 px-4 sm:px-8 py-3 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-red-500/25 hover:shadow-xl transition-all duration-200 text-sm sm:text-base"
             >
               <Circle size={18} className="fill-white" />
               Start Recording
@@ -397,7 +397,7 @@ export default function LiveLecture() {
             <>
               <button
                 onClick={stopRecording}
-                className="flex items-center gap-2 px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/25 transition-all duration-200"
+                className="flex items-center gap-2 px-4 sm:px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/25 transition-all duration-200 text-sm sm:text-base"
               >
                 <Square size={16} className="fill-white" />
                 Stop Recording
@@ -467,7 +467,7 @@ export default function LiveLecture() {
                 disabled={status === RECORDING_STATES.SAVED}
               />
             </div>
-            <div className="flex items-center gap-3 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-500">
               <span>Duration: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatTime(elapsed)}</span></span>
               <span>·</span>
               <span>Size: <span className="font-semibold text-gray-700 dark:text-gray-300">{fileSizeMB} MB</span></span>
@@ -496,10 +496,10 @@ export default function LiveLecture() {
             )}
 
             {status === RECORDING_STATES.SAVED && (
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Link
                   to={`/educator/courses/${courseId}/materials`}
-                  className="btn-primary flex items-center gap-2"
+                  className="btn-primary flex items-center justify-center gap-2"
                 >
                   View Course Materials
                 </Link>
