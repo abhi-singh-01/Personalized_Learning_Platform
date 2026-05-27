@@ -6,7 +6,12 @@
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} = require('@aws-sdk/client-s3');
 
 function isMaterialCloudUploadEnabled() {
   return Boolean(
@@ -104,10 +109,52 @@ function extractKeyFromPublicUrl(url) {
       return url.slice(base.length + 1).replace(/^\//, '');
     }
     const u = new URL(url);
-    return u.pathname.replace(/^\//, '');
+    const bucket = process.env.AWS_S3_BUCKET;
+    const host = (u.hostname || '').toLowerCase();
+    const pathname = u.pathname.replace(/^\//, '');
+
+    // Virtual-hosted style: https://bucket.s3.region.amazonaws.com/key
+    if (bucket && host.startsWith(`${String(bucket).toLowerCase()}.`)) {
+      return pathname;
+    }
+
+    // Path style: https://endpoint/bucket/key
+    if (bucket && pathname.startsWith(`${bucket}/`)) {
+      return pathname.slice(bucket.length + 1);
+    }
+
+    return pathname;
   } catch {
     return null;
   }
+}
+
+/**
+ * Read an object from cloud storage using backend credentials.
+ * Useful when bucket/object is private and not publicly readable.
+ */
+async function getMaterialObjectFromCloudUrl(publicUrl) {
+  if (!isMaterialCloudUploadEnabled() || !publicUrl || !/^https?:\/\//i.test(publicUrl)) {
+    return null;
+  }
+
+  const key = extractKeyFromPublicUrl(publicUrl);
+  if (!key) return null;
+
+  const out = await getS3Client().send(
+    new GetObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key,
+    })
+  );
+
+  return {
+    body: out.Body,
+    contentType: out.ContentType,
+    contentLength: out.ContentLength,
+    etag: out.ETag,
+    lastModified: out.LastModified,
+  };
 }
 
 /** Remove a local file (Multer absolute path or `/uploads/...` relative to backend root). */
@@ -130,5 +177,6 @@ module.exports = {
   uploadMaterialFromDisk,
   uploadCourseThumbnailFromDisk,
   deleteMaterialAtUrlIfCloud,
+  getMaterialObjectFromCloudUrl,
   unlinkLocalUploadsPath,
 };

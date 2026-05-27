@@ -36,6 +36,33 @@ function guessContentType(fileName) {
 }
 
 async function pipeRemoteFile(url, res) {
+  try {
+    const cloudObject = await storageService.getMaterialObjectFromCloudUrl(url);
+    if (cloudObject?.body) {
+      if (cloudObject.contentType) res.setHeader('Content-Type', cloudObject.contentType);
+      if (cloudObject.contentLength) res.setHeader('Content-Length', String(cloudObject.contentLength));
+      if (cloudObject.etag) res.setHeader('ETag', cloudObject.etag);
+      if (cloudObject.lastModified) {
+        res.setHeader('Last-Modified', new Date(cloudObject.lastModified).toUTCString());
+      }
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+
+      if (typeof cloudObject.body.pipe === 'function') {
+        cloudObject.body.pipe(res);
+        return;
+      }
+      if (typeof cloudObject.body.transformToWebStream === 'function') {
+        Readable.fromWeb(cloudObject.body.transformToWebStream()).pipe(res);
+        return;
+      }
+    }
+  } catch (err) {
+    // Fall back to direct fetch for public URLs/CDN links and legacy providers.
+    if (err?.name !== 'NoSuchKey') {
+      console.warn('Cloud SDK stream failed, trying direct fetch:', err.message);
+    }
+  }
+
   const response = await fetch(url, { redirect: 'follow' });
   if (!response.ok) throw new AppError('File not found in cloud storage', 404);
 
