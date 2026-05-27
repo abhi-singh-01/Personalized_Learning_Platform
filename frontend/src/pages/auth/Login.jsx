@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, RotateCcw } from 'lucide-react';
@@ -36,6 +36,27 @@ export default function Login() {
 
   const toast = useToast();
 
+  useEffect(() => {
+    setError('');
+    setVerificationEmail('');
+    setOtp('');
+  }, [isEducatorFlow]);
+
+  const redirectToMatchingPortal = useCallback((message) => {
+    const lower = String(message || '').toLowerCase();
+    if (!isEducatorFlow && lower.includes('educator sign in')) {
+      toast.info('This email belongs to an educator account. Opening educator sign in…');
+      nav('/login?role=educator', { replace: true });
+      return true;
+    }
+    if (isEducatorFlow && lower.includes('learner account')) {
+      toast.info('This email belongs to a learner account. Opening learner sign in…');
+      nav('/login', { replace: true });
+      return true;
+    }
+    return false;
+  }, [isEducatorFlow, nav, toast]);
+
   const redirectAfterLogin = useCallback((user) => {
     if (user.role === 'admin') {
       toast.success('Welcome back, Administrator!');
@@ -58,6 +79,7 @@ export default function Login() {
       redirectAfterLogin(user);
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
+      if (redirectToMatchingPortal(msg)) return;
       if (err.response?.status === 403 && msg.toLowerCase().includes('verify')) {
         setVerificationEmail(form.email);
       }
@@ -71,10 +93,17 @@ export default function Login() {
   const handleGoogleCredential = useCallback(
     async (credential) => {
       setError('');
-      const user = await googleLogin(credential, portalRole);
-      redirectAfterLogin(user);
+      try {
+        const user = await googleLogin(credential, portalRole);
+        redirectAfterLogin(user);
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Google sign-in failed';
+        if (redirectToMatchingPortal(msg)) return;
+        setError(msg);
+        toast.error(msg);
+      }
     },
-    [googleLogin, portalRole, redirectAfterLogin]
+    [googleLogin, portalRole, redirectAfterLogin, redirectToMatchingPortal, toast]
   );
 
   const handleVerifyOtp = async (e) => {
@@ -207,9 +236,27 @@ export default function Login() {
             )}
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                {error}
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  {error}
+                </div>
+                {!isEducatorFlow && error.toLowerCase().includes('educator sign in') && (
+                  <Link
+                    to="/login?role=educator"
+                    className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
+                  >
+                    Open educator sign in →
+                  </Link>
+                )}
+                {isEducatorFlow && error.toLowerCase().includes('learner account') && (
+                  <Link
+                    to="/login"
+                    className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
+                  >
+                    Open learner sign in →
+                  </Link>
+                )}
               </div>
             )}
 
@@ -266,6 +313,7 @@ export default function Login() {
                 {/* Google Sign-In */}
                 <div className="mb-5">
                   <GoogleSignInButton
+                    key={portalRole}
                     mode="signin"
                     onCredential={handleGoogleCredential}
                     onGsiError={(msg) => setError(msg)}

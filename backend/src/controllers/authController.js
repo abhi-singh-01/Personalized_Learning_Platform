@@ -338,14 +338,19 @@ exports.forgotPassword = async (req, res, next) => {
     if (!email) throw new AppError('Email is required', 400);
 
     const user = await User.findOne({ email: String(email).trim().toLowerCase() });
-    if (user && user.authProvider === 'local' && user.password && !user.isBlocked) {
-      if (isPasswordResetOtpCoolingDown(user)) {
-        throw new AppError('Please wait a minute before requesting another code', 429);
-      }
-      await issuePasswordResetOtp(user);
+    if (!user) {
+      throw new AppError('No account found with this email', 404);
+    }
+    if (user.isBlocked) {
+      throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
+    }
+    if (isPasswordResetOtpCoolingDown(user)) {
+      throw new AppError('Please wait a minute before requesting another code', 429);
     }
 
-    sendResponse(res, 200, 'If an account exists, a password reset code has been sent');
+    // Works for both local and Google-auth users.
+    await issuePasswordResetOtp(user);
+    sendResponse(res, 200, 'Password reset code sent to your email');
   } catch (err) { next(err); }
 };
 
@@ -356,9 +361,7 @@ exports.resetPassword = async (req, res, next) => {
     if (String(password).length < 6) throw new AppError('Password must be at least 6 characters', 400);
 
     const user = await User.findOne({ email: String(email).trim().toLowerCase() });
-    if (!user || user.authProvider !== 'local' || !user.password) {
-      throw new AppError('Invalid password reset request', 400);
-    }
+    if (!user) throw new AppError('No account found with this email', 404);
     if (user.isBlocked) {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }
@@ -385,7 +388,7 @@ exports.resetPassword = async (req, res, next) => {
     user.activeSessions = [];
     await user.save();
 
-    sendResponse(res, 200, 'Password reset successful. Please sign in again.');
+    sendResponse(res, 200, 'Password set successfully. Please sign in again.');
   } catch (err) { next(err); }
 };
 

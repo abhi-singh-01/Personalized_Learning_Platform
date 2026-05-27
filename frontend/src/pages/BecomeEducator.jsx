@@ -435,25 +435,39 @@ export default function BecomeEducator() {
               </p>
 
               <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-                <button
-                  onClick={ctaAction}
-                  disabled={switching}
-                  className="inline-flex items-center justify-center gap-2.5 text-sm sm:text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl shadow-2xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {switching && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                  {ctaLabel}
-                  <ArrowRight size={18} />
-                </button>
-
-                {!user && (
+                {!user ? (
+                  <>
+                    <button
+                      onClick={ctaLoginAction}
+                      className="inline-flex items-center justify-center gap-2.5 text-sm sm:text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl shadow-2xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5"
+                    >
+                      Sign in as educator
+                      <ArrowRight size={18} />
+                    </button>
+                    <button
+                      onClick={ctaAction}
+                      className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 px-6 py-3 sm:py-3.5 rounded-xl transition-all duration-300"
+                    >
+                      New here? Create educator account
+                    </button>
+                  </>
+                ) : (
                   <button
-                    onClick={ctaLoginAction}
-                    className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 px-6 py-3 sm:py-3.5 rounded-xl transition-all duration-300"
+                    onClick={ctaAction}
+                    disabled={switching}
+                    className="inline-flex items-center justify-center gap-2.5 text-sm sm:text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl shadow-2xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Already a member? Sign in
+                    {switching && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                    {ctaLabel}
+                    <ArrowRight size={18} />
                   </button>
                 )}
               </div>
+              {!user && (
+                <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 max-w-lg">
+                  If you already registered as an educator, use <strong className="text-gray-700 dark:text-gray-200">Sign in as educator</strong> — not the learner sign-in page.
+                </p>
+              )}
             </div>
 
             {/* Right — Hero Visual with glassmorphic floating cards */}
@@ -837,7 +851,7 @@ export default function BecomeEducator() {
                 onClick={ctaLoginAction}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 hover:text-white border border-white/30 hover:border-white/60 px-6 py-3.5 rounded-xl transition-all duration-300"
               >
-                Already a member? Sign in
+                Sign in as educator
               </button>
             )}
           </div>

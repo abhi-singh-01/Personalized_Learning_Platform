@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, ArrowRight, Phone, MapPin, Mail, RotateCcw } from 'lucide-react';
@@ -84,6 +84,27 @@ export default function Register() {
   const nav = useNavigate();
   const toast = useToast();
 
+  useEffect(() => {
+    setError('');
+    setVerificationEmail('');
+    setOtp('');
+  }, [isEducatorFlow]);
+
+  const redirectToMatchingPortal = useCallback((message) => {
+    const lower = String(message || '').toLowerCase();
+    if (!isEducatorFlow && lower.includes('educator sign in')) {
+      toast.info('This email belongs to an educator account. Opening educator sign in…');
+      nav('/login?role=educator', { replace: true });
+      return true;
+    }
+    if (isEducatorFlow && lower.includes('learner account')) {
+      toast.info('This email belongs to a learner account. Opening learner sign in…');
+      nav('/login', { replace: true });
+      return true;
+    }
+    return false;
+  }, [isEducatorFlow, nav, toast]);
+
   const statesForCountry = form.country ? Object.keys(locationData[form.country] || {}) : [];
   const citiesForState = form.country && form.state ? (locationData[form.country]?.[form.state] || []) : [];
 
@@ -109,6 +130,7 @@ export default function Register() {
       nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed';
+      if (redirectToMatchingPortal(msg)) return;
       setError(msg);
       toast.error(msg);
     } finally { setLoading(false); }
@@ -150,11 +172,18 @@ export default function Register() {
     async (credential) => {
       setError('');
       const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-      const user = await googleLogin(credential, selectedRole);
-      toast.success(isEducatorFlow ? 'Educator account ready — welcome!' : 'Welcome — your account is ready!');
-      nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
+      try {
+        const user = await googleLogin(credential, selectedRole);
+        toast.success(isEducatorFlow ? 'Educator account ready — welcome!' : 'Welcome — your account is ready!');
+        nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Google sign-in failed';
+        if (redirectToMatchingPortal(msg)) return;
+        setError(msg);
+        toast.error(msg);
+      }
     },
-    [googleLogin, isEducatorFlow, nav, toast]
+    [googleLogin, isEducatorFlow, nav, redirectToMatchingPortal, toast]
   );
 
   const updateField = (key, value) => {
@@ -237,6 +266,7 @@ export default function Register() {
             <>
               <div className="mb-5">
                 <GoogleSignInButton
+                  key={isEducatorFlow ? 'educator' : 'learner'}
                   mode="signup"
                   onCredential={handleGoogleCredential}
                   onGsiError={(msg) => setError(msg)}
