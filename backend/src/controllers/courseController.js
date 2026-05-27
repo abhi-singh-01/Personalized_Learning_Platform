@@ -2,6 +2,10 @@ const Course = require('../models/Course');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const storageService = require('../services/storageService');
+const fs = require('fs');
+const fsp = require('fs').promises;
+const path = require('path');
+const { Readable } = require('stream');
 const {
   assertCanManageCourse,
   assertCanViewCourse,
@@ -45,6 +49,51 @@ function buildCoursePayload(body = {}) {
   }
 
   return payload;
+}
+
+async function pipeRemoteThumbnail(url, res) {
+  try {
+    const cloudObject = await storageService.getMaterialObjectFromCloudUrl(url);
+    if (cloudObject?.body) {
+      if (cloudObject.contentType) res.setHeader('Content-Type', cloudObject.contentType);
+      if (cloudObject.contentLength) res.setHeader('Content-Length', String(cloudObject.contentLength));
+      if (cloudObject.etag) res.setHeader('ETag', cloudObject.etag);
+      if (cloudObject.lastModified) {
+        res.setHeader('Last-Modified', new Date(cloudObject.lastModified).toUTCString());
+      }
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, max-age=300');
+
+      if (typeof cloudObject.body.pipe === 'function') {
+        cloudObject.body.pipe(res);
+        return;
+      }
+      if (typeof cloudObject.body.transformToWebStream === 'function') {
+        Readable.fromWeb(cloudObject.body.transformToWebStream()).pipe(res);
+        return;
+      }
+    }
+  } catch (err) {
+    if (err?.name !== 'NoSuchKey') {
+      console.warn('Course thumbnail SDK stream failed, trying direct fetch:', err.message);
+    }
+  }
+
+  const response = await fetch(url, { redirect: 'follow' });
+  if (!response.ok) throw new AppError('Thumbnail not found in cloud storage', 404);
+
+  const contentType = response.headers.get('content-type');
+  if (contentType) res.setHeader('Content-Type', contentType);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, max-age=300');
+
+  if (response.body) {
+    Readable.fromWeb(response.body).pipe(res);
+    return;
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  res.send(buffer);
 }
 
 async function resolveUploadedThumbnail(file) {
@@ -101,6 +150,38 @@ exports.getById = async (req, res, next) => {
     if (!course) throw new AppError('Course not found', 404);
     await assertCanViewCourse(req.user, course);
     sendResponse(res, 200, 'Course details', course);
+  } catch (err) { next(err); }
+};
+
+exports.serveThumbnail = async (req, res, next) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) throw new AppError('Course not found', 404);
+    await assertCanViewCourse(req.user, course);
+    if (!course.thumbnail) throw new AppError('Course thumbnail not found', 404);
+
+    if (/^https?:\/\//i.test(course.thumbnail)) {
+      await pipeRemoteThumbnail(course.thumbnail, res);
+      return;
+    }
+
+    const relativePath = course.thumbnail.replace(/^\/+/, '');
+    if (!relativePath.startsWith('uploads/')) throw new AppError('Invalid thumbnail path', 400);
+
+    const fileName = path.basename(relativePath);
+    const absolutePath = path.join(__dirname, '..', '..', 'uploads', fileName);
+
+    try {
+      await fsp.access(absolutePath, fs.constants.R_OK);
+    } catch {
+      throw new AppError('Course thumbnail file is missing on server', 404);
+    }
+
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) next(new AppError('Course thumbnail not found', 404));
+    });
   } catch (err) { next(err); }
 };
 

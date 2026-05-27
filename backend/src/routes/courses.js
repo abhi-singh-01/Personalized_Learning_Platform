@@ -7,6 +7,7 @@ const courseThumbnailUpload = require('../middleware/courseThumbnailUpload');
 router.get('/public', c.getAll);  // public — no auth needed for homepage search
 router.get('/', auth, c.getAll);
 router.get('/teaching', auth, role('educator'), c.getEducatorCourses);
+router.get('/:id/thumbnail', auth, c.serveThumbnail);
 router.get('/:id', auth, c.getById);
 router.post('/', auth, role('educator'), courseThumbnailUpload.single('thumbnail'), c.create);
 router.put('/:id', auth, role('educator'), courseThumbnailUpload.single('thumbnail'), c.update);

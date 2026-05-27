@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, GraduationCap } from 'lucide-react';
 import useApi from '../../hooks/useApi';
@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import Loading from '../../components/ui/Loading';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
-import { resolveMaterialUrl } from '../../utils/materialUrl';
+import { createProtectedCourseThumbnailObjectUrl } from '../../utils/materialUrl';
 
 export default function LearnerMyCourses() {
   usePageTitle('My Courses');
@@ -15,6 +15,8 @@ export default function LearnerMyCourses() {
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [brokenThumbnails, setBrokenThumbnails] = useState({});
+  const [thumbnailUrls, setThumbnailUrls] = useState({});
+  const thumbnailUrlsRef = useRef({});
 
   useEffect(() => {
     api.get('/courses').then((res) => setCourses(res.data || [])).catch(() => {});
@@ -28,6 +30,36 @@ export default function LearnerMyCourses() {
       c?.learners?.some((s) => (typeof s === 'string' ? s : s?._id) === userId)
     );
   }, [courses, userId]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(thumbnailUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
+      thumbnailUrlsRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadThumbnails = async () => {
+      for (const course of enrolled) {
+        const id = course?._id;
+        if (!id || !course.thumbnail || brokenThumbnails[id] || thumbnailUrlsRef.current[id]) continue;
+        try {
+          const objectUrl = await createProtectedCourseThumbnailObjectUrl(id);
+          if (cancelled) {
+            URL.revokeObjectURL(objectUrl);
+            continue;
+          }
+          thumbnailUrlsRef.current[id] = objectUrl;
+          setThumbnailUrls((prev) => ({ ...prev, [id]: objectUrl }));
+        } catch {
+          if (!cancelled) setBrokenThumbnails((prev) => ({ ...prev, [id]: true }));
+        }
+      }
+    };
+    loadThumbnails();
+    return () => { cancelled = true; };
+  }, [enrolled, brokenThumbnails]);
 
   if (api.loading && courses.length === 0) return <Loading />;
 
@@ -75,9 +107,9 @@ export default function LearnerMyCourses() {
                          transition-all duration-300 overflow-hidden flex flex-col"
             >
               <div className="relative h-36 sm:h-40 bg-gradient-to-br from-primary-500 via-primary-600 to-violet-600 dark:from-primary-500/80 dark:via-violet-500/80 dark:to-purple-500/80 flex items-center justify-center overflow-hidden">
-                {course.thumbnail && !brokenThumbnails[course._id] ? (
+                {thumbnailUrls[course._id] && !brokenThumbnails[course._id] ? (
                   <img
-                    src={resolveMaterialUrl(course.thumbnail)}
+                    src={thumbnailUrls[course._id]}
                     alt={course.title}
                     className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3 group-hover:scale-105 transition-transform duration-300"
                     onError={() => setBrokenThumbnails((prev) => ({ ...prev, [course._id]: true }))}
@@ -88,7 +120,7 @@ export default function LearnerMyCourses() {
                     <BookOpen size={36} className="text-white/80 group-hover:scale-110 transition-transform duration-300" />
                   </>
                 )}
-                {(!course.thumbnail || brokenThumbnails[course._id]) && <div className="absolute inset-0 bg-black/10" />}
+                {(!thumbnailUrls[course._id] || brokenThumbnails[course._id]) && <div className="absolute inset-0 bg-black/10" />}
               </div>
 
               <div className="flex flex-col flex-1 p-4 sm:p-5">

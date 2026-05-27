@@ -7,7 +7,7 @@ import Loading from '../../components/ui/Loading';
 import BDUIPanel from '../../components/ui/BDUIPanel';
 import EmptyState from '../../components/ui/EmptyState';
 import Badge from '../../components/ui/Badge';
-import { resolveMaterialUrl } from '../../utils/materialUrl';
+import { createProtectedCourseThumbnailObjectUrl } from '../../utils/materialUrl';
 import {
   Search, BookOpen, Users, IndianRupee, CreditCard,
   Tag, X, CheckCircle, AlertCircle, Sparkles, TicketPercent,
@@ -38,6 +38,8 @@ export default function Courses() {
   const lastRazorpayOrderRef = useRef(null);
   const [checkoutOptions, setCheckoutOptions] = useState({ razorpay: false, dummy: false });
   const [brokenThumbnails, setBrokenThumbnails] = useState({});
+  const [thumbnailUrls, setThumbnailUrls] = useState({});
+  const thumbnailUrlsRef = useRef({});
   usePageTitle('Courses');
 
   /* ─── Helpers ─── */
@@ -105,6 +107,38 @@ export default function Courses() {
       setOriginalFeeMap(nextFeeMap);
     })();
   }, [courses]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(thumbnailUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
+      thumbnailUrlsRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadThumbnails = async () => {
+      for (const course of courses) {
+        const id = course?._id;
+        if (!id || !course.thumbnail || brokenThumbnails[id] || thumbnailUrlsRef.current[id]) continue;
+        try {
+          const objectUrl = await createProtectedCourseThumbnailObjectUrl(id);
+          if (cancelled) {
+            URL.revokeObjectURL(objectUrl);
+            continue;
+          }
+          thumbnailUrlsRef.current[id] = objectUrl;
+          setThumbnailUrls((prev) => ({ ...prev, [id]: objectUrl }));
+        } catch {
+          if (!cancelled) {
+            setBrokenThumbnails((prev) => ({ ...prev, [id]: true }));
+          }
+        }
+      }
+    };
+    loadThumbnails();
+    return () => { cancelled = true; };
+  }, [courses, brokenThumbnails]);
 
   /* ─── Actions ─── */
   const enroll = async (courseId) => {
@@ -363,9 +397,9 @@ export default function Courses() {
               >
                 {/* ── Thumbnail ── */}
                 <div className="relative h-36 sm:h-40 bg-gradient-to-br from-primary-500 via-primary-600 to-violet-600 dark:from-primary-600 dark:via-violet-600 dark:to-purple-700 flex items-center justify-center overflow-hidden">
-                  {course.thumbnail && !brokenThumbnails[course._id] ? (
+                  {thumbnailUrls[course._id] && !brokenThumbnails[course._id] ? (
                     <img
-                      src={resolveMaterialUrl(course.thumbnail)}
+                      src={thumbnailUrls[course._id]}
                       alt={course.title}
                       className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3"
                       onError={() => setBrokenThumbnails((prev) => ({ ...prev, [course._id]: true }))}
@@ -376,7 +410,7 @@ export default function Courses() {
                       <BookOpen size={36} className="text-white/70 group-hover:scale-110 transition-transform duration-300" />
                     </>
                   )}
-                  {(!course.thumbnail || brokenThumbnails[course._id]) && <div className="absolute inset-0 bg-black/10" />}
+                  {(!thumbnailUrls[course._id] || brokenThumbnails[course._id]) && <div className="absolute inset-0 bg-black/10" />}
                   {course.price > 0 && (
                     <span
                       className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide shadow-lg ${

@@ -61,3 +61,25 @@ export async function createProtectedMaterialObjectUrl(materialId) {
     );
   }
 }
+
+export async function createProtectedCourseThumbnailObjectUrl(courseId) {
+  try {
+    const res = await API.get(`/courses/${courseId}/thumbnail`, { responseType: 'blob' });
+    const apiMessage = await readBlobErrorMessage(res.data);
+    if (apiMessage) throw new Error(apiMessage);
+    if (!res.data?.size) {
+      throw new Error('Course thumbnail is empty or unavailable.');
+    }
+    return URL.createObjectURL(res.data);
+  } catch (err) {
+    const blobMessage = err.response?.data instanceof Blob
+      ? await readBlobErrorMessage(err.response.data)
+      : null;
+    throw new Error(
+      blobMessage ||
+      err.response?.data?.message ||
+      err.message ||
+      'Could not load course thumbnail.'
+    );
+  }
+}
