@@ -134,7 +134,8 @@ describe('Materials API (integration)', { skip: !MongoMemoryServer, timeout: 120
       .set('Authorization', authHeader(educator));
 
     assert.equal(authed.status, 200, authed.text);
-    assert.equal(authed.text, 'protected material content');
+    const body = authed.text || (Buffer.isBuffer(authed.body) ? authed.body.toString('utf8') : String(authed.body || ''));
+    assert.equal(body, 'protected material content');
   });
 
   it('DELETE /api/materials/:id removes material for course owner', async () => {

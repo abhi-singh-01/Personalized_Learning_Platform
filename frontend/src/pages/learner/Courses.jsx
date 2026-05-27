@@ -37,6 +37,7 @@ export default function Courses() {
   const [couponMsgMap, setCouponMsgMap] = useState({});
   const lastRazorpayOrderRef = useRef(null);
   const [checkoutOptions, setCheckoutOptions] = useState({ razorpay: false, dummy: false });
+  const [brokenThumbnails, setBrokenThumbnails] = useState({});
   usePageTitle('Courses');
 
   /* ─── Helpers ─── */
@@ -362,11 +363,12 @@ export default function Courses() {
               >
                 {/* ── Thumbnail ── */}
                 <div className="relative h-36 sm:h-40 bg-gradient-to-br from-primary-500 via-primary-600 to-violet-600 dark:from-primary-600 dark:via-violet-600 dark:to-purple-700 flex items-center justify-center overflow-hidden">
-                  {course.thumbnail ? (
+                  {course.thumbnail && !brokenThumbnails[course._id] ? (
                     <img
                       src={resolveMaterialUrl(course.thumbnail)}
                       alt={course.title}
                       className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3"
+                      onError={() => setBrokenThumbnails((prev) => ({ ...prev, [course._id]: true }))}
                     />
                   ) : (
                     <>
@@ -374,7 +376,7 @@ export default function Courses() {
                       <BookOpen size={36} className="text-white/70 group-hover:scale-110 transition-transform duration-300" />
                     </>
                   )}
-                  {!course.thumbnail && <div className="absolute inset-0 bg-black/10" />}
+                  {(!course.thumbnail || brokenThumbnails[course._id]) && <div className="absolute inset-0 bg-black/10" />}
                   {course.price > 0 && (
                     <span
                       className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide shadow-lg ${
@@ -426,8 +428,15 @@ export default function Courses() {
 
                   {/* ── Pricing & Coupon Section (paid + not enrolled) ── */}
                   {course.price > 0 && !enrolled && (
-                    <div className="mb-4 rounded-xl border border-gray-200/80 dark:border-gray-700/50
-                                    bg-gray-50/80 dark:bg-gray-900/40 p-3 sm:p-3.5 space-y-2 text-xs">
+                    <details className="mb-4 rounded-xl border border-gray-200/80 dark:border-gray-700/50 bg-gray-50/80 dark:bg-gray-900/40 group">
+                      <summary className="cursor-pointer list-none px-3 sm:px-3.5 py-3 text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-between">
+                        <span>Payment details</span>
+                        <span className="inline-flex items-center gap-0.5 text-primary-600 dark:text-primary-400">
+                          <IndianRupee size={10} />
+                          {formatINR(getEffectiveTotal(course._id, course.price))}
+                        </span>
+                      </summary>
+                      <div className="px-3 sm:px-3.5 pb-3 sm:pb-3.5 space-y-2 text-xs border-t border-gray-200/70 dark:border-gray-700/50 pt-3">
 
                       {/* Inline coupon message */}
                       {couponMsg && (
@@ -542,7 +551,8 @@ export default function Courses() {
                           </span>
                         </div>
                       </div>
-                    </div>
+                      </div>
+                    </details>
                   )}
 
                   {/* ── CTA Button ── */}

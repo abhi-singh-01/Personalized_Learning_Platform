@@ -14,6 +14,7 @@ export default function LearnerMyCourses() {
   const api = useApi();
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
+  const [brokenThumbnails, setBrokenThumbnails] = useState({});
 
   useEffect(() => {
     api.get('/courses').then((res) => setCourses(res.data || [])).catch(() => {});
@@ -74,11 +75,12 @@ export default function LearnerMyCourses() {
                          transition-all duration-300 overflow-hidden flex flex-col"
             >
               <div className="relative h-36 sm:h-40 bg-gradient-to-br from-primary-500 via-primary-600 to-violet-600 dark:from-primary-500/80 dark:via-violet-500/80 dark:to-purple-500/80 flex items-center justify-center overflow-hidden">
-                {course.thumbnail ? (
+                {course.thumbnail && !brokenThumbnails[course._id] ? (
                   <img
                     src={resolveMaterialUrl(course.thumbnail)}
                     alt={course.title}
                     className="absolute inset-0 h-full w-full object-contain bg-white dark:bg-gray-900 p-3 group-hover:scale-105 transition-transform duration-300"
+                    onError={() => setBrokenThumbnails((prev) => ({ ...prev, [course._id]: true }))}
                   />
                 ) : (
                   <>
@@ -86,7 +88,7 @@ export default function LearnerMyCourses() {
                     <BookOpen size={36} className="text-white/80 group-hover:scale-110 transition-transform duration-300" />
                   </>
                 )}
-                {!course.thumbnail && <div className="absolute inset-0 bg-black/10" />}
+                {(!course.thumbnail || brokenThumbnails[course._id]) && <div className="absolute inset-0 bg-black/10" />}
               </div>
 
               <div className="flex flex-col flex-1 p-4 sm:p-5">

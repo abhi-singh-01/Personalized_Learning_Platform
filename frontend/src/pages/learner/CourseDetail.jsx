@@ -34,6 +34,7 @@ export default function CourseDetail() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState('lectures');
+  const [openingMaterialId, setOpeningMaterialId] = useState(null);
   const objectUrlsRef = useRef([]);
   usePageTitle(course?.title || 'Course');
 
@@ -149,6 +150,8 @@ export default function CourseDetail() {
   };
 
   const openMaterial = async (m) => {
+    if (openingMaterialId) return;
+    setOpeningMaterialId(m._id);
     trackView(m._id);
     setActiveVideo(null);
     setActiveUploadedVideo(null);
@@ -181,16 +184,19 @@ export default function CourseDetail() {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Could not open this material. Please try again.');
+      toast.error(err.message || 'Could not open this material. Please try again.');
+    } finally {
+      setOpeningMaterialId(null);
     }
   };
 
   const MaterialItem = ({ m }) => {
     const Icon = icons[m.type] || FileText;
     const isCompleted = progress.completedMaterials.includes(m._id);
+    const isOpening = openingMaterialId === m._id;
     return (
       <div
-        className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer transition-all duration-200 group"
+        className={`flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer transition-all duration-200 group ${isOpening ? 'opacity-70 pointer-events-none' : ''}`}
         onClick={() => openMaterial(m)}
       >
         <div className={`p-2.5 rounded-xl transition-colors ${m.type === 'video' || m.type === 'youtube'

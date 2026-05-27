@@ -1,6 +1,9 @@
 const Material = require('../models/Material');
 const User = require('../models/User');
+const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
+const { Readable } = require('stream');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
 const { extractYouTubeId } = require('../utils/helpers');
@@ -14,6 +17,40 @@ const {
 } = require('../services/courseAccessService');
 
 const FILE_TYPES = new Set(['pdf', 'ppt', 'video']);
+
+function guessContentType(fileName) {
+  const ext = path.extname(fileName || '').toLowerCase();
+  const map = {
+    '.mp4': 'video/mp4',
+    '.mpeg': 'video/mpeg',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
+    '.webm': 'video/webm',
+    '.wmv': 'video/x-ms-wmv',
+    '.mkv': 'video/x-matroska',
+    '.pdf': 'application/pdf',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+async function pipeRemoteFile(url, res) {
+  const response = await fetch(url, { redirect: 'follow' });
+  if (!response.ok) throw new AppError('File not found in cloud storage', 404);
+
+  const contentType = response.headers.get('content-type');
+  if (contentType) res.setHeader('Content-Type', contentType);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  if (response.body) {
+    Readable.fromWeb(response.body).pipe(res);
+    return;
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  res.send(buffer);
+}
 
 exports.create = async (req, res, next) => {
   try {
@@ -106,7 +143,8 @@ exports.serveFile = async (req, res, next) => {
     if (!material.fileUrl) throw new AppError('No file found for this material', 404);
 
     if (/^https?:\/\//i.test(material.fileUrl)) {
-      return res.redirect(material.fileUrl);
+      await pipeRemoteFile(material.fileUrl, res);
+      return;
     }
 
     const relativePath = material.fileUrl.replace(/^\/+/, '');
@@ -117,10 +155,22 @@ exports.serveFile = async (req, res, next) => {
     const safeTitle = String(material.title || 'material').replace(/[^\w.\- ]+/g, '').trim() || 'material';
     const ext = path.extname(fileName);
 
+    try {
+      await fsp.access(absolutePath, fs.constants.R_OK);
+    } catch {
+      throw new AppError(
+        'This file is no longer on the server. Ask the educator to re-upload the material.',
+        404
+      );
+    }
+
+    res.setHeader('Content-Type', guessContentType(fileName));
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', `inline; filename="${safeTitle}${ext}"`);
     return res.sendFile(absolutePath, (err) => {
-      if (err && !res.headersSent) next(new AppError('File not found', 404));
+      if (err && !res.headersSent) {
+        next(new AppError('File not found', 404));
+      }
     });
   } catch (err) { next(err); }
 };

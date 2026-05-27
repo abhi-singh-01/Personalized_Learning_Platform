@@ -190,7 +190,7 @@ export default function UploadMaterial() {
       window.open(href, '_blank', 'noopener,noreferrer');
     } catch (e) {
       console.error(e);
-      setMessage(e.response?.data?.message || e.message || 'Could not open this file');
+      setMessage(e.message || e.response?.data?.message || 'Could not open this file');
     }
   };
 
