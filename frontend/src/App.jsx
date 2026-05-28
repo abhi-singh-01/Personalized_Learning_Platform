@@ -45,6 +45,7 @@ const LearnerAnalytics = lazy(() => import('./pages/educator/LearnerAnalytics'))
 const LiveLecture = lazy(() => import('./pages/educator/LiveLecture'));
 const EducatorCoupons = lazy(() => import('./pages/educator/Coupons'));
 const LiveClassManager = lazy(() => import('./pages/educator/LiveClassManager'));
+const EducatorLiveClassHost = lazy(() => import('./pages/educator/EducatorLiveClassHost'));
 const EarningsDashboard = lazy(() => import('./pages/educator/EarningsDashboard'));
 const CourseReviews = lazy(() => import('./pages/educator/CourseReviews'));
 
@@ -145,6 +146,10 @@ export default function App() {
         />
         <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
 
+        {/* Full-screen live meeting (no sidebar — Meet-style) */}
+        <Route path="/learner/live-class/:classId" element={<ProtectedRoute allowedRoles={['learner']}><Suspense fallback={<RouteLoader />}><LiveClassRoom /></Suspense></ProtectedRoute>} />
+        <Route path="/educator/live-class/:classId" element={<ProtectedRoute allowedRoles={['educator']}><Suspense fallback={<RouteLoader />}><EducatorLiveClassHost /></Suspense></ProtectedRoute>} />
+
         {/* Protected pages inside layout */}
         <Route element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AppLayout /></Suspense></ProtectedRoute>}>
           {/* Learner routes */}
@@ -155,7 +160,6 @@ export default function App() {
           <Route path="/learner/quiz/:id" element={<ProtectedRoute allowedRoles={['learner']}><QuizAttempt /></ProtectedRoute>} />
           <Route path="/learner/courses/:courseId/practice" element={<ProtectedRoute allowedRoles={['learner']}><PracticeQuiz /></ProtectedRoute>} />
           <Route path="/learner/study-plan" element={<ProtectedRoute allowedRoles={['learner']}><StudyPlan /></ProtectedRoute>} />
-          <Route path="/learner/live-class/:classId" element={<ProtectedRoute allowedRoles={['learner']}><LiveClassRoom /></ProtectedRoute>} />
           <Route path="/learner/payments" element={<ProtectedRoute allowedRoles={['learner']}><PaymentHistory /></ProtectedRoute>} />
 
           {/* Educator routes */}

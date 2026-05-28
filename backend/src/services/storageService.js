@@ -6,6 +6,8 @@
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const os = require('os');
+const { pipeline } = require('stream/promises');
 const {
   S3Client,
   PutObjectCommand,
@@ -133,6 +135,45 @@ function extractKeyFromPublicUrl(url) {
  * Read an object from cloud storage using backend credentials.
  * Useful when bucket/object is private and not publicly readable.
  */
+/**
+ * Download a cloud object to a temp file (for AI transcription / analysis).
+ * @returns {Promise<{ localPath: string, cleanup: () => Promise<void> } | null>}
+ */
+async function downloadCloudUrlToTempFile(publicUrl) {
+  const cloud = await getMaterialObjectFromCloudUrl(publicUrl);
+  if (!cloud?.body) return null;
+
+  let ext = '.mp4';
+  try {
+    ext = path.extname(new URL(publicUrl).pathname) || '.mp4';
+  } catch {
+    /* keep default */
+  }
+
+  const dest = path.join(
+    os.tmpdir(),
+    `plp-cloud-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+  );
+
+  if (typeof cloud.body.pipe === 'function') {
+    await pipeline(cloud.body, fs.createWriteStream(dest));
+  } else if (typeof cloud.body.transformToByteArray === 'function') {
+    const bytes = await cloud.body.transformToByteArray();
+    await fsp.writeFile(dest, Buffer.from(bytes));
+  } else {
+    const chunks = [];
+    for await (const chunk of cloud.body) {
+      chunks.push(Buffer.from(chunk));
+    }
+    await fsp.writeFile(dest, Buffer.concat(chunks));
+  }
+
+  return {
+    localPath: dest,
+    cleanup: () => fsp.unlink(dest).catch(() => {}),
+  };
+}
+
 async function getMaterialObjectFromCloudUrl(publicUrl) {
   if (!isMaterialCloudUploadEnabled() || !publicUrl || !/^https?:\/\//i.test(publicUrl)) {
     return null;
@@ -178,5 +219,6 @@ module.exports = {
   uploadCourseThumbnailFromDisk,
   deleteMaterialAtUrlIfCloud,
   getMaterialObjectFromCloudUrl,
+  downloadCloudUrlToTempFile,
   unlinkLocalUploadsPath,
 };

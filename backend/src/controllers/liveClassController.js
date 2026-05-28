@@ -191,7 +191,7 @@ exports.end = async (req, res, next) => {
 // ─── Learner: Join a live class ───
 exports.join = async (req, res, next) => {
   try {
-    const liveClass = await LiveClass.findById(req.params.id).populate('course', 'learners');
+    const liveClass = await LiveClass.findById(req.params.id).populate('course', 'title learners');
     if (!liveClass) throw new AppError('Live class not found', 404);
     if (liveClass.status !== 'live') throw new AppError('This class is not currently live', 400);
 
@@ -233,6 +233,8 @@ exports.join = async (req, res, next) => {
       jitsiDomain,
       chatEnabled: liveClass.chatEnabled,
       topic: liveClass.topic,
+      startedAt: liveClass.startedAt,
+      courseName: liveClass.course?.title,
     });
   } catch (err) { next(err); }
 };

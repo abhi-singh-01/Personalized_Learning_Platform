@@ -15,7 +15,10 @@ export function notificationHref(notification, userRole) {
     if (['payout_processed', 'payout_failed', 'payment_received'].includes(notification.type)) {
       return '/educator/earnings';
     }
-    if (['class_starting', 'class_ended', 'class_cancelled'].includes(notification.type)) {
+    if (notification.type === 'class_starting' && classId) {
+      return `/educator/live-class/${classId}`;
+    }
+    if (['class_ended', 'class_cancelled'].includes(notification.type)) {
       return '/educator/live-classes';
     }
     if (['enrollment', 'unenrollment'].includes(notification.type) && courseId) {

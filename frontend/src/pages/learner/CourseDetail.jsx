@@ -36,6 +36,7 @@ export default function CourseDetail() {
   const [activeTab, setActiveTab] = useState('lectures');
   const [openingMaterialId, setOpeningMaterialId] = useState(null);
   const objectUrlsRef = useRef([]);
+  const playerRef = useRef(null);
   usePageTitle(course?.title || 'Course');
 
   useEffect(() => {
@@ -53,6 +54,14 @@ export default function CourseDetail() {
       objectUrlsRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    if (activeVideo || activeUploadedVideo || activeDocument || activeArticle) {
+      requestAnimationFrame(() => {
+        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [activeVideo, activeUploadedVideo, activeDocument, activeArticle]);
 
   const toggleComplete = async (materialId, e) => {
     e.stopPropagation();
@@ -160,8 +169,10 @@ export default function CourseDetail() {
 
     try {
       if (m.type === 'youtube') {
+        setActiveTab('lectures');
         setActiveVideo(m.videoId);
       } else if (m.type === 'video') {
+        setActiveTab('lectures');
         if (!m.fileUrl) {
           toast.error('This video has no file. Ask your educator to re-upload it.');
           return;
@@ -169,6 +180,7 @@ export default function CourseDetail() {
         const protectedUrl = await loadProtectedMaterialUrl(m);
         setActiveUploadedVideo({ ...m, protectedUrl });
       } else if (m.type === 'article') {
+        setActiveTab('documents');
         setActiveArticle(m);
       } else if (m.type === 'pdf' || m.type === 'ppt') {
         if (!m.fileUrl) {
@@ -270,7 +282,11 @@ export default function CourseDetail() {
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors"
-          onClick={() => setActiveTab('lectures')}>
+          onClick={() => {
+            setActiveTab('lectures');
+            const first = videoMaterials[0];
+            if (first) openMaterial(first);
+          }}>
           <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/20">
             <Video size={20} className="text-red-500" />
           </div>
@@ -280,7 +296,11 @@ export default function CourseDetail() {
           </div>
         </div>
         <div className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
-          onClick={() => setActiveTab('documents')}>
+          onClick={() => {
+            setActiveTab('documents');
+            const first = documentMaterials[0] || articleMaterials[0];
+            if (first) openMaterial(first);
+          }}>
           <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20">
             <FolderOpen size={20} className="text-blue-500" />
           </div>
@@ -313,7 +333,7 @@ export default function CourseDetail() {
 
       {/* Video / document / article player */}
       {(activeVideo || activeArticle || activeUploadedVideo || activeDocument) && (
-        <div className="card">
+        <div ref={playerRef} className="card scroll-mt-20">
           {activeVideo && (
             <div className="aspect-video rounded-lg bg-black relative overflow-hidden">
               <iframe

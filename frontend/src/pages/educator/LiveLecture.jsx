@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import API from '../../api/axios';
 import Card from '../../components/ui/Card';
 import {
-  ArrowLeft, Video, VideoOff, Mic, MicOff, Monitor, Camera,
+  ArrowLeft, Video, VideoOff, Mic, MicOff, Monitor, Camera, Smartphone,
   Circle, Square, Clock, Save, Download, Maximize, Minimize,
   RotateCcw, CheckCircle, AlertCircle
 } from 'lucide-react';
@@ -12,10 +12,49 @@ import usePageTitle from '../../hooks/usePageTitle';
 
 const RECORDING_STATES = { IDLE: 'idle', RECORDING: 'recording', PAUSED: 'paused', STOPPED: 'stopped', SAVING: 'saving', SAVED: 'saved' };
 
+const SCREEN_SHARE_HELP =
+  'Screen sharing is not available on this device or browser. Use Camera to record from your phone, or open Live Lecture on a laptop or desktop in Chrome or Edge for screen share.';
+
+function isScreenShareSupported() {
+  return (
+    typeof navigator !== 'undefined' &&
+    navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getDisplayMedia === 'function'
+  );
+}
+
+function isLikelyMobileDevice() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return (
+    /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(ua) ||
+    (navigator.maxTouchPoints > 1 && typeof window !== 'undefined' && window.innerWidth < 900)
+  );
+}
+
+function friendlyStreamError(err, mode) {
+  if (err?.name === 'NotAllowedError') {
+    return 'Permission denied. Please allow camera and microphone access, then try again.';
+  }
+  if (err?.name === 'NotFoundError') {
+    return 'No camera or microphone was found. Connect a device and try again.';
+  }
+  if (mode === 'screen' || mode === 'both') {
+    const msg = String(err?.message || '');
+    if (
+      !isScreenShareSupported() ||
+      msg.includes('getDisplayMedia') ||
+      msg.includes('not supported')
+    ) {
+      return SCREEN_SHARE_HELP;
+    }
+  }
+  return 'Could not start the video source. Try Camera, or use a desktop browser for screen share.';
+}
+
 export default function LiveLecture() {
   usePageTitle('Live Lecture');
   const { courseId } = useParams();
-  const nav = useNavigate();
   const api = useApi();
 
   // Stream refs
@@ -38,6 +77,8 @@ export default function LiveLecture() {
   const [error, setError] = useState('');
   const [stream, setStream] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const screenShareSupported = isScreenShareSupported();
+  const onMobile = isLikelyMobileDevice();
 
   // Fetch course name
   useEffect(() => {
@@ -68,6 +109,11 @@ export default function LiveLecture() {
   const startStream = async (mode) => {
     setError('');
     stopAllStreams();
+
+    if ((mode === 'screen' || mode === 'both') && !screenShareSupported) {
+      setError(SCREEN_SHARE_HELP);
+      return;
+    }
 
     try {
       let mediaStream;
@@ -122,13 +168,7 @@ export default function LiveLecture() {
       setSourceMode(mode);
     } catch (err) {
       console.error('Stream error:', err);
-      if (err.name === 'NotAllowedError') {
-        setError('Permission denied. Please allow camera/microphone access and try again.');
-      } else if (err.name === 'NotFoundError') {
-        setError('No camera or microphone found. Please connect a device and try again.');
-      } else {
-        setError(`Could not start stream: ${err.message}`);
-      }
+      setError(friendlyStreamError(err, mode));
     }
   };
 
@@ -344,34 +384,72 @@ export default function LiveLecture() {
       {status === RECORDING_STATES.IDLE && (
         <Card>
           <h2 className="text-lg font-semibold mb-4">Choose Source</h2>
-          <div className="grid sm:grid-cols-3 gap-3">
+
+          {(!screenShareSupported || onMobile) && (
+            <div className="mb-4 flex gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-100">
+              <Smartphone size={22} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <div className="text-sm leading-relaxed">
+                <p className="font-semibold mb-1">Screen share is for desktop only</p>
+                <p className="text-amber-800/90 dark:text-amber-200/90">
+                  {onMobile
+                    ? 'On phones and tablets, use Camera below to record your lecture. For slides or screen capture, use a laptop with Chrome or Edge.'
+                    : 'Your browser does not support screen sharing here. Use Camera, or switch to Chrome or Edge on a computer.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className={`grid gap-3 ${screenShareSupported ? 'sm:grid-cols-3' : 'grid-cols-1 max-w-xs mx-auto'}`}>
             <button
+              type="button"
               onClick={() => startStream('camera')}
               className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all duration-200 ${sourceMode === 'camera' && stream ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'}`}
             >
               <Camera size={28} className="text-blue-500" />
               <span className="font-semibold text-sm">Camera</span>
-              <span className="text-xs text-gray-400">Webcam + microphone</span>
+              <span className="text-xs text-gray-400 text-center">Best for mobile — webcam + mic</span>
             </button>
             <button
+              type="button"
+              disabled={!screenShareSupported}
               onClick={() => startStream('screen')}
-              className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all duration-200 ${sourceMode === 'screen' && stream ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'}`}
+              title={screenShareSupported ? 'Share your screen' : SCREEN_SHARE_HELP}
+              className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all duration-200 ${
+                !screenShareSupported
+                  ? 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 opacity-60 cursor-not-allowed'
+                  : sourceMode === 'screen' && stream
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
+              }`}
             >
-              <Monitor size={28} className="text-green-500" />
+              <Monitor size={28} className={screenShareSupported ? 'text-green-500' : 'text-gray-400'} />
               <span className="font-semibold text-sm">Screen Share</span>
-              <span className="text-xs text-gray-400">Share your screen + mic</span>
+              <span className="text-xs text-gray-400 text-center">
+                {screenShareSupported ? 'Desktop — screen + mic' : 'Desktop only'}
+              </span>
             </button>
             <button
+              type="button"
+              disabled={!screenShareSupported}
               onClick={() => startStream('both')}
-              className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all duration-200 ${sourceMode === 'both' && stream ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'}`}
+              title={screenShareSupported ? 'Screen and camera' : SCREEN_SHARE_HELP}
+              className={`flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all duration-200 ${
+                !screenShareSupported
+                  ? 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 opacity-60 cursor-not-allowed'
+                  : sourceMode === 'both' && stream
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
+              }`}
             >
               <div className="flex items-center gap-1">
-                <Monitor size={22} className="text-purple-500" />
+                <Monitor size={22} className={screenShareSupported ? 'text-purple-500' : 'text-gray-400'} />
                 <span className="text-gray-300">+</span>
-                <Camera size={18} className="text-purple-500" />
+                <Camera size={18} className={screenShareSupported ? 'text-purple-500' : 'text-gray-400'} />
               </div>
               <span className="font-semibold text-sm">Screen + Camera</span>
-              <span className="text-xs text-gray-400">Present with face overlay</span>
+              <span className="text-xs text-gray-400 text-center">
+                {screenShareSupported ? 'Desktop — present + face' : 'Desktop only'}
+              </span>
             </button>
           </div>
         </Card>

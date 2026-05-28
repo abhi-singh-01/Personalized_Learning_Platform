@@ -6,7 +6,7 @@ const http = require('http');
 const https = require('https');
 const { URL } = require('url');
 const { getAI, MODEL } = require('./aiService');
-const { createPartFromUri } = require('@google/genai');
+const storageService = require('./storageService');
 
 /**
  * Download a remote video to a temp file (S3/CDN URLs). Follows a few redirects.
@@ -58,6 +58,9 @@ const resolveLocalVideoPathForTranscription = async (fileUrl) => {
   const trimmed = fileUrl.trim();
 
   if (/^https?:\/\//i.test(trimmed)) {
+    const fromCloud = await storageService.downloadCloudUrlToTempFile(trimmed);
+    if (fromCloud) return fromCloud;
+
     const ext = path.extname(new URL(trimmed).pathname) || '.mp4';
     const dest = path.join(
       os.tmpdir(),
@@ -159,6 +162,124 @@ Be thorough — capture every spoken word. Do NOT summarize. Provide the complet
     return { language: 'en', transcript: trimmed };
   }
   throw new Error('AI returned invalid transcript format');
+};
+
+const parseJsonFromAiText = (text, errorLabel) => {
+  const jsonMatch = (text || '').match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error(`AI returned invalid ${errorLabel} format`);
+  return JSON.parse(jsonMatch[0]);
+};
+
+/**
+ * Run a multimodal prompt against an uploaded lecture video.
+ */
+const analyzeVideoWithGemini = async (filePath, mimeType, promptText) => {
+  const file = await uploadVideoToGemini(filePath, mimeType);
+  const ai = await getAI();
+  const result = await ai.models.generateContent({
+    model: MODEL,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { fileData: { fileUri: file.uri, mimeType: file.mimeType } },
+          { text: promptText },
+        ],
+      },
+    ],
+  });
+  return result.text || '';
+};
+
+/**
+ * Generate study notes by watching the full lecture video (no separate transcript step).
+ */
+const generateNotesFromVideo = async (filePath, mimeType, materialTitle) => {
+  const prompt = `You are an expert academic note-taker. Watch this ENTIRE lecture video carefully and create comprehensive study notes.
+
+Lecture Title: ${materialTitle || 'Untitled Lecture'}
+
+Return ONLY valid JSON:
+{
+  "title": "string - concise title for these notes",
+  "summary": "string - 2-3 paragraph executive summary",
+  "keyPoints": ["string", "..."],
+  "sections": [
+    { "heading": "string", "content": "string with examples" }
+  ],
+  "importantTerms": [
+    { "term": "string", "definition": "string" }
+  ],
+  "lectureOverview": "string - one paragraph describing what was taught in the video"
+}
+
+Include at least 5 key points and 3 sections. Base everything only on what is actually taught in the video.`;
+
+  const text = await analyzeVideoWithGemini(filePath, mimeType, prompt);
+  const parsed = parseJsonFromAiText(text, 'notes');
+  const { lectureOverview, ...notes } = parsed;
+  return {
+    notes: {
+      title: notes.title,
+      summary: notes.summary,
+      keyPoints: notes.keyPoints,
+      sections: notes.sections,
+      importantTerms: notes.importantTerms,
+    },
+    lectureOverview: lectureOverview || notes.summary || '',
+  };
+};
+
+const extractSyllabusFromVideo = async (filePath, mimeType, materialTitle) => {
+  const prompt = `You are an expert curriculum designer. Watch this ENTIRE lecture video and extract a structured syllabus.
+
+Lecture Title: ${materialTitle || 'Untitled Lecture'}
+
+Return ONLY valid JSON:
+{
+  "topics": [
+    {
+      "title": "string",
+      "subtopics": ["string"],
+      "estimatedMinutes": number
+    }
+  ],
+  "prerequisites": ["string"],
+  "learningObjectives": ["string"]
+}`;
+
+  const text = await analyzeVideoWithGemini(filePath, mimeType, prompt);
+  return parseJsonFromAiText(text, 'syllabus');
+};
+
+const generateRoadmapFromVideo = async (filePath, mimeType, materialTitle) => {
+  const prompt = `You are an expert learning coach. Watch this ENTIRE lecture video and build a step-by-step learning roadmap.
+
+Lecture Title: ${materialTitle || 'Untitled Lecture'}
+
+Return ONLY valid JSON:
+{
+  "title": "string",
+  "description": "string",
+  "totalEstimatedHours": number,
+  "steps": [
+    {
+      "step": 1,
+      "title": "string",
+      "description": "string",
+      "tasks": ["string"],
+      "resources": ["string"],
+      "estimatedHours": number,
+      "milestone": "string"
+    }
+  ],
+  "finalGoal": "string"
+}
+
+Create 5-8 progressive steps based on the lecture content.`;
+
+  const text = await analyzeVideoWithGemini(filePath, mimeType, prompt);
+  return parseJsonFromAiText(text, 'roadmap');
 };
 
 /**
@@ -313,6 +434,9 @@ module.exports = {
   generateNotesFromTranscript,
   extractSyllabusFromTranscript,
   generateRoadmapFromTranscript,
+  generateNotesFromVideo,
+  extractSyllabusFromVideo,
+  generateRoadmapFromVideo,
   getMimeType,
   resolveLocalVideoPathForTranscription,
 };

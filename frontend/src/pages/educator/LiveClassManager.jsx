@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import { useSocket } from '../../context/SocketContext';
 import Loading from '../../components/ui/Loading';
@@ -14,6 +14,7 @@ import { formatElapsedDuration } from '../../utils/helpers';
 
 export default function LiveClassManager() {
   usePageTitle('Live Classes');
+  const navigate = useNavigate();
   const api = useApi();
   const socketCtx = useSocket();
   const [activeClasses, setActiveClasses] = useState([]);
@@ -83,11 +84,16 @@ export default function LiveClassManager() {
     };
   }, [socketCtx?.socket, activeClasses]);
 
+  const goToHostRoom = (liveClass) => {
+    const id = liveClass?._id || liveClass;
+    if (id) navigate(`/educator/live-class/${id}`);
+  };
+
   const handleStartFromSchedule = async (scheduleId) => {
     setError('');
     try {
-      await api.post(`/live-classes/start/${scheduleId}`);
-      fetchData();
+      const res = await api.post(`/live-classes/start/${scheduleId}`);
+      goToHostRoom(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Error starting class');
     }
@@ -97,10 +103,10 @@ export default function LiveClassManager() {
     e.preventDefault();
     setError('');
     try {
-      await api.post('/live-classes/start-quick', quickForm);
+      const res = await api.post('/live-classes/start-quick', quickForm);
       setShowQuickStart(false);
       setQuickForm({ courseId: '', topic: '', maxParticipants: 100 });
-      fetchData();
+      goToHostRoom(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Error starting class');
     }
@@ -183,24 +189,24 @@ export default function LiveClassManager() {
             </Card>
           )}
           {activeClasses.map(cls => (
-            <Card key={cls._id} className="!p-4 border-l-4 border-red-500">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                    <span className="font-semibold">{cls.roomName || cls.topic || 'Live Class'}</span>
-                  </div>
-                  <p className="text-sm text-gray-500">{cls.course?.title}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><Users size={12} /> {cls.currentAttendees || 0} learners</span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} /> {formatClassDuration(cls)}
-                    </span>
+            <div key={cls._id} className="rounded-2xl overflow-hidden border border-[#3c4043] bg-gradient-to-br from-[#292a2d] to-[#202124] text-white shadow-lg">
+              <div className="px-4 sm:px-5 py-4 border-b border-[#3c4043]/80 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                  <span className="font-semibold truncate">{cls.roomName || cls.topic || 'Live Class'}</span>
+                </div>
+                <span className="text-xs text-gray-400 font-mono shrink-0">{formatClassDuration(cls)}</span>
+              </div>
+              <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-400">{cls.course?.title}</p>
+                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-1"><Users size={12} /> {cls.currentAttendees || 0} in meeting</span>
                   </div>
                   {(raisedHands[cls.roomId] || []).length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(raisedHands[cls.roomId] || []).map((u) => (
-                        <span key={u.userId} className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-2 py-1 text-xs font-medium">
+                        <span key={u.userId} className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 text-yellow-200 px-2 py-1 text-xs font-medium">
                           <Hand size={12} />
                           {u.name}
                         </span>
@@ -208,18 +214,21 @@ export default function LiveClassManager() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Link to={`/educator/courses/${cls.course?._id || cls.course}/live`}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/20 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
-                    <Eye size={14} /> View
-                  </Link>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/educator/live-class/${cls._id}`)}
+                    className="flex items-center gap-1 px-4 py-2.5 text-sm rounded-full bg-[#1a73e8] hover:bg-[#1967d2] text-white font-medium transition-colors"
+                  >
+                    <Eye size={14} /> Join as host
+                  </button>
                   <button onClick={() => handleEndClass(cls._id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-red-100 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
-                    <StopCircle size={14} /> {endConfirmId === cls._id ? 'Confirm End' : 'End'}
+                    className="flex items-center gap-1 px-4 py-2.5 text-sm rounded-full border border-red-500/50 text-red-300 hover:bg-red-500/10 transition-colors">
+                    <StopCircle size={14} /> {endConfirmId === cls._id ? 'Confirm' : 'End'}
                   </button>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
@@ -273,10 +282,9 @@ export default function LiveClassManager() {
                     <span>📈 Peak: {cls.peakAttendance || 0}</span>
                   </div>
                 </div>
-                <Link to={`/educator/courses/${cls.course?._id || cls.course}/live`}
-                  className="text-sm text-primary-600 hover:underline">
-                  View Details →
-                </Link>
+                <span className="text-sm text-gray-400">
+                  {formatClassDuration(cls)}
+                </span>
               </div>
             </Card>
           ))}
@@ -285,9 +293,13 @@ export default function LiveClassManager() {
 
       {/* Quick Start Modal — portaled to body to avoid transform containment */}
       {showQuickStart && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold mb-4">Quick Start Live Class</h3>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#292a2d] text-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-[#3c4043]">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <h3 className="text-xl font-semibold">Start a live class</h3>
+            </div>
+            <p className="text-sm text-gray-400 mb-5">Meet-style room with PLP chat & raise hand</p>
             <form onSubmit={handleQuickStart} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Course</label>

@@ -6,12 +6,12 @@ import { useSocket } from '../../context/SocketContext';
 import Loading from '../../components/ui/Loading';
 import LiveMeetShell from '../../components/live/LiveMeetShell';
 import LiveClassLobby from '../../components/live/LiveClassLobby';
-import { buildJitsiSrc } from '../../utils/liveMeet';
+import { buildJitsiSrc, learnerLiveClassUrl } from '../../utils/liveMeet';
 import usePageTitle from '../../hooks/usePageTitle';
 import { AlertCircle } from 'lucide-react';
 
-export default function LiveClassRoom() {
-  usePageTitle('Live Class');
+export default function EducatorLiveClassHost() {
+  usePageTitle('Host Live Class');
   const { classId } = useParams();
   const navigate = useNavigate();
   const api = useApi();
@@ -19,31 +19,44 @@ export default function LiveClassRoom() {
   const socketCtx = useSocket();
 
   const [classInfo, setClassInfo] = useState(null);
+  const [courseTitle, setCourseTitle] = useState('');
   const [messages, setMessages] = useState([]);
-  const [handRaised, setHandRaised] = useState(false);
-  const [participantCount, setParticipantCount] = useState(1);
+  const [raisedHands, setRaisedHands] = useState([]);
+  const [participantCount, setParticipantCount] = useState(0);
   const [error, setError] = useState('');
   const [ended, setEnded] = useState(false);
   const [inMeeting, setInMeeting] = useState(false);
   const [joining, setJoining] = useState(false);
 
-  const displayName = user?.name || user?.email?.split('@')[0] || 'Learner';
+  const displayName = user?.name || user?.email?.split('@')[0] || 'Educator';
 
   useEffect(() => {
     let cancelled = false;
-    const joinClass = async () => {
+    const load = async () => {
       try {
         const res = await api.post(`/live-classes/${classId}/join`);
         if (cancelled) return;
         setClassInfo(res.data);
+        setParticipantCount(1);
 
         const chatRes = await api.get(`/live-classes/${classId}/chat`);
         if (!cancelled) setMessages(chatRes.data?.messages || []);
+
+        try {
+          const active = await api.get('/live-classes/educator/active');
+          const match = (active.data || []).find((c) => c._id === classId);
+          if (match?.course?.title) setCourseTitle(match.course.title);
+          if (match?.currentAttendees != null) {
+            setParticipantCount(Math.max(1, match.currentAttendees + 1));
+          }
+        } catch {
+          /* optional */
+        }
       } catch (err) {
-        if (!cancelled) setError(err.response?.data?.message || 'Failed to join class');
+        if (!cancelled) setError(err.response?.data?.message || 'Could not open this live class');
       }
     };
-    joinClass();
+    load();
     return () => { cancelled = true; };
   }, [classId]);
 
@@ -58,19 +71,36 @@ export default function LiveClassRoom() {
   useEffect(() => {
     if (!inMeeting || !socketCtx?.socket || !classInfo?.roomId) return;
 
+    const roomKey = classInfo.roomId;
+
     const handleMessage = (msg) => setMessages((prev) => [...prev, msg]);
     const handleEnded = () => setEnded(true);
+    const handleRaised = (data) => {
+      if ((data.roomId || data.room) !== roomKey) return;
+      setRaisedHands((prev) => [
+        ...prev.filter((u) => u.userId !== data.userId),
+        data,
+      ]);
+    };
+    const handleLowered = (data) => {
+      if ((data.roomId || data.room) !== roomKey) return;
+      setRaisedHands((prev) => prev.filter((u) => u.userId !== data.userId));
+    };
     const handleJoined = () => setParticipantCount((n) => n + 1);
     const handleLeft = () => setParticipantCount((n) => Math.max(1, n - 1));
 
     socketCtx.on('chat:message', handleMessage);
     socketCtx.on('class:ended', handleEnded);
+    socketCtx.on('room:hand-raised', handleRaised);
+    socketCtx.on('room:hand-lowered', handleLowered);
     socketCtx.on('room:user-joined', handleJoined);
     socketCtx.on('room:user-left', handleLeft);
 
     return () => {
       socketCtx.off('chat:message', handleMessage);
       socketCtx.off('class:ended', handleEnded);
+      socketCtx.off('room:hand-raised', handleRaised);
+      socketCtx.off('room:hand-lowered', handleLowered);
       socketCtx.off('room:user-joined', handleJoined);
       socketCtx.off('room:user-left', handleLeft);
     };
@@ -90,14 +120,8 @@ export default function LiveClassRoom() {
     socketCtx.emit('chat:send', { roomId: classInfo.roomId, message: text });
   };
 
-  const toggleHand = () => {
-    if (!classInfo?.roomId) return;
-    if (handRaised) {
-      socketCtx.emit('room:lower-hand', { roomId: classInfo.roomId });
-    } else {
-      socketCtx.emit('room:raise-hand', { roomId: classInfo.roomId });
-    }
-    setHandRaised(!handRaised);
+  const copyLearnerLink = async () => {
+    await navigator.clipboard.writeText(learnerLiveClassUrl(classId));
   };
 
   const handleLeave = () => {
@@ -105,7 +129,21 @@ export default function LiveClassRoom() {
       socketCtx.emit('room:leave', { roomId: classInfo.roomId });
     }
     api.post(`/live-classes/${classId}/leave`).catch(() => {});
-    navigate('/learner/dashboard');
+    navigate('/educator/live-classes');
+  };
+
+  const handleEndClass = async () => {
+    if (!window.confirm('End this live class for all participants?')) return;
+    try {
+      await api.put(`/live-classes/${classId}/end`);
+      setEnded(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not end class');
+    }
+  };
+
+  const dismissHand = (userId) => {
+    setRaisedHands((prev) => prev.filter((u) => u.userId !== userId));
   };
 
   if (error) {
@@ -114,8 +152,8 @@ export default function LiveClassRoom() {
         <div className="text-center max-w-md text-white">
           <AlertCircle size={40} className="mx-auto text-red-400 mb-3" />
           <p className="mb-4 text-gray-300">{error}</p>
-          <button type="button" onClick={() => navigate('/learner/dashboard')} className="px-6 py-2 rounded-full bg-[#8ab4f8] text-[#202124] font-semibold">
-            Back to Dashboard
+          <button type="button" onClick={() => navigate('/educator/live-classes')} className="px-6 py-2 rounded-full bg-[#8ab4f8] text-[#202124] font-semibold">
+            Back to Live Classes
           </button>
         </div>
       </div>
@@ -127,11 +165,11 @@ export default function LiveClassRoom() {
   if (!inMeeting && !ended) {
     return (
       <LiveClassLobby
-        role="learner"
+        role="host"
         title={classInfo.roomName || classInfo.topic || 'Live Class'}
-        subtitle={classInfo.courseName}
+        subtitle={courseTitle || 'Host meeting'}
         onJoin={enterMeeting}
-        onCancel={() => navigate('/learner/dashboard')}
+        onCancel={() => navigate('/educator/live-classes')}
         joining={joining}
       />
     );
@@ -140,29 +178,31 @@ export default function LiveClassRoom() {
   const jitsiSrc = buildJitsiSrc({
     domain: classInfo.jitsiDomain,
     roomId: classInfo.roomId,
-    displayName,
+    displayName: `${displayName} (Host)`,
   });
 
   return (
     <LiveMeetShell
-      role="learner"
+      role="host"
       title={classInfo.roomName || classInfo.topic}
-      subtitle={classInfo.courseName}
+      subtitle={courseTitle}
       jitsiSrc={jitsiSrc}
       startedAt={classInfo.startedAt}
       participantCount={participantCount}
       messages={messages}
       onSendMessage={sendMessage}
       chatEnabled={classInfo.chatEnabled !== false}
-      handRaised={handRaised}
-      onToggleHand={toggleHand}
+      raisedHands={raisedHands}
+      onDismissHand={dismissHand}
+      onCopyLink={copyLearnerLink}
       onLeave={handleLeave}
+      onEndClass={handleEndClass}
       ended={ended}
       uniqueFeatures={
         <>
-          <span className="font-medium text-indigo-200">PLP Live</span>
+          <span className="font-medium text-violet-200">PLP Host</span>
           <span className="text-gray-400">·</span>
-          <span>Raise hand · Class chat · AI notes on course page after class</span>
+          <span>Hands queue · Invite learners · End for all</span>
         </>
       }
     />

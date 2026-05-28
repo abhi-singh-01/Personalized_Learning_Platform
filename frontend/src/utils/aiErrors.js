@@ -3,6 +3,15 @@ export function friendlyAiMessage(raw) {
   if (!raw || typeof raw !== 'string') return null;
   const m = raw.toLowerCase();
 
+  if (m.includes('generate notes') || m.includes('notes could not')) {
+    return 'Notes could not be generated. Ensure GEMINI_API_KEY is set on the server and try again.';
+  }
+  if (m.includes('syllabus')) {
+    return 'Syllabus could not be extracted. Try again in a moment.';
+  }
+  if (m.includes('roadmap')) {
+    return 'Roadmap could not be built. Try again in a moment.';
+  }
   if (
     m.includes('transcript') ||
     m.includes('invalid') ||
@@ -10,7 +19,7 @@ export function friendlyAiMessage(raw) {
     m.includes('ai returned') ||
     m.includes('could not prepare')
   ) {
-    return 'Transcript is not available for this video yet. Use Transcribe to try again.';
+    return 'AI could not process this lecture. Try Generate Notes — it reads the video directly.';
   }
   if (m.includes('network') || m.includes('timeout') || m.includes('fetch')) {
     return 'Connection issue. Check your network and try again.';
