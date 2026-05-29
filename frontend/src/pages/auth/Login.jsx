@@ -6,6 +6,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 import { roleHomeSegment, isLearnerRole, isEducatorRole } from '../../utils/rolePaths';
+import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 function GoogleIcon({ size = 20 }) {
   return (
@@ -43,25 +44,20 @@ export default function Login() {
   }, [isEducatorFlow]);
 
   const redirectToMatchingPortal = useCallback((message) => {
-    const lower = String(message || '').toLowerCase();
-    if (!isEducatorFlow && lower.includes('educator sign in')) {
-      toast.info('This email belongs to an educator account. Opening educator sign in…');
-      nav('/login?role=educator', { replace: true });
-      return true;
-    }
-    if (isEducatorFlow && lower.includes('learner account')) {
-      toast.info('This email belongs to a learner account. Opening learner sign in…');
-      nav('/login', { replace: true });
-      return true;
-    }
-    return false;
+    const redirect = getAuthPortalRedirect(message, isEducatorFlow ? 'educator' : 'learner');
+    if (!redirect) return false;
+    toast.info(redirect.toast);
+    nav(redirect.path, { replace: true });
+    return true;
   }, [isEducatorFlow, nav, toast]);
 
   const redirectAfterLogin = useCallback((user) => {
     if (user.role === 'admin') {
-      toast.success('Welcome back, Administrator!');
-      nav('/admin/dashboard', { replace: true });
-    } else if (isEducatorFlow && isLearnerRole(user.role)) {
+      toast.error('Admin accounts must use the admin sign in page');
+      nav('/admin/login', { replace: true });
+      return;
+    }
+    if (isEducatorFlow && isLearnerRole(user.role)) {
       setError('This learner account cannot access the educator portal. Switch to educator from your account first.');
     } else {
       const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
@@ -119,6 +115,7 @@ export default function Login() {
       redirectAfterLogin(user);
     } catch (err) {
       const msg = err.response?.data?.message || 'Verification failed';
+      if (redirectToMatchingPortal(msg)) return;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -226,6 +223,15 @@ export default function Login() {
                   ? 'Access your educator dashboard and start teaching'
                   : 'Access your learner dashboard and courses'}
               </p>
+              {isEducatorFlow && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                  Platform administrators must sign in at{' '}
+                  <Link to="/admin/login" className="text-purple-600 dark:text-purple-400 font-semibold hover:underline">
+                    Admin Sign In
+                  </Link>
+                  , not here.
+                </p>
+              )}
             </div>
 
             {sessionEvicted && (
@@ -241,6 +247,14 @@ export default function Login() {
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                   {error}
                 </div>
+                {error.toLowerCase().includes('admin sign in') && (
+                  <Link
+                    to="/admin/login"
+                    className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
+                  >
+                    Open admin sign in →
+                  </Link>
+                )}
                 {!isEducatorFlow && error.toLowerCase().includes('educator sign in') && (
                   <Link
                     to="/login?role=educator"

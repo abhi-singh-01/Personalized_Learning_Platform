@@ -43,15 +43,27 @@ const normalizePortalRole = (role) => {
 };
 
 const assertPortalRoleAccess = (user, requestedRole) => {
-  const portalRole = normalizePortalRole(requestedRole);
-  if (!portalRole) return;
-
   const userRole = normalizePortalRole(user.role);
-  if (userRole === portalRole) return;
+
+  if (requestedRole === 'admin') {
+    if (user.role === 'admin') return;
+    if (userRole === 'educator') {
+      throw new AppError('This is an educator account. Please use the educator sign in page.', 403);
+    }
+    if (userRole === 'learner') {
+      throw new AppError('This is a learner account. Please use the learner sign in page.', 403);
+    }
+    throw new AppError('Access denied. This login is for platform administrators only.', 403);
+  }
 
   if (user.role === 'admin') {
     throw new AppError('Admin accounts must use the admin sign in page', 403);
   }
+
+  const portalRole = normalizePortalRole(requestedRole);
+  if (!portalRole) return;
+
+  if (userRole === portalRole) return;
 
   if (userRole === 'learner' && portalRole === 'educator') {
     throw new AppError('This is a learner account. Please sign in as a learner or switch to educator from your account.', 403);
@@ -128,7 +140,7 @@ exports.register = async (req, res, next) => {
 exports.loginValidation = [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
-  body('role').optional().isIn(['learner', 'educator']).withMessage('Role must be learner or educator'),
+  body('role').optional().isIn(['learner', 'educator', 'admin']).withMessage('Role must be learner, educator, or admin'),
 ];
 
 exports.login = async (req, res, next) => {

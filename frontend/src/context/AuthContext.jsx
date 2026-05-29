@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import API from '../api/axios';
+import { assertClientPortalAccess } from '../utils/authPortalRedirect';
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
@@ -181,6 +182,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password, role) => {
     const res = await API.post('/auth/login', { email, password, role });
     const { token: t, user: u } = res.data.data;
+    assertClientPortalAccess(u, role);
     persistLogin(t, u);
     return u;
   };
@@ -188,6 +190,7 @@ export function AuthProvider({ children }) {
   const googleLogin = async (idToken, role) => {
     const res = await API.post('/auth/google', { idToken, role });
     const { token: t, user: u } = res.data.data;
+    assertClientPortalAccess(u, role);
     persistLogin(t, u);
     return u;
   };
@@ -205,6 +208,7 @@ export function AuthProvider({ children }) {
   const verifyEmailOtp = async (email, otp, role) => {
     const res = await API.post('/auth/verify-email', { email, otp, role });
     const { token: t, user: u } = res.data.data;
+    assertClientPortalAccess(u, role);
     persistLogin(t, u);
     return u;
   };

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Shield, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, AlertTriangle } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
+import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 export default function AdminLogin() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -15,23 +16,25 @@ export default function AdminLogin() {
   const toast = useToast();
   usePageTitle('Admin Sign In');
 
+  const redirectToMatchingPortal = useCallback((message) => {
+    const redirect = getAuthPortalRedirect(message, 'admin');
+    if (!redirect) return false;
+    toast.info(redirect.toast);
+    nav(redirect.path, { replace: true });
+    return true;
+  }, [nav, toast]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
-      if (user.role !== 'admin') {
-        // Not an admin — show error and don't proceed
-        setError('Access denied. This login is for platform administrators only.');
-        toast.error('Access denied — not an admin account.');
-        // Log them out silently since they shouldn't be here
-        return;
-      }
+      await login(form.email, form.password, 'admin');
       toast.success('Welcome back, Administrator!');
       nav('/admin/dashboard', { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
+      if (redirectToMatchingPortal(msg)) return;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -144,9 +147,21 @@ export default function AdminLogin() {
 
             {/* Error */}
             {error && (
-              <div className="bg-red-500/10 text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-500/20 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                {error}
+              <div className="bg-red-500/10 text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-500/20">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  {error}
+                </div>
+                {error.toLowerCase().includes('educator sign in') && (
+                  <Link to="/login?role=educator" className="mt-2 inline-flex text-sm font-semibold text-indigo-300 hover:underline">
+                    Open educator sign in →
+                  </Link>
+                )}
+                {error.toLowerCase().includes('learner sign in') && (
+                  <Link to="/login" className="mt-2 inline-flex text-sm font-semibold text-indigo-300 hover:underline">
+                    Open learner sign in →
+                  </Link>
+                )}
               </div>
             )}
 
@@ -221,7 +236,11 @@ export default function AdminLogin() {
               </Link>
               <span className="text-gray-700">·</span>
               <Link to="/login" className="hover:text-indigo-400 transition-colors">
-                Learner / Educator Login
+                Learner Sign In
+              </Link>
+              <span className="text-gray-700">·</span>
+              <Link to="/login?role=educator" className="hover:text-indigo-400 transition-colors">
+                Educator Sign In
               </Link>
             </div>
 

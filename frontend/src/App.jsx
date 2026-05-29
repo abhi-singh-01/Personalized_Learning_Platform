@@ -90,14 +90,14 @@ const RouteLoader = () => (
 export default function App() {
   const { user, loading } = useAuth();
 
-  // Smart redirect: logged-in user visiting /login?role=educator goes to /become-educator
+  // Logged-in users hitting /login — send each role to the correct home (never educator login → admin via wrong portal)
   const LoginRedirect = () => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('role') === 'educator' && isLearnerRole(user?.role)) {
-      return <Navigate to="/become-educator" replace />;
-    }
     if (user?.role === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
+    }
+    if (params.get('role') === 'educator' && isLearnerRole(user?.role)) {
+      return <Navigate to="/become-educator" replace />;
     }
     return <Navigate to={`/${roleHomeSegment(user.role)}/dashboard`} replace />;
   };

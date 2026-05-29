@@ -6,6 +6,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 import { roleHomeSegment } from '../../utils/rolePaths';
+import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 const locationData = {
   India: {
@@ -91,18 +92,11 @@ export default function Register() {
   }, [isEducatorFlow]);
 
   const redirectToMatchingPortal = useCallback((message) => {
-    const lower = String(message || '').toLowerCase();
-    if (!isEducatorFlow && lower.includes('educator sign in')) {
-      toast.info('This email belongs to an educator account. Opening educator sign in…');
-      nav('/login?role=educator', { replace: true });
-      return true;
-    }
-    if (isEducatorFlow && lower.includes('learner account')) {
-      toast.info('This email belongs to a learner account. Opening learner sign in…');
-      nav('/login', { replace: true });
-      return true;
-    }
-    return false;
+    const redirect = getAuthPortalRedirect(message, isEducatorFlow ? 'educator' : 'learner');
+    if (!redirect) return false;
+    toast.info(redirect.toast);
+    nav(redirect.path, { replace: true });
+    return true;
   }, [isEducatorFlow, nav, toast]);
 
   const statesForCountry = form.country ? Object.keys(locationData[form.country] || {}) : [];
