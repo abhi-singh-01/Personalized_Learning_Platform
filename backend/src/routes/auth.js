@@ -3,13 +3,14 @@ const {
   register, login, googleLogin, getMe, completeProfile, switchRole,
   logout, getSessions, revokeSession, revokeAllOtherSessions,
   registerValidation, loginValidation,
-  forgotPassword, resetPassword
+  forgotPassword, resetPassword, seedDefaultAdmin
 } = require('../controllers/authController');
 const auth = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { authLimiter } = require('../middleware/rateLimiter');
 
 router.post('/register', authLimiter, registerValidation, validate, register);
+router.post('/seed-default-admin', authLimiter, seedDefaultAdmin);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', authLimiter, resetPassword);
 router.post('/login', authLimiter, loginValidation, validate, login);

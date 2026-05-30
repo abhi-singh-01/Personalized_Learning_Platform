@@ -53,6 +53,9 @@ services:
         sync: false  # e.g. PLP <abhijeetsingh03.dev@gmail.com> (must match verified Brevo sender)
       - key: APP_NAME
         value: PLP
+      # Default admin (created on every deploy via npm start → seed:admin)
+      - key: ADMIN_EMAIL
+        value: admin@plp.com
       # Optional: durable uploads (S3 or R2/MinIO). When all are set, course materials upload to the bucket instead of relying on ephemeral disk.
       - key: AWS_REGION
         sync: false

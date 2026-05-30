@@ -1,69 +1,50 @@
 /**
- * Seed Admin Script
- * 
- * Creates the first admin user if none exists.
- * 
- * Usage:
- *   node src/scripts/seedAdmin.js
- * 
- * Environment variables (optional — uses defaults otherwise):
- *   ADMIN_EMAIL    — admin email (default: admin@plp.com)
- *   ADMIN_PASSWORD — admin password (default: Admin@123456)
- *   ADMIN_NAME     — admin display name (default: Platform Admin)
+ * Seed / sync the default platform admin in MongoDB.
  *
- * On server startup, ensureDefaultAdmin() also creates the default admin when none exists.
- * Set ADMIN_RESET_PASSWORD=true to sync ADMIN_PASSWORD for an existing admin account.
+ * Usage:
+ *   npm run seed:admin
+ *   node src/scripts/seedAdmin.js
+ *
+ * Env (optional):
+ *   MONGODB_URI     — required
+ *   ADMIN_EMAIL     — default admin@plp.com
+ *   ADMIN_PASSWORD  — default Admin@123456
+ *   ADMIN_NAME      — default Platform Admin
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const mongoose = require('mongoose');
-const User = require('../models/User');
+const ensureDefaultAdmin = require('../services/adminBootstrap');
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@plp.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123456';
-const ADMIN_NAME = process.env.ADMIN_NAME || 'Platform Admin';
 
 async function seedAdmin() {
+  if (!MONGODB_URI) {
+    console.error('❌ MONGODB_URI is not set. Add it to backend/.env or Render env vars.');
+    process.exit(1);
+  }
+
   try {
     console.log('🔌 Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    console.log('✅ Connected');
 
-    // Check if any admin already exists
-    const existingAdmin = await User.findOne({ role: 'admin' });
-    if (existingAdmin) {
-      console.log(`\n⚠️  An admin already exists:`);
-      console.log(`   Name:  ${existingAdmin.name}`);
-      console.log(`   Email: ${existingAdmin.email}`);
-      console.log(`   ID:    ${existingAdmin._id}`);
-      console.log('\n💡 No new admin created. Use the existing account or update it via the admin dashboard.');
-      process.exit(0);
-    }
+    const result = await ensureDefaultAdmin({ forceSync: true });
 
-    // Create new admin
-    const admin = await User.create({
-      name: ADMIN_NAME,
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      role: 'admin',
-      authProvider: 'local',
-      profileComplete: true,
-    });
-
-    console.log('\n🎉 Admin account created successfully!');
+    console.log('\n🎉 Default admin is ready');
     console.log('─'.repeat(40));
-    console.log(`   Name:     ${admin.name}`);
     console.log(`   Email:    ${ADMIN_EMAIL}`);
     console.log(`   Password: ${ADMIN_PASSWORD}`);
-    console.log(`   Role:     admin`);
+    console.log(`   Status:   ${result.action}`);
     console.log('─'.repeat(40));
-    console.log('\n🔐 Login at: /admin/login');
-    console.log('⚠️  IMPORTANT: Change the password after first login!\n');
+    console.log('\n🔐 Sign in at: /admin/login\n');
 
+    await mongoose.disconnect();
     process.exit(0);
   } catch (err) {
-    console.error('❌ Error seeding admin:', err.message);
+    console.error('❌ Admin seed failed:', err.message);
     process.exit(1);
   }
 }

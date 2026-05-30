@@ -13,6 +13,7 @@ const {
   isEmailConfigured,
   issuePasswordResetOtp,
 } = require('../services/emailOtpService');
+const ensureDefaultAdmin = require('../services/adminBootstrap');
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -616,5 +617,18 @@ exports.revokeAllOtherSessions = async (req, res, next) => {
     await user.save();
 
     sendResponse(res, 200, 'All other sessions revoked');
+  } catch (err) { next(err); }
+};
+
+/** One-shot admin seed (set ADMIN_SEED_KEY on Render, POST with header x-admin-seed-key). */
+exports.seedDefaultAdmin = async (req, res, next) => {
+  try {
+    const expected = process.env.ADMIN_SEED_KEY;
+    const provided = req.headers['x-admin-seed-key'];
+    if (!expected || provided !== expected) {
+      throw new AppError('Forbidden', 403);
+    }
+    const result = await ensureDefaultAdmin({ forceSync: true });
+    sendResponse(res, 200, 'Default admin seeded', result);
   } catch (err) { next(err); }
 };
