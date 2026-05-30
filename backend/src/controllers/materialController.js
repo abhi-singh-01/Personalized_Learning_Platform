@@ -35,17 +35,24 @@ function guessContentType(fileName) {
   return map[ext] || 'application/octet-stream';
 }
 
-async function pipeRemoteFile(url, res) {
+async function pipeRemoteFile(url, res, rangeHeader) {
   try {
-    const cloudObject = await storageService.getMaterialObjectFromCloudUrl(url);
+    const cloudObject = await storageService.getMaterialObjectFromCloudUrl(url, {
+      range: rangeHeader || undefined,
+    });
     if (cloudObject?.body) {
       if (cloudObject.contentType) res.setHeader('Content-Type', cloudObject.contentType);
-      if (cloudObject.contentLength) res.setHeader('Content-Length', String(cloudObject.contentLength));
+      if (cloudObject.contentLength != null) {
+        res.setHeader('Content-Length', String(cloudObject.contentLength));
+      }
+      if (cloudObject.contentRange) res.setHeader('Content-Range', cloudObject.contentRange);
       if (cloudObject.etag) res.setHeader('ETag', cloudObject.etag);
       if (cloudObject.lastModified) {
         res.setHeader('Last-Modified', new Date(cloudObject.lastModified).toUTCString());
       }
+      res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (cloudObject.statusCode === 206) res.status(206);
 
       if (typeof cloudObject.body.pipe === 'function') {
         cloudObject.body.pipe(res);
@@ -57,18 +64,25 @@ async function pipeRemoteFile(url, res) {
       }
     }
   } catch (err) {
-    // Fall back to direct fetch for public URLs/CDN links and legacy providers.
     if (err?.name !== 'NoSuchKey') {
       console.warn('Cloud SDK stream failed, trying direct fetch:', err.message);
     }
   }
 
-  const response = await fetch(url, { redirect: 'follow' });
-  if (!response.ok) throw new AppError('File not found in cloud storage', 404);
+  const fetchHeaders = {};
+  if (rangeHeader) fetchHeaders.Range = rangeHeader;
+  const response = await fetch(url, { redirect: 'follow', headers: fetchHeaders });
+  if (!response.ok && response.status !== 206) throw new AppError('File not found in cloud storage', 404);
 
   const contentType = response.headers.get('content-type');
   if (contentType) res.setHeader('Content-Type', contentType);
+  const contentLength = response.headers.get('content-length');
+  if (contentLength) res.setHeader('Content-Length', contentLength);
+  const contentRange = response.headers.get('content-range');
+  if (contentRange) res.setHeader('Content-Range', contentRange);
+  res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (response.status === 206) res.status(206);
 
   if (response.body) {
     Readable.fromWeb(response.body).pipe(res);
@@ -77,6 +91,42 @@ async function pipeRemoteFile(url, res) {
 
   const buffer = Buffer.from(await response.arrayBuffer());
   res.send(buffer);
+}
+
+async function serveLocalFile(absolutePath, fileName, material, res, rangeHeader) {
+  const stat = await fsp.stat(absolutePath);
+  const fileSize = stat.size;
+  const safeTitle = String(material.title || 'material').replace(/[^\w.\- ]+/g, '').trim() || 'material';
+  const ext = path.extname(fileName);
+  const contentType = guessContentType(fileName);
+
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Disposition', `inline; filename="${safeTitle}${ext}"`);
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+
+  if (rangeHeader) {
+    const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader);
+    if (match) {
+      let start = match[1] ? parseInt(match[1], 10) : 0;
+      let end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+      if (Number.isNaN(start)) start = 0;
+      if (Number.isNaN(end) || end >= fileSize) end = fileSize - 1;
+      if (start > end || start >= fileSize) {
+        res.status(416).setHeader('Content-Range', `bytes */${fileSize}`);
+        return res.end();
+      }
+      const chunkSize = end - start + 1;
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+      res.setHeader('Content-Length', chunkSize);
+      return fs.createReadStream(absolutePath, { start, end }).pipe(res);
+    }
+  }
+
+  res.setHeader('Content-Length', fileSize);
+  return fs.createReadStream(absolutePath).pipe(res);
 }
 
 exports.create = async (req, res, next) => {
@@ -169,8 +219,11 @@ exports.serveFile = async (req, res, next) => {
     if (!FILE_TYPES.has(material.type)) throw new AppError('This material does not have a protected file', 400);
     if (!material.fileUrl) throw new AppError('No file found for this material', 404);
 
+    const rangeHeader = req.headers.range;
+
     if (/^https?:\/\//i.test(material.fileUrl)) {
-      await pipeRemoteFile(material.fileUrl, res);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      await pipeRemoteFile(material.fileUrl, res, rangeHeader);
       return;
     }
 
@@ -179,8 +232,6 @@ exports.serveFile = async (req, res, next) => {
 
     const fileName = path.basename(relativePath);
     const absolutePath = path.join(__dirname, '..', '..', 'uploads', fileName);
-    const safeTitle = String(material.title || 'material').replace(/[^\w.\- ]+/g, '').trim() || 'material';
-    const ext = path.extname(fileName);
 
     try {
       await fsp.access(absolutePath, fs.constants.R_OK);
@@ -191,14 +242,7 @@ exports.serveFile = async (req, res, next) => {
       );
     }
 
-    res.setHeader('Content-Type', guessContentType(fileName));
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Disposition', `inline; filename="${safeTitle}${ext}"`);
-    return res.sendFile(absolutePath, (err) => {
-      if (err && !res.headersSent) {
-        next(new AppError('File not found', 404));
-      }
-    });
+    await serveLocalFile(absolutePath, fileName, material, res, rangeHeader);
   } catch (err) { next(err); }
 };
 

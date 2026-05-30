@@ -174,7 +174,7 @@ async function downloadCloudUrlToTempFile(publicUrl) {
   };
 }
 
-async function getMaterialObjectFromCloudUrl(publicUrl) {
+async function getMaterialObjectFromCloudUrl(publicUrl, { range } = {}) {
   if (!isMaterialCloudUploadEnabled() || !publicUrl || !/^https?:\/\//i.test(publicUrl)) {
     return null;
   }
@@ -182,19 +182,22 @@ async function getMaterialObjectFromCloudUrl(publicUrl) {
   const key = extractKeyFromPublicUrl(publicUrl);
   if (!key) return null;
 
-  const out = await getS3Client().send(
-    new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET,
-      Key: key,
-    })
-  );
+  const params = {
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+  };
+  if (range) params.Range = range;
+
+  const out = await getS3Client().send(new GetObjectCommand(params));
 
   return {
     body: out.Body,
     contentType: out.ContentType,
     contentLength: out.ContentLength,
+    contentRange: out.ContentRange,
     etag: out.ETag,
     lastModified: out.LastModified,
+    statusCode: out.ContentRange ? 206 : 200,
   };
 }
 

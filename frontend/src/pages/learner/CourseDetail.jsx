@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -9,9 +9,10 @@ import {
   BookOpen, Sparkles, Video, ClipboardList, FolderOpen, Brain, ExternalLink,
   Star, ThumbsUp, Flag, Trash2
 } from 'lucide-react';
-import AIVideoPanel from '../../components/ui/AIVideoPanel';
+const AIVideoPanel = lazy(() => import('../../components/ui/AIVideoPanel'));
+import CourseVideoPlayer from '../../components/ui/CourseVideoPlayer';
 import { unwrapApiData } from '../../utils/apiData';
-import { createProtectedMaterialObjectUrl, resolveMaterialUrl } from '../../utils/materialUrl';
+import { getProtectedMaterialStreamUrl, resolveMaterialUrl } from '../../utils/materialUrl';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
@@ -24,7 +25,7 @@ export default function CourseDetail() {
   const [course, setCourse] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
-  const [activeVideo, setActiveVideo] = useState(null);
+  const [activeYoutube, setActiveYoutube] = useState(null);
   const [activeUploadedVideo, setActiveUploadedVideo] = useState(null);
   const [activeArticle, setActiveArticle] = useState(null);
   const [activeDocument, setActiveDocument] = useState(null);
@@ -34,9 +35,8 @@ export default function CourseDetail() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState('lectures');
-  const [openingMaterialId, setOpeningMaterialId] = useState(null);
-  const objectUrlsRef = useRef([]);
   const playerRef = useRef(null);
+  const tabsRef = useRef(null);
   usePageTitle(course?.title || 'Course');
 
   useEffect(() => {
@@ -49,19 +49,19 @@ export default function CourseDetail() {
   }, [id]);
 
   useEffect(() => {
-    return () => {
-      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      objectUrlsRef.current = [];
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activeVideo || activeUploadedVideo || activeDocument || activeArticle) {
+    if (activeYoutube || activeUploadedVideo || activeDocument || activeArticle) {
       requestAnimationFrame(() => {
         playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-  }, [activeVideo, activeUploadedVideo, activeDocument, activeArticle]);
+  }, [activeYoutube, activeUploadedVideo, activeDocument, activeArticle]);
+
+  const scrollToTabs = (tab) => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   const toggleComplete = async (materialId, e) => {
     e.stopPropagation();
@@ -151,65 +151,78 @@ export default function CourseDetail() {
     ? Math.round((progress.completedMaterials.length / materials.length) * 100)
     : 0;
 
-  const loadProtectedMaterialUrl = async (m) => {
-    if (!m?._id) return resolveMaterialUrl(m?.fileUrl);
-    const objectUrl = await createProtectedMaterialObjectUrl(m._id);
-    objectUrlsRef.current.push(objectUrl);
-    return objectUrl;
-  };
-
-  const openMaterial = async (m) => {
-    if (openingMaterialId) return;
-    setOpeningMaterialId(m._id);
-    trackView(m._id);
-    setActiveVideo(null);
+  const openMaterial = (m) => {
+    setActiveYoutube(null);
     setActiveUploadedVideo(null);
     setActiveArticle(null);
     setActiveDocument(null);
 
-    try {
-      if (m.type === 'youtube') {
-        setActiveTab('lectures');
-        setActiveVideo(m.videoId);
-      } else if (m.type === 'video') {
-        setActiveTab('lectures');
-        if (!m.fileUrl) {
-          toast.error('This video has no file. Ask your educator to re-upload it.');
-          return;
-        }
-        const protectedUrl = await loadProtectedMaterialUrl(m);
-        setActiveUploadedVideo({ ...m, protectedUrl });
-      } else if (m.type === 'article') {
-        setActiveTab('documents');
-        setActiveArticle(m);
-      } else if (m.type === 'pdf' || m.type === 'ppt') {
-        if (!m.fileUrl) {
-          toast.error('This document has no file. Ask your educator to re-upload it.');
-          return;
-        }
-        const protectedUrl = await loadProtectedMaterialUrl(m);
-        setActiveDocument({ ...m, protectedUrl });
-        setActiveTab('documents');
-      } else if (m.fileUrl) {
-        const protectedUrl = await loadProtectedMaterialUrl(m);
-        window.open(protectedUrl, '_blank', 'noopener,noreferrer');
+    if (m.type === 'youtube') {
+      setActiveTab('lectures');
+      setActiveYoutube({ videoId: m.videoId, title: m.title, _id: m._id });
+      trackView(m._id);
+      requestAnimationFrame(() => {
+        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    if (m.type === 'video') {
+      setActiveTab('lectures');
+      if (!m.fileUrl) {
+        toast.error('This video has no file. Ask your educator to re-upload it.');
+        return;
       }
-    } catch (err) {
-      console.error(err);
-      toast.error(err.message || 'Could not open this material. Please try again.');
-    } finally {
-      setOpeningMaterialId(null);
+      setActiveUploadedVideo({
+        ...m,
+        streamUrl: getProtectedMaterialStreamUrl(m._id),
+      });
+      trackView(m._id);
+      requestAnimationFrame(() => {
+        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    if (m.type === 'article') {
+      setActiveTab('documents');
+      setActiveArticle(m);
+      trackView(m._id);
+      return;
+    }
+
+    if (m.type === 'pdf' || m.type === 'ppt') {
+      if (!m.fileUrl) {
+        toast.error('This document has no file. Ask your educator to re-upload it.');
+        return;
+      }
+      setActiveDocument({ ...m, streamUrl: getProtectedMaterialStreamUrl(m._id) });
+      setActiveTab('documents');
+      trackView(m._id);
+      requestAnimationFrame(() => {
+        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    if (m.fileUrl) {
+      window.open(getProtectedMaterialStreamUrl(m._id), '_blank', 'noopener,noreferrer');
     }
   };
 
   const MaterialItem = ({ m }) => {
     const Icon = icons[m.type] || FileText;
     const isCompleted = progress.completedMaterials.includes(m._id);
-    const isOpening = openingMaterialId === m._id;
+    const isVideo = m.type === 'youtube' || m.type === 'video';
+    const isActive =
+      (m.type === 'youtube' && activeYoutube?._id === m._id)
+      || (m.type === 'video' && activeUploadedVideo?._id === m._id);
+
     return (
       <div
-        className={`flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer transition-all duration-200 group ${isOpening ? 'opacity-70 pointer-events-none' : ''}`}
-        onClick={() => openMaterial(m)}
+        className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
+          isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-200 dark:ring-primary-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'
+        }`}
       >
         <div className={`p-2.5 rounded-xl transition-colors ${m.type === 'video' || m.type === 'youtube'
           ? 'bg-red-50 dark:bg-red-900/20 text-red-500'
@@ -222,11 +235,23 @@ export default function CourseDetail() {
           <Icon size={20} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm group-hover:text-primary-600 transition-colors truncate">{m.title}</p>
+          <p className="font-medium text-sm truncate">{m.title}</p>
           <p className="text-xs text-gray-400 capitalize mt-0.5">
             {m.type === 'youtube' ? 'YouTube Video' : m.type === 'video' ? 'Video Lecture' : m.type === 'pdf' ? 'PDF Document' : m.type === 'ppt' ? 'Presentation' : 'Article'}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => openMaterial(m)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+            isVideo
+              ? 'bg-red-500 hover:bg-red-600 text-white'
+              : 'bg-primary-600 hover:bg-primary-700 text-white'
+          }`}
+        >
+          <Play size={12} fill="currentColor" />
+          {isVideo ? 'View Video' : 'View'}
+        </button>
         <button
           onClick={(e) => toggleComplete(m._id, e)}
           className={`p-2 rounded-full transition-colors flex-shrink-0 ${isCompleted ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : 'text-gray-300 hover:text-green-500'}`}
@@ -281,12 +306,11 @@ export default function CourseDetail() {
 
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors"
-          onClick={() => {
-            setActiveTab('lectures');
-            const first = videoMaterials[0];
-            if (first) openMaterial(first);
-          }}>
+        <button
+          type="button"
+          className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors text-left w-full"
+          onClick={() => scrollToTabs('lectures')}
+        >
           <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/20">
             <Video size={20} className="text-red-500" />
           </div>
@@ -294,13 +318,12 @@ export default function CourseDetail() {
             <p className="text-xl font-bold">{videoMaterials.length}</p>
             <p className="text-xs text-gray-500">Video Lectures</p>
           </div>
-        </div>
-        <div className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
-          onClick={() => {
-            setActiveTab('documents');
-            const first = documentMaterials[0] || articleMaterials[0];
-            if (first) openMaterial(first);
-          }}>
+        </button>
+        <button
+          type="button"
+          className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors text-left w-full"
+          onClick={() => scrollToTabs('documents')}
+        >
           <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20">
             <FolderOpen size={20} className="text-blue-500" />
           </div>
@@ -308,9 +331,12 @@ export default function CourseDetail() {
             <p className="text-xl font-bold">{documentMaterials.length + articleMaterials.length}</p>
             <p className="text-xs text-gray-500">Documents</p>
           </div>
-        </div>
-        <div className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
-          onClick={() => setActiveTab('quizzes')}>
+        </button>
+        <button
+          type="button"
+          className="card !p-4 flex items-center gap-3 cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors text-left w-full"
+          onClick={() => scrollToTabs('quizzes')}
+        >
           <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-900/20">
             <ClipboardList size={20} className="text-purple-500" />
           </div>
@@ -318,7 +344,7 @@ export default function CourseDetail() {
             <p className="text-xl font-bold">{quizzes.length}</p>
             <p className="text-xs text-gray-500">Quizzes</p>
           </div>
-        </div>
+        </button>
         <Link to={`/learner/courses/${id}/practice`}
           className="card !p-4 flex items-center gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors">
           <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
@@ -332,37 +358,24 @@ export default function CourseDetail() {
       </div>
 
       {/* Video / document / article player */}
-      {(activeVideo || activeArticle || activeUploadedVideo || activeDocument) && (
+      {(activeYoutube || activeArticle || activeUploadedVideo || activeDocument) && (
         <div ref={playerRef} className="card scroll-mt-20">
-          {activeVideo && (
-            <div className="aspect-video rounded-lg bg-black relative overflow-hidden">
-              <iframe
-                key={activeVideo}
-                src={'https://www.youtube-nocookie.com/embed/' + activeVideo + '?rel=0&modestbranding=1'}
-                className="w-full h-full absolute top-0 left-0 rounded-lg"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                title="Course Video"
-                style={{ border: 'none' }}
-              />
-            </div>
+          {activeYoutube && (
+            <CourseVideoPlayer
+              youtubeId={activeYoutube.videoId}
+              title={activeYoutube.title}
+            />
           )}
           {activeUploadedVideo && (
             <>
-              <div className="aspect-video rounded-lg bg-black relative">
-                <video
-                  key={activeUploadedVideo._id}
-                  src={activeUploadedVideo.protectedUrl || resolveMaterialUrl(activeUploadedVideo.fileUrl)}
-                  className="w-full h-full absolute top-0 left-0 rounded-lg"
-                  controls
-                  autoPlay
-                  controlsList="nodownload"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-              <AIVideoPanel materialId={activeUploadedVideo._id} materialTitle={activeUploadedVideo.title} />
+              <CourseVideoPlayer
+                key={activeUploadedVideo._id}
+                src={activeUploadedVideo.streamUrl || resolveMaterialUrl(activeUploadedVideo.fileUrl)}
+                title={activeUploadedVideo.title}
+              />
+              <Suspense fallback={null}>
+                <AIVideoPanel materialId={activeUploadedVideo._id} materialTitle={activeUploadedVideo.title} />
+              </Suspense>
             </>
           )}
           {activeArticle && (
@@ -381,7 +394,7 @@ export default function CourseDetail() {
                   </p>
                 </div>
                 <a
-                  href={activeDocument.protectedUrl || resolveMaterialUrl(activeDocument.fileUrl)}
+                  href={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
@@ -393,7 +406,7 @@ export default function CourseDetail() {
               {activeDocument.type === 'pdf' ? (
                 <iframe
                   key={activeDocument._id}
-                  src={activeDocument.protectedUrl || resolveMaterialUrl(activeDocument.fileUrl)}
+                  src={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                   title={activeDocument.title}
                   className="w-full h-[70vh] min-h-[420px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
                 />
@@ -420,7 +433,7 @@ export default function CourseDetail() {
       )}
 
       {/* Content Tabs */}
-      <div className="card !p-0 overflow-hidden">
+      <div ref={tabsRef} className="card !p-0 overflow-hidden scroll-mt-24">
         {/* Tab Header */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
           {tabs.map((tab) => (

@@ -81,7 +81,7 @@ userSchema.pre('save', async function (next) {
     return next(new Error('Phone must be exactly 10 digits'));
   }
   if (!this.isModified('password') || !this.password) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 

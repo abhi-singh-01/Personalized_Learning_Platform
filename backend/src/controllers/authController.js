@@ -3,9 +3,9 @@ const crypto = require('crypto');
 const { body } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
-const Setting = require('../models/Setting');
 const AppError = require('../utils/AppError');
 const { sendResponse } = require('../utils/response');
+const { getCachedSettings } = require('../utils/settingsCache');
 const { JWT_SECRET, JWT_EXPIRES_IN, GOOGLE_CLIENT_ID } = require('../config/env');
 const {
   hashOtp,
@@ -102,7 +102,17 @@ const registerSession = async (user, tokenId, req) => {
   user.activeSessions.push(session);
   user.lastLoginAt = new Date();
   user.lastLoginIP = ipAddress;
-  await user.save();
+
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: {
+        activeSessions: user.activeSessions,
+        lastLoginAt: user.lastLoginAt,
+        lastLoginIP: user.lastLoginIP,
+      },
+    }
+  );
 
   return session;
 };
@@ -127,9 +137,12 @@ exports.register = async (req, res, next) => {
       emailVerified: false,
     });
 
-    await issueEmailOtp(user);
+    const emailResult = await issueEmailOtp(user, { awaitDelivery: true });
+    const message = emailResult?.sent === false
+      ? 'Account created. We could not send the verification email — use Resend code on the sign-in page.'
+      : 'Verification code sent to your email';
 
-    sendResponse(res, 201, 'Verification code sent to your email', {
+    sendResponse(res, 201, message, {
       verificationRequired: true,
       email: user.email,
       user: { id: user._id, name: user.name, email: user.email, role: user.role, profileComplete: user.profileComplete, emailVerified: false },
@@ -146,28 +159,37 @@ exports.loginValidation = [
 exports.login = async (req, res, next) => {
   try {
     const { email, password, role } = req.body;
-    const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password)))
-      throw new AppError('Invalid email or password', 401);
+    const normalizedEmail = String(email).trim().toLowerCase();
 
-    // Check if user is blocked
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+password name email role avatar aiLevel authProvider isBlocked blockedReason emailVerified emailOtpHash emailOtpExpiresAt emailOtpLastSentAt activeSessions maxDevices'
+    );
+
+    const settingsPromise = getCachedSettings();
+    const passwordValid = user ? await user.comparePassword(password) : false;
+
+    if (!user || !passwordValid) {
+      throw new AppError('Invalid email or password', 401);
+    }
+
     if (user.isBlocked) {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }
 
-    if (user.authProvider === 'local' && user.emailVerified === false && (user.emailOtpHash || user.emailOtpExpiresAt)) {
-      if (!isOtpCoolingDown(user)) await issueEmailOtp(user);
-      throw new AppError('Please verify your email with the OTP sent to your inbox', 403);
-    }
-
-    // Auto-migrate legacy roles
     if (user.role === 'teacher') user.role = 'educator';
     if (user.role === 'student') user.role = 'learner';
 
     assertPortalRoleAccess(user, role);
 
-    const settings = await Setting.findOne();
-    if (settings && settings.maintenanceMode && user.role !== 'admin') {
+    if (user.authProvider === 'local' && user.emailVerified === false && (user.emailOtpHash || user.emailOtpExpiresAt)) {
+      if (!isOtpCoolingDown(user)) {
+        issueEmailOtp(user, { awaitDelivery: false });
+      }
+      throw new AppError('Please verify your email with the OTP sent to your inbox', 403);
+    }
+
+    const settings = await settingsPromise;
+    if (settings?.maintenanceMode && user.role !== 'admin') {
       throw new AppError('Sorry for the inconvenience, the website is under maintenance.', 503);
     }
 
@@ -249,7 +271,7 @@ exports.googleLogin = async (req, res, next) => {
     }
 
     // Maintenance check
-    const settings = await Setting.findOne();
+    const settings = await getCachedSettings();
     if (settings && settings.maintenanceMode && user.role !== 'admin') {
       throw new AppError('Sorry for the inconvenience, the website is under maintenance.', 503);
     }

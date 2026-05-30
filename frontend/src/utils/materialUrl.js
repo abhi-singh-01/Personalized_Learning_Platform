@@ -1,5 +1,46 @@
 import API from '../api/axios';
 
+function apiOrigin() {
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+  if (apiBase.startsWith('http')) {
+    try {
+      return new URL(apiBase).origin;
+    } catch {
+      return '';
+    }
+  }
+  const backend = import.meta.env.VITE_BACKEND_URL;
+  if (backend) return String(backend).replace(/\/$/, '');
+  if (typeof window !== 'undefined') return window.location.origin;
+  return '';
+}
+
+function apiBasePath() {
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+  if (apiBase.startsWith('http')) {
+    try {
+      const u = new URL(apiBase);
+      return u.pathname.replace(/\/$/, '') || '/api';
+    } catch {
+      return '/api';
+    }
+  }
+  return apiBase.replace(/\/$/, '') || '/api';
+}
+
+/**
+ * Stream URL for video/PDF — browser loads bytes on demand (Range requests), no full blob download.
+ */
+export function getProtectedMaterialStreamUrl(materialId) {
+  if (!materialId) return '';
+  const origin = apiOrigin();
+  const basePath = apiBasePath();
+  const url = new URL(`${basePath}/materials/${materialId}/file`, origin || undefined);
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token) url.searchParams.set('access_token', token);
+  return url.toString();
+}
+
 /**
  * Resolve a material file path to a full URL the browser can load.
  * /uploads/... must hit the backend host in production (not the Vercel SPA).
@@ -40,6 +81,7 @@ async function readBlobErrorMessage(blob) {
   }
 }
 
+/** Fallback when streaming URL cannot be used (e.g. download). */
 export async function createProtectedMaterialObjectUrl(materialId) {
   try {
     const res = await API.get(`/materials/${materialId}/file`, { responseType: 'blob' });

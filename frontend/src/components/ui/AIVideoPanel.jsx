@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, BookOpen, List, Loader2, Copy, Check, Download, Map, Sparkles } from 'lucide-react';
+import { BookOpen, List, Loader2, Download } from 'lucide-react';
 import useApi from '../../hooks/useApi';
 import API from '../../api/axios';
 import { friendlyAiMessage } from '../../utils/aiErrors';
@@ -15,9 +15,8 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   const api = useApi();
   const [activeTab, setActiveTab] = useState('notes');
   const [transcript, setTranscript] = useState(null);
-  const [loading, setLoading] = useState({ transcribe: false, notes: false, syllabus: false, roadmap: false });
+  const [loading, setLoading] = useState({ notes: false, syllabus: false });
   const [userNotice, setUserNotice] = useState('');
-  const [copied, setCopied] = useState(false);
 
   const unwrap = (res) => res?.data ?? res;
 
@@ -29,29 +28,10 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
         setTranscript(data);
         if (data.notes?.title) setActiveTab('notes');
         else if (data.syllabus?.topics?.length) setActiveTab('syllabus');
-        else if (data.roadmap?.steps?.length) setActiveTab('roadmap');
-        else if (data.translatedText) setActiveTab('transcript');
       }
       return data;
     } catch {
       return null;
-    }
-  };
-
-  const handleTranscribe = async () => {
-    setLoading((l) => ({ ...l, transcribe: true }));
-    setUserNotice('');
-    try {
-      const res = await postAi('/ai/transcribe/' + materialId);
-      setTranscript(unwrap(res));
-      setActiveTab('transcript');
-    } catch (err) {
-      setUserNotice(
-        friendlyAiMessage(err.response?.data?.message) ||
-        'Transcript could not be created. Try Generate Notes instead — it reads the lecture directly.'
-      );
-    } finally {
-      setLoading((l) => ({ ...l, transcribe: false }));
     }
   };
 
@@ -60,6 +40,11 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     setUserNotice('');
     setActiveTab('notes');
     try {
+      const existing = transcript || await fetchExisting();
+      if (existing?.notes?.title) {
+        setTranscript(existing);
+        return;
+      }
       const res = await postAi('/ai/generate-notes/' + materialId);
       setTranscript(unwrap(res));
     } catch (err) {
@@ -77,6 +62,11 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
     setUserNotice('');
     setActiveTab('syllabus');
     try {
+      const existing = transcript || await fetchExisting();
+      if (existing?.syllabus?.topics?.length) {
+        setTranscript(existing);
+        return;
+      }
       const res = await postAi('/ai/extract-syllabus/' + materialId);
       setTranscript(unwrap(res));
     } catch (err) {
@@ -86,31 +76,6 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
       );
     } finally {
       setLoading((l) => ({ ...l, syllabus: false }));
-    }
-  };
-
-  const handleGenerateRoadmap = async () => {
-    setLoading((l) => ({ ...l, roadmap: true }));
-    setUserNotice('');
-    setActiveTab('roadmap');
-    try {
-      const res = await postAi('/ai/generate-roadmap/' + materialId);
-      setTranscript(unwrap(res));
-    } catch (err) {
-      setUserNotice(
-        friendlyAiMessage(err.response?.data?.message) ||
-        'Roadmap could not be built from this lecture.'
-      );
-    } finally {
-      setLoading((l) => ({ ...l, roadmap: false }));
-    }
-  };
-
-  const copyTranscript = () => {
-    if (transcript?.translatedText) {
-      navigator.clipboard.writeText(transcript.translatedText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -158,22 +123,19 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
   useEffect(() => {
     setTranscript(null);
     setUserNotice('');
-    fetchExisting();
   }, [materialId]);
 
-  const isAnyLoading = loading.transcribe || loading.notes || loading.syllabus || loading.roadmap;
+  const isAnyLoading = loading.notes || loading.syllabus;
 
   const tabs = [
     { id: 'notes', label: 'Notes', icon: BookOpen },
-    { id: 'transcript', label: 'Transcript', icon: FileText },
     { id: 'syllabus', label: 'Syllabus', icon: List },
-    { id: 'roadmap', label: 'Roadmap', icon: Map },
   ];
 
   return (
     <div className="card mt-4">
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        AI reads your lecture video directly. Tap <strong>Generate Notes</strong> for study notes — no separate transcribe step required.
+        AI reads your lecture video directly. Tap <strong>Generate Notes</strong> for study notes.
       </p>
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -193,22 +155,6 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
           {loading.syllabus ? <Loader2 size={16} className="animate-spin" /> : <List size={16} />}
           {loading.syllabus ? 'Extracting...' : '📚 Extract Syllabus'}
         </button>
-        <button
-          onClick={handleGenerateRoadmap}
-          disabled={isAnyLoading}
-          className="btn-secondary text-sm flex items-center gap-1.5 px-4 py-2 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/20 bg-white dark:bg-gray-800"
-        >
-          {loading.roadmap ? <Loader2 size={16} className="animate-spin" /> : <Map size={16} />}
-          {loading.roadmap ? 'Building...' : '🗺️ Build Roadmap'}
-        </button>
-        <button
-          onClick={handleTranscribe}
-          disabled={isAnyLoading}
-          className="btn-secondary text-sm flex items-center gap-1.5 px-4 py-2"
-        >
-          {loading.transcribe ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {loading.transcribe ? 'Transcribing...' : '📝 Full transcript (optional)'}
-        </button>
       </div>
 
       {userNotice && (
@@ -225,8 +171,6 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
           <p className="text-sm text-gray-500 text-center pt-2">
             {loading.notes && '📋 AI is watching your lecture and writing study notes...'}
             {loading.syllabus && '📚 AI is analyzing topics in your lecture...'}
-            {loading.roadmap && '🗺️ AI is building your learning roadmap...'}
-            {loading.transcribe && '🎙️ AI is creating a full transcript...'}
             <br />
             <span className="text-xs text-gray-400">Long videos may take 2–5 minutes. Keep this page open.</span>
           </p>
@@ -286,28 +230,6 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
             </div>
           )}
 
-          {activeTab === 'transcript' && (
-            <div>
-              {transcript.translatedText ? (
-                <>
-                  <div className="flex justify-end mb-2">
-                    <button onClick={copyTranscript} className="text-xs flex items-center gap-1 text-gray-500 hover:text-primary-600">
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                    {transcript.translatedText}
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  Lecture overview will appear here after notes are generated, or use Full transcript (optional).
-                </p>
-              )}
-            </div>
-          )}
-
           {activeTab === 'syllabus' && (
             <div>
               {transcript.syllabus?.topics?.length > 0 ? (
@@ -327,26 +249,6 @@ export default function AIVideoPanel({ materialId, materialTitle }) {
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">Tap Extract Syllabus to analyze this lecture.</p>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'roadmap' && (
-            <div>
-              {transcript.roadmap?.steps?.length > 0 ? (
-                <div className="space-y-3">
-                  <h3 className="font-bold">{transcript.roadmap.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{transcript.roadmap.description}</p>
-                  {transcript.roadmap.steps.map((step) => (
-                    <div key={step.step} className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
-                      <p className="text-xs font-bold text-primary-600">Step {step.step}</p>
-                      <p className="font-semibold">{step.title}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{step.description}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">Tap Build Roadmap to create a learning path from this lecture.</p>
               )}
             </div>
           )}

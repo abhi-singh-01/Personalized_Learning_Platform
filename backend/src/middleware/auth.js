@@ -5,11 +5,15 @@ const { JWT_SECRET } = require('../config/env');
 
 const auth = async (req, res, next) => {
   try {
+    let token = null;
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer '))
-      throw new AppError('Authentication required', 401);
+    if (header && header.startsWith('Bearer ')) {
+      token = header.split(' ')[1];
+    } else if (typeof req.query.access_token === 'string' && req.query.access_token) {
+      token = req.query.access_token;
+    }
 
-    const token = header.split(' ')[1];
+    if (!token) throw new AppError('Authentication required', 401);
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id).select('-password');
     if (!user) throw new AppError('User not found', 401);

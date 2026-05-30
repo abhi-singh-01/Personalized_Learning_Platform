@@ -139,11 +139,11 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-[#0A0A0A]">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-[#0A0A0A]">
 
-      <div className="flex-1 flex flex-col lg:flex-row">
-        {/* Left panel — animated gradient */}
-        <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden items-center justify-center p-16">
+      <div className="flex-1 flex flex-col lg:flex-row lg:min-h-screen lg:min-h-[100dvh]">
+        {/* Left panel — desktop only (lg+) */}
+        <div className="hidden lg:flex lg:w-[45%] xl:w-[42%] relative overflow-hidden overflow-y-auto items-start px-8 pt-10 pb-10 xl:px-14 xl:pt-12 xl:pb-14 shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-violet-600 to-blue-600 animate-gradient" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.12),transparent_50%)]" />
 
@@ -153,21 +153,21 @@ export default function Login() {
           <div className="absolute top-1/3 right-1/4 w-6 h-6 bg-white/10 rounded-full animate-float" />
           <div className="absolute bottom-1/4 left-1/3 w-4 h-4 bg-white/15 rounded-full animate-float-slow" />
 
-          <div className="relative z-10 text-white max-w-md animate-fade-in-up">
-            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-sm inline-block mb-8">
-              <GraduationCap size={48} />
+          <div className="relative z-10 text-white w-full max-w-md animate-fade-in-up pt-2">
+            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-sm inline-block mb-4 xl:mb-5">
+              <GraduationCap className="w-10 h-10 xl:w-12 xl:h-12" />
             </div>
-            <h1 className="text-4xl font-extrabold mb-4 leading-tight">
+            <h1 className="text-3xl xl:text-4xl font-extrabold mb-3 xl:mb-4 leading-tight">
               Welcome Back to
               <br />
               <span className="text-white/90">PLP</span>
             </h1>
-            <p className="text-lg text-white/70 leading-relaxed">
+            <p className="text-base xl:text-lg text-white/70 leading-relaxed">
               Your AI-powered learning companion. Adaptive quizzes, smart study
               plans, and real-time analytics to supercharge your education.
             </p>
 
-            <div className="mt-10 flex items-center gap-6">
+            <div className="mt-6 xl:mt-8 flex flex-wrap items-center gap-4 xl:gap-6">
               <div className="text-center">
                 <div className="text-2xl font-extrabold">10K+</div>
                 <div className="text-xs text-white/50 uppercase tracking-wider">Learners</div>
@@ -186,20 +186,20 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Right panel — sign-in form */}
-        <div className="flex-1 flex items-center justify-center p-8 lg:p-16">
+        {/* Right panel — sign-in form (full width on mobile/tablet) */}
+        <div className="flex-1 flex items-start justify-center w-full min-h-screen min-h-[100dvh] lg:min-h-0 px-4 pt-5 pb-8 sm:px-6 sm:pt-6 md:px-8 lg:px-10 xl:px-12 lg:pt-10 lg:pb-12">
           <div className="w-full max-w-md animate-fade-in-up">
             {/* Back to Homepage */}
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6 transition-colors group"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-4 transition-colors group"
             >
               <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
               Back to Homepage
             </Link>
 
             {/* Mobile-only branding */}
-            <div className="flex items-center gap-2.5 mb-10 lg:hidden justify-center">
+            <div className="flex items-center gap-2.5 mb-6 lg:hidden justify-center">
               <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600">
                 <GraduationCap size={24} className="text-white" />
               </div>
@@ -208,14 +208,14 @@ export default function Login() {
               </span>
             </div>
 
-            <div className="mb-8">
+            <div className="mb-6">
               {isEducatorFlow && (
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/40 mb-4">
                   <GraduationCap size={14} className="text-purple-600 dark:text-purple-400" />
                   <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Educator Sign In</span>
                 </div>
               )}
-              <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
                 {isEducatorFlow ? 'Sign in as Educator' : 'Sign in as Learner'}
               </h2>
               <p className="text-gray-500 dark:text-gray-400">
@@ -443,7 +443,7 @@ export default function Login() {
               </Link>
             </p>
 
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3 px-1">
               {isEducatorFlow ? 'Using a learner account?' : 'Are you an educator?'}{' '}
               <Link
                 to={isEducatorFlow ? '/login?role=learner' : '/login?role=educator'}
@@ -453,7 +453,7 @@ export default function Login() {
               </Link>
             </p>
 
-            <div className="flex items-center justify-center gap-3 text-xs text-gray-400 mt-4">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-gray-400 mt-4 pb-2">
               <Link to="/" className="hover:text-purple-500 hover:underline transition-colors">
                 ← Homepage
               </Link>
