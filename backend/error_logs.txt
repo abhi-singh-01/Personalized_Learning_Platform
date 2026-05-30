@@ -295,3 +295,12 @@ Details: {}
 [2026-05-30T04:40:56.276Z] 404 - Payment record not found
 Details: {}
 
+[2026-05-30T05:01:41.027Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-30T05:01:41.810Z] 403 - Please enroll in this course to access its content
+Details: {}
+
+[2026-05-30T05:01:41.941Z] 404 - Payment record not found
+Details: {}
+
