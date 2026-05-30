@@ -10,6 +10,9 @@
  *   ADMIN_EMAIL    — admin email (default: admin@plp.com)
  *   ADMIN_PASSWORD — admin password (default: Admin@123456)
  *   ADMIN_NAME     — admin display name (default: Platform Admin)
+ *
+ * On server startup, ensureDefaultAdmin() also creates the default admin when none exists.
+ * Set ADMIN_RESET_PASSWORD=true to sync ADMIN_PASSWORD for an existing admin account.
  */
 
 require('dotenv').config();
