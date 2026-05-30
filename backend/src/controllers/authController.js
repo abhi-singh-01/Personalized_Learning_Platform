@@ -42,11 +42,22 @@ const normalizePortalRole = (role) => {
   return null;
 };
 
-const assertPortalRoleAccess = (user, requestedRole) => {
+const INVALID_CREDENTIALS = 'Invalid email or password';
+const INVALID_GOOGLE_SIGNIN = 'Google sign-in failed. Please try again.';
+
+const assertPortalRoleAccess = (user, requestedRole, options = {}) => {
+  const { maskCrossPortalMismatch = false, googleAuth = false } = options;
   const userRole = normalizePortalRole(user.role);
+
+  const crossPortalMismatch = () => {
+    if (maskCrossPortalMismatch && user.role !== 'admin' && requestedRole !== 'admin') {
+      throw new AppError(googleAuth ? INVALID_GOOGLE_SIGNIN : INVALID_CREDENTIALS, 401);
+    }
+  };
 
   if (requestedRole === 'admin') {
     if (user.role === 'admin') return;
+    crossPortalMismatch();
     if (userRole === 'educator') {
       throw new AppError('This is an educator account. Please use the educator sign in page.', 403);
     }
@@ -61,20 +72,30 @@ const assertPortalRoleAccess = (user, requestedRole) => {
   }
 
   const portalRole = normalizePortalRole(requestedRole);
-  if (!portalRole) return;
+  if (!portalRole) {
+    throw new AppError('Sign-in portal role is required', 400);
+  }
 
   if (userRole === portalRole) return;
 
   if (userRole === 'learner' && portalRole === 'educator') {
+    crossPortalMismatch();
     throw new AppError('This is a learner account. Please sign in as a learner or switch to educator from your account.', 403);
   }
 
   if (userRole === 'educator' && portalRole === 'learner') {
+    crossPortalMismatch();
     throw new AppError('This is an educator account. Please use the educator sign in page.', 403);
   }
 
+  crossPortalMismatch();
   throw new AppError('This account cannot access the selected portal', 403);
 };
+
+const portalAuthOptions = (role, { googleAuth = false } = {}) => ({
+  maskCrossPortalMismatch: role !== 'admin',
+  googleAuth,
+});
 
 // Register a new device session, enforcing the device limit
 const registerSession = async (user, tokenId, req) => {
@@ -127,11 +148,12 @@ exports.registerValidation = [
 exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role, phone, country, state, city } = req.body;
-    const exists = await User.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const exists = await User.findOne({ email: normalizedEmail });
     if (exists) throw new AppError('Email already registered', 400);
 
     const user = await User.create({
-      name, email, password, role, authProvider: 'local',
+      name, email: normalizedEmail, password, role, authProvider: 'local',
       phone: phone || '', country: country || '', state: state || '', city: city || '',
       profileComplete: !!(phone && country && state && city),
       emailVerified: false,
@@ -153,7 +175,7 @@ exports.register = async (req, res, next) => {
 exports.loginValidation = [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
-  body('role').optional().isIn(['learner', 'educator', 'admin']).withMessage('Role must be learner, educator, or admin'),
+  body('role').isIn(['learner', 'educator', 'admin']).withMessage('Role must be learner, educator, or admin'),
 ];
 
 exports.login = async (req, res, next) => {
@@ -179,9 +201,9 @@ exports.login = async (req, res, next) => {
     if (user.role === 'teacher') user.role = 'educator';
     if (user.role === 'student') user.role = 'learner';
 
-    assertPortalRoleAccess(user, role);
+    assertPortalRoleAccess(user, role, portalAuthOptions(role));
 
-    if (user.authProvider === 'local' && user.emailVerified === false && (user.emailOtpHash || user.emailOtpExpiresAt)) {
+    if (user.authProvider === 'local' && user.emailVerified === false) {
       if (!isOtpCoolingDown(user)) {
         issueEmailOtp(user, { awaitDelivery: false });
       }
@@ -214,6 +236,9 @@ exports.googleLogin = async (req, res, next) => {
   try {
     const { idToken, role } = req.body;
     if (!idToken) throw new AppError('Google ID token is required', 400);
+    if (!role || !['learner', 'educator', 'admin'].includes(role)) {
+      throw new AppError('Sign-in portal role is required', 400);
+    }
 
     // Verify the token with Google
     const ticket = await googleClient.verifyIdToken({
@@ -224,8 +249,10 @@ exports.googleLogin = async (req, res, next) => {
     const { sub: googleId, email, name, picture, email_verified: emailVerified } = payload;
     if (!emailVerified) throw new AppError('Google account email is not verified', 403);
 
+    const normalizedGoogleEmail = String(email).trim().toLowerCase();
+
     // Check if user already exists
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: normalizedGoogleEmail });
 
     if (user) {
       // Check if blocked
@@ -237,7 +264,7 @@ exports.googleLogin = async (req, res, next) => {
       if (user.role === 'teacher') user.role = 'educator';
       if (user.role === 'student') user.role = 'learner';
 
-      assertPortalRoleAccess(user, role);
+      assertPortalRoleAccess(user, role, portalAuthOptions(role, { googleAuth: true }));
 
       // Existing user — update googleId if not set
       const needsSave = !user.googleId || user.isModified('role');
@@ -256,7 +283,7 @@ exports.googleLogin = async (req, res, next) => {
 
       user = await User.create({
         name,
-        email,
+        email: normalizedGoogleEmail,
         googleId,
         avatar: picture || '',
         role: selectedRole,
@@ -302,13 +329,16 @@ exports.verifyEmailOtp = async (req, res, next) => {
   try {
     const { email, otp, role } = req.body;
     if (!email || !otp) throw new AppError('Email and OTP are required', 400);
+    if (!role || !['learner', 'educator', 'admin'].includes(role)) {
+      throw new AppError('Sign-in portal role is required', 400);
+    }
 
     const user = await User.findOne({ email: String(email).trim().toLowerCase() });
     if (!user) throw new AppError('Invalid verification request', 400);
     if (user.isBlocked) {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }
-    assertPortalRoleAccess(user, role);
+    assertPortalRoleAccess(user, role, portalAuthOptions(role));
     if (user.emailVerified) throw new AppError('Email already verified', 400);
     if (!user.emailOtpHash || !user.emailOtpExpiresAt) throw new AppError('Verification code has expired. Request a new code.', 400);
     if (new Date(user.emailOtpExpiresAt).getTime() < Date.now()) {
@@ -429,10 +459,13 @@ exports.resetPassword = async (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id)
-      .select('-password -activeSessions -emailOtpHash -emailOtpExpiresAt -emailOtpLastSentAt -emailOtpAttempts -passwordResetOtpHash -passwordResetOtpExpiresAt -passwordResetOtpLastSentAt -passwordResetOtpAttempts')
+      .select('+password -activeSessions -emailOtpHash -emailOtpExpiresAt -emailOtpLastSentAt -emailOtpAttempts -passwordResetOtpHash -passwordResetOtpExpiresAt -passwordResetOtpLastSentAt -passwordResetOtpAttempts')
       .populate('enrolledCourses', 'title category thumbnail')
       .populate('assignedLearners', 'name email aiLevel engagementScore averageScore streak');
-    sendResponse(res, 200, 'User profile', user);
+    const profile = user.toObject();
+    profile.hasPassword = !!profile.password;
+    delete profile.password;
+    sendResponse(res, 200, 'User profile', profile);
   } catch (err) { next(err); }
 };
 

@@ -1,45 +1,15 @@
 /**
- * Map auth API portal errors to the correct sign-in page.
+ * Map auth API portal errors to the correct sign-in page (admin only).
+ * Learner/educator cross-portal mismatches return generic invalid credentials — no redirect.
  * @returns {{ path: string, toast: string } | null}
  */
-export function getAuthPortalRedirect(message, currentPortal = 'learner') {
+export function getAuthPortalRedirect(message) {
   const lower = String(message || '').toLowerCase();
 
   if (lower.includes('admin sign in') || lower.includes('administrator only')) {
     return {
       path: '/admin/login',
       toast: 'This account is an administrator. Opening admin sign in…',
-    };
-  }
-
-  if (
-    currentPortal !== 'educator'
-    && (lower.includes('educator sign in') || lower.includes('educator account'))
-  ) {
-    return {
-      path: '/login?role=educator',
-      toast: 'This email belongs to an educator account. Opening educator sign in…',
-    };
-  }
-
-  if (currentPortal === 'educator' && lower.includes('learner account')) {
-    return {
-      path: '/login',
-      toast: 'This email belongs to a learner account. Opening learner sign in…',
-    };
-  }
-
-  if (currentPortal === 'admin' && lower.includes('learner account')) {
-    return {
-      path: '/login',
-      toast: 'This is a learner account. Opening learner sign in…',
-    };
-  }
-
-  if (currentPortal === 'admin' && lower.includes('educator')) {
-    return {
-      path: '/login?role=educator',
-      toast: 'This is an educator account. Opening educator sign in…',
     };
   }
 
@@ -53,14 +23,17 @@ function normalizePortalRole(role) {
   return null;
 }
 
-function portalAccessError(message) {
+function portalAccessError(message, status = 403) {
   const err = new Error(message);
-  err.response = { status: 403, data: { message } };
+  err.response = { status, data: { message } };
   return err;
 }
 
+const INVALID_CREDENTIALS = 'Invalid email or password';
+const INVALID_GOOGLE_SIGNIN = 'Google sign-in failed. Please try again.';
+
 /** Block wrong-portal sign-in before storing session (defense in depth). */
-export function assertClientPortalAccess(user, requestedRole) {
+export function assertClientPortalAccess(user, requestedRole, { googleAuth = false } = {}) {
   if (!user) return;
 
   if (user.role === 'admin') {
@@ -75,20 +48,23 @@ export function assertClientPortalAccess(user, requestedRole) {
   }
 
   const portalRole = normalizePortalRole(requestedRole);
-  if (!portalRole) return;
+  if (!portalRole) {
+    throw portalAccessError('Sign-in portal role is required', 400);
+  }
 
   const userRole = normalizePortalRole(user.role);
   if (userRole === portalRole) return;
 
+  const masked = googleAuth ? INVALID_GOOGLE_SIGNIN : INVALID_CREDENTIALS;
+  const maskedStatus = 401;
+
   if (userRole === 'learner' && portalRole === 'educator') {
-    throw portalAccessError(
-      'This is a learner account. Please sign in as a learner or switch to educator from your account.'
-    );
+    throw portalAccessError(masked, maskedStatus);
   }
 
   if (userRole === 'educator' && portalRole === 'learner') {
-    throw portalAccessError('This is an educator account. Please use the educator sign in page.');
+    throw portalAccessError(masked, maskedStatus);
   }
 
-  throw portalAccessError('This account cannot access the selected portal');
+  throw portalAccessError(masked, maskedStatus);
 }

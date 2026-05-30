@@ -17,7 +17,7 @@ export default function AdminLogin() {
   usePageTitle('Admin Sign In');
 
   const redirectToMatchingPortal = useCallback((message) => {
-    const redirect = getAuthPortalRedirect(message, 'admin');
+    const redirect = getAuthPortalRedirect(message);
     if (!redirect) return false;
     toast.info(redirect.toast);
     nav(redirect.path, { replace: true });

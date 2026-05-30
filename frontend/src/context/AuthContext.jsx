@@ -190,7 +190,7 @@ export function AuthProvider({ children }) {
   const googleLogin = async (idToken, role) => {
     const res = await API.post('/auth/google', { idToken, role });
     const { token: t, user: u } = res.data.data;
-    assertClientPortalAccess(u, role);
+    assertClientPortalAccess(u, role, { googleAuth: true });
     persistLogin(t, u);
     return u;
   };

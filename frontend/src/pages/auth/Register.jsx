@@ -92,12 +92,12 @@ export default function Register() {
   }, [isEducatorFlow]);
 
   const redirectToMatchingPortal = useCallback((message) => {
-    const redirect = getAuthPortalRedirect(message, isEducatorFlow ? 'educator' : 'learner');
+    const redirect = getAuthPortalRedirect(message);
     if (!redirect) return false;
     toast.info(redirect.toast);
     nav(redirect.path, { replace: true });
     return true;
-  }, [isEducatorFlow, nav, toast]);
+  }, [nav, toast]);
 
   const statesForCountry = form.country ? Object.keys(locationData[form.country] || {}) : [];
   const citiesForState = form.country && form.state ? (locationData[form.country]?.[form.state] || []) : [];

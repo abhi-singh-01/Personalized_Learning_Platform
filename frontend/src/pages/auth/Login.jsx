@@ -5,7 +5,7 @@ import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, RotateCcw } f
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
-import { roleHomeSegment, isLearnerRole, isEducatorRole } from '../../utils/rolePaths';
+import { roleHomeSegment, isEducatorRole } from '../../utils/rolePaths';
 import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 function GoogleIcon({ size = 20 }) {
@@ -44,12 +44,12 @@ export default function Login() {
   }, [isEducatorFlow]);
 
   const redirectToMatchingPortal = useCallback((message) => {
-    const redirect = getAuthPortalRedirect(message, isEducatorFlow ? 'educator' : 'learner');
+    const redirect = getAuthPortalRedirect(message);
     if (!redirect) return false;
     toast.info(redirect.toast);
     nav(redirect.path, { replace: true });
     return true;
-  }, [isEducatorFlow, nav, toast]);
+  }, [nav, toast]);
 
   const redirectAfterLogin = useCallback((user) => {
     if (user.role === 'admin') {
@@ -57,14 +57,10 @@ export default function Login() {
       nav('/admin/login', { replace: true });
       return;
     }
-    if (isEducatorFlow && isLearnerRole(user.role)) {
-      setError('This learner account cannot access the educator portal. Switch to educator from your account first.');
-    } else {
-      const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
-      toast.success(`Welcome back, ${greeting}!`);
-      nav(`/${roleHomeSegment(user.role)}/dashboard`, { replace: true });
-    }
-  }, [isEducatorFlow, nav, toast]);
+    const greeting = isEducatorRole(user.role) ? 'Educator' : (user.name || 'Learner');
+    toast.success(`Welcome back, ${greeting}!`);
+    nav(`/${roleHomeSegment(user.role)}/dashboard`, { replace: true });
+  }, [nav, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -253,22 +249,6 @@ export default function Login() {
                     className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
                   >
                     Open admin sign in →
-                  </Link>
-                )}
-                {!isEducatorFlow && error.toLowerCase().includes('educator sign in') && (
-                  <Link
-                    to="/login?role=educator"
-                    className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
-                  >
-                    Open educator sign in →
-                  </Link>
-                )}
-                {isEducatorFlow && error.toLowerCase().includes('learner account') && (
-                  <Link
-                    to="/login"
-                    className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
-                  >
-                    Open learner sign in →
                   </Link>
                 )}
               </div>

@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
 import { useToast } from '../context/ToastContext';
-import { isEducatorRole } from '../utils/rolePaths';
+import { isEducatorRole, isLearnerRole } from '../utils/rolePaths';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
+import { getAuthPortalRedirect } from '../utils/authPortalRedirect';
 import {
   GraduationCap, ArrowRight, Users, Brain, Globe, TrendingUp,
   DollarSign, BarChart3, Video, BookOpen, Star, CheckCircle2,
@@ -216,7 +217,7 @@ const faqs = [
 
 export default function BecomeEducator() {
   usePageTitle('Become an Educator — PLP');
-  const { user, switchRole } = useAuth();
+  const { user, switchRole, googleLogin } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
   const [openFAQ, setOpenFAQ] = useState(0);
@@ -228,7 +229,7 @@ export default function BecomeEducator() {
   const [switchError, setSwitchError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const isGoogleUser = user?.authProvider === 'google' && !user?.password;
+  const isGoogleUser = user?.authProvider === 'google' && !user?.hasPassword;
 
   const ctaAction = () => {
     if (!user) nav('/register?role=educator');
@@ -271,6 +272,30 @@ export default function BecomeEducator() {
     : 'Start teaching';
 
   const ctaLoginAction = () => nav('/login?role=educator');
+
+  const handleEducatorGoogleSignIn = async (credential) => {
+    setSwitchError('');
+    try {
+      const signedIn = await googleLogin(credential, 'educator');
+      if (isEducatorRole(signedIn.role)) {
+        toast.success('Welcome back, Educator!');
+        nav('/educator/dashboard', { replace: true });
+        return;
+      }
+      if (isLearnerRole(signedIn.role)) {
+        setShowConfirmModal(true);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Google sign-in failed';
+      const redirect = getAuthPortalRedirect(msg);
+      if (redirect) {
+        toast.info(redirect.toast);
+        nav(redirect.path, { replace: true });
+        return;
+      }
+      toast.error(msg);
+    }
+  };
 
   /* ─── Inline Styles for Animations ─── */
   const animCSS = `
@@ -437,6 +462,20 @@ export default function BecomeEducator() {
               <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
                 {!user ? (
                   <>
+                    <GoogleSignInButton
+                      mode="signin"
+                      onCredential={handleEducatorGoogleSignIn}
+                      onGsiError={(msg) => toast.error(msg)}
+                      className="inline-flex items-center justify-center gap-3 py-3 sm:py-3.5 px-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 font-semibold text-gray-700 dark:text-gray-200 transition-all w-full sm:w-auto sm:min-w-[240px]"
+                    >
+                      {(busy) =>
+                        busy ? (
+                          <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                        ) : (
+                          <>Continue with Google</>
+                        )
+                      }
+                    </GoogleSignInButton>
                     <button
                       onClick={ctaLoginAction}
                       className="inline-flex items-center justify-center gap-2.5 text-sm sm:text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl shadow-2xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-0.5"
@@ -465,7 +504,7 @@ export default function BecomeEducator() {
               </div>
               {!user && (
                 <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 max-w-lg">
-                  If you already registered as an educator, use <strong className="text-gray-700 dark:text-gray-200">Sign in as educator</strong> — not the learner sign-in page.
+                  Use <strong className="text-gray-700 dark:text-gray-200">Continue with Google</strong> on this page for one-step educator sign-in. Email/password sign-in is on the educator login page.
                 </p>
               )}
             </div>
