@@ -6,7 +6,6 @@ import { useSocket } from '../../context/SocketContext';
 import Loading from '../../components/ui/Loading';
 import LiveMeetShell from '../../components/live/LiveMeetShell';
 import LiveClassLobby from '../../components/live/LiveClassLobby';
-import { buildJitsiSrc } from '../../utils/liveMeet';
 import usePageTitle from '../../hooks/usePageTitle';
 import { AlertCircle } from 'lucide-react';
 
@@ -137,18 +136,14 @@ export default function LiveClassRoom() {
     );
   }
 
-  const jitsiSrc = buildJitsiSrc({
-    domain: classInfo.jitsiDomain,
-    roomId: classInfo.roomId,
-    displayName,
-  });
-
   return (
     <LiveMeetShell
       role="learner"
       title={classInfo.roomName || classInfo.topic}
       subtitle={classInfo.courseName}
-      jitsiSrc={jitsiSrc}
+      jitsiDomain={classInfo.jitsiDomain}
+      roomId={classInfo.roomId}
+      displayName={displayName}
       startedAt={classInfo.startedAt}
       participantCount={participantCount}
       messages={messages}

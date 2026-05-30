@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   MessageSquare, Users, Hand,
   PhoneOff, Copy, Check, Sparkles, ChevronLeft, ChevronRight,
-  Brain, Radio, X,
+  Brain, Radio, X, Monitor,
 } from 'lucide-react';
+import JitsiMeetEmbed from './JitsiMeetEmbed';
+import { isScreenShareSupported } from '../../utils/liveMeet';
 
 function formatDuration(ms) {
   const totalSec = Math.floor(ms / 1000);
@@ -48,7 +50,9 @@ export default function LiveMeetShell({
   role = 'learner',
   title,
   subtitle,
-  jitsiSrc,
+  jitsiDomain = 'meet.jit.si',
+  roomId,
+  displayName = 'Participant',
   startedAt,
   participantCount = 0,
   messages = [],
@@ -69,7 +73,11 @@ export default function LiveMeetShell({
   const [newMessage, setNewMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const [screenShareHint, setScreenShareHint] = useState('');
+  const jitsiApiRef = useRef(null);
   const chatEndRef = useRef(null);
+  const screenShareSupported = isScreenShareSupported();
 
   useEffect(() => {
     if (!startedAt) return undefined;
@@ -100,6 +108,28 @@ export default function LiveMeetShell({
     if (!newMessage.trim() || !onSendMessage) return;
     onSendMessage(newMessage.trim());
     setNewMessage('');
+  };
+
+  const handleJitsiApiReady = useCallback((api) => {
+    jitsiApiRef.current = api;
+    api.addListener('screenSharingStatusChanged', ({ on }) => setScreenSharing(!!on));
+  }, []);
+
+  const toggleScreenShare = () => {
+    if (!screenShareSupported) {
+      setScreenShareHint('Use Chrome or Edge on desktop to share your screen or code.');
+      return;
+    }
+    if (!jitsiApiRef.current) {
+      setScreenShareHint('Video is still loading. Try again in a moment.');
+      return;
+    }
+    setScreenShareHint('');
+    try {
+      jitsiApiRef.current.executeCommand('toggleShareScreen');
+    } catch {
+      setScreenShareHint('Could not start screen share. Use the share button inside the video toolbar.');
+    }
   };
 
   if (ended) {
@@ -165,12 +195,19 @@ export default function LiveMeetShell({
       <div className="flex flex-1 min-h-0 relative">
         <div className={`flex-1 min-w-0 flex flex-col ${panelOpen ? 'lg:mr-0' : ''}`}>
           <div className="flex-1 min-h-0 bg-black relative">
-            <iframe
-              title="Live class video"
-              src={jitsiSrc}
-              className="absolute inset-0 w-full h-full border-0"
-              allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
-            />
+            {roomId ? (
+              <JitsiMeetEmbed
+                domain={jitsiDomain}
+                roomId={roomId}
+                displayName={displayName}
+                isHost={role === 'host'}
+                onApiReady={handleJitsiApiReady}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
+                Waiting for room…
+              </div>
+            )}
             {/* Host raised-hands overlay */}
             {role === 'host' && raisedHands.length > 0 && (
               <div className="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-xs z-10">
@@ -290,6 +327,17 @@ export default function LiveMeetShell({
             </ControlButton>
           )}
 
+          {role === 'host' && (
+            <ControlButton
+              label={screenSharing ? 'Stop sharing' : 'Share screen'}
+              active={screenSharing}
+              onClick={toggleScreenShare}
+              disabled={!screenShareSupported}
+            >
+              <Monitor size={22} />
+            </ControlButton>
+          )}
+
           {role === 'learner' && onToggleHand && (
             <ControlButton label={handRaised ? 'Lower hand' : 'Raise hand'} active={handRaised} onClick={onToggleHand}>
               <Hand size={22} />
@@ -329,8 +377,13 @@ export default function LiveMeetShell({
           )}
         </div>
         <p className="text-center text-[10px] text-gray-500 mt-2 hidden sm:block">
-          Mic & camera controls are inside the video area · PLP chat & raise hand work here
+          {role === 'host'
+            ? 'Share screen to show slides or live code · Mic & camera are in the video toolbar'
+            : 'Mic & camera controls are inside the video area · PLP chat & raise hand work here'}
         </p>
+        {screenShareHint && (
+          <p className="text-center text-[10px] text-amber-400/90 mt-1 px-4">{screenShareHint}</p>
+        )}
       </footer>
     </div>
   );

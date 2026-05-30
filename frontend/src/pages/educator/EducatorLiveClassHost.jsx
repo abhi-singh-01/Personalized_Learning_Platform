@@ -6,7 +6,7 @@ import { useSocket } from '../../context/SocketContext';
 import Loading from '../../components/ui/Loading';
 import LiveMeetShell from '../../components/live/LiveMeetShell';
 import LiveClassLobby from '../../components/live/LiveClassLobby';
-import { buildJitsiSrc, learnerLiveClassUrl } from '../../utils/liveMeet';
+import { learnerLiveClassUrl } from '../../utils/liveMeet';
 import usePageTitle from '../../hooks/usePageTitle';
 import { AlertCircle } from 'lucide-react';
 
@@ -175,18 +175,14 @@ export default function EducatorLiveClassHost() {
     );
   }
 
-  const jitsiSrc = buildJitsiSrc({
-    domain: classInfo.jitsiDomain,
-    roomId: classInfo.roomId,
-    displayName: `${displayName} (Host)`,
-  });
-
   return (
     <LiveMeetShell
       role="host"
       title={classInfo.roomName || classInfo.topic}
       subtitle={courseTitle}
-      jitsiSrc={jitsiSrc}
+      jitsiDomain={classInfo.jitsiDomain}
+      roomId={classInfo.roomId}
+      displayName={`${displayName} (Host)`}
       startedAt={classInfo.startedAt}
       participantCount={participantCount}
       messages={messages}
@@ -202,7 +198,7 @@ export default function EducatorLiveClassHost() {
         <>
           <span className="font-medium text-violet-200">PLP Host</span>
           <span className="text-gray-400">·</span>
-          <span>Hands queue · Invite learners · End for all</span>
+          <span>Share screen · Hands queue · Invite learners · End for all</span>
         </>
       }
     />
