@@ -4,7 +4,6 @@ import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 export default function PdfViewer({ src, title, materialId, onOpenInNewTab }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [opening, setOpening] = useState(false);
   const loadTimerRef = useRef(null);
 
   const clearLoadTimer = () => {
@@ -38,15 +37,29 @@ export default function PdfViewer({ src, title, materialId, onOpenInNewTab }) {
     setFailed(false);
   };
 
-  const handleOpenExternal = async () => {
-    if (!materialId || !onOpenInNewTab) return;
-    setOpening(true);
-    try {
-      await onOpenInNewTab(materialId);
-    } finally {
-      setOpening(false);
-    }
-  };
+  const openHref = src || (materialId && onOpenInNewTab ? null : '');
+
+  const openLink = openHref ? (
+    <a
+      href={openHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn-primary inline-flex items-center gap-2"
+    >
+      <ExternalLink size={16} />
+      Open PDF
+    </a>
+  ) : (
+    <button
+      type="button"
+      disabled={!materialId || !onOpenInNewTab}
+      onClick={() => materialId && onOpenInNewTab?.(materialId)}
+      className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
+    >
+      <ExternalLink size={16} />
+      Open PDF
+    </button>
+  );
 
   if (!src) {
     return (
@@ -73,15 +86,7 @@ export default function PdfViewer({ src, title, materialId, onOpenInNewTab }) {
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Could not preview this PDF in the browser. Open it in a new tab instead.
           </p>
-          <button
-            type="button"
-            disabled={opening || !materialId || !onOpenInNewTab}
-            onClick={handleOpenExternal}
-            className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
-          >
-            <ExternalLink size={16} />
-            {opening ? 'Opening…' : 'Open PDF'}
-          </button>
+          {openLink}
         </div>
       ) : (
         <iframe

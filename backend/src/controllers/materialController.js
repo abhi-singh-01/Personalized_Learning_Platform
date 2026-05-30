@@ -9,7 +9,7 @@ const { sendResponse } = require('../utils/response');
 const { extractYouTubeId } = require('../utils/helpers');
 const { updateLearnerStreak } = require('../services/analyticsService');
 const storageService = require('../services/storageService');
-const { isOriginAllowed } = require('../config/corsOrigins');
+const { isOriginAllowed, buildFrameAncestorsDirective } = require('../config/corsOrigins');
 const {
   assertCanManageCourse,
   assertCanViewCourseContent,
@@ -26,10 +26,7 @@ function setEmbeddableFileHeaders(req, res) {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader(
-    'Content-Security-Policy',
-    "frame-ancestors 'self' " + (origin && isOriginAllowed(origin) ? origin : '')
-  );
+  res.setHeader('Content-Security-Policy', buildFrameAncestorsDirective(req));
   res.removeHeader('X-Frame-Options');
 }
 

@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 const Material = require('./models/Material');
 const { NODE_ENV } = require('./config/env');
-const { isOriginAllowed } = require('./config/corsOrigins');
+const { isOriginAllowed, buildFrameAncestorsDirective } = require('./config/corsOrigins');
 const { isEmailConfigured } = require('./services/emailOtpService');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
@@ -148,7 +148,7 @@ app.use('/uploads', blockDirectMaterialFileAccess, (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   // Allow learner course page (frontend) to embed PDFs in an iframe
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' " + (origin && isOriginAllowed(origin) ? origin : ''));
+  res.setHeader('Content-Security-Policy', buildFrameAncestorsDirective(req));
   res.removeHeader('X-Frame-Options');
   next();
 }, express.static(path.join(__dirname, '..', 'uploads')));

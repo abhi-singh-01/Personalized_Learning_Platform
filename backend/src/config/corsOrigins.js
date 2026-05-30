@@ -29,4 +29,34 @@ function isOriginAllowed(origin) {
   return false;
 }
 
-module.exports = { listAllowedOrigins, isOriginAllowed };
+/**
+ * CSP frame-ancestors for PDF/video iframes. Iframe navigations often omit Origin,
+ * so include configured frontends plus Referer origin when allowed.
+ */
+function buildFrameAncestorsDirective(req) {
+  const ancestors = new Set(["'self'"]);
+  for (const allowed of listAllowedOrigins()) {
+    ancestors.add(allowed);
+  }
+
+  const origin = req?.headers?.origin;
+  if (origin && isOriginAllowed(origin)) {
+    ancestors.add(origin);
+  }
+
+  const referer = req?.headers?.referer;
+  if (referer) {
+    try {
+      const refererOrigin = new URL(referer).origin;
+      if (isOriginAllowed(refererOrigin)) {
+        ancestors.add(refererOrigin);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return `frame-ancestors ${Array.from(ancestors).join(' ')}`;
+}
+
+module.exports = { listAllowedOrigins, isOriginAllowed, buildFrameAncestorsDirective };

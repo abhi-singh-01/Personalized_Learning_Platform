@@ -29,7 +29,7 @@ function apiBasePath() {
 }
 
 /**
- * Stream URL for video/PDF — browser loads bytes on demand (Range requests), no full blob download.
+ * Direct authenticated URL for PDF/video — opens in new tab or iframe without blob download.
  */
 export function getProtectedMaterialStreamUrl(materialId) {
   if (!materialId) return '';
@@ -81,7 +81,7 @@ async function readBlobErrorMessage(blob) {
   }
 }
 
-/** Fallback when streaming URL cannot be used (e.g. download). */
+/** Fallback when streaming URL cannot be used (e.g. forced download). */
 export async function createProtectedMaterialObjectUrl(materialId) {
   try {
     const res = await API.get(`/materials/${materialId}/file`, { responseType: 'blob' });
@@ -104,16 +104,21 @@ export async function createProtectedMaterialObjectUrl(materialId) {
   }
 }
 
-/** Open protected file in a new browser tab (uses auth header, not a raw API URL). */
-export async function openProtectedMaterialInNewTab(materialId) {
-  const blobUrl = await createProtectedMaterialObjectUrl(materialId);
-  const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-  if (!popup) {
-    URL.revokeObjectURL(blobUrl);
-    throw new Error('Pop-up blocked. Allow pop-ups for this site and try again.');
+/** Open protected file in a new tab using the direct API stream URL (not a blob). */
+export function openProtectedMaterialInNewTab(materialId) {
+  const url = getProtectedMaterialStreamUrl(materialId);
+  if (!url) {
+    throw new Error('Material URL unavailable. Sign in again and retry.');
   }
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60 * 1000);
-  return blobUrl;
+
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  return url;
 }
 
 export async function createProtectedCourseThumbnailObjectUrl(courseId) {

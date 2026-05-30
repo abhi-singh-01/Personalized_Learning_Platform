@@ -6,7 +6,7 @@ import { ArrowLeft, Play, FileText, Presentation, Trash2, Edit3, Video, Upload, 
 import API from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
-import { createProtectedMaterialObjectUrl, resolveMaterialUrl } from '../../utils/materialUrl';
+import { getProtectedMaterialStreamUrl, resolveMaterialUrl } from '../../utils/materialUrl';
 
 const JoditEditor = lazy(() => import('jodit-react'));
 
@@ -22,7 +22,6 @@ export default function UploadMaterial() {
   const { courseId } = useParams();
   const api = useApi();
   const editor = useRef(null);
-  const objectUrlsRef = useRef([]);
   const [materials, setMaterials] = useState([]);
   const [form, setForm] = useState({ title: '', description: '', type: 'youtube', url: '', content: '' });
   const [file, setFile] = useState(null);
@@ -46,13 +45,6 @@ export default function UploadMaterial() {
       loadMaterials();
     }
   }, [courseId]);
-
-  useEffect(() => {
-    return () => {
-      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      objectUrlsRef.current = [];
-    };
-  }, []);
 
   const loadMaterials = () => {
     api.get('/materials/course/' + courseId).then((res) => setMaterials(res.data || []));
@@ -180,14 +172,19 @@ export default function UploadMaterial() {
 
   const icons = { youtube: Play, pdf: FileText, ppt: Presentation, video: Video, article: BookOpen };
 
-  const openUploadedFile = async (m) => {
+  const openUploadedFile = (m) => {
     if (!m?._id && !m?.fileUrl) return;
     try {
       const href = m?._id
-        ? await createProtectedMaterialObjectUrl(m._id)
+        ? getProtectedMaterialStreamUrl(m._id)
         : resolveMaterialUrl(m.fileUrl);
-      objectUrlsRef.current.push(href);
-      window.open(href, '_blank', 'noopener,noreferrer');
+      const anchor = document.createElement('a');
+      anchor.href = href;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
     } catch (e) {
       console.error(e);
       setMessage(e.message || e.response?.data?.message || 'Could not open this file');
