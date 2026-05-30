@@ -27,3 +27,20 @@ export function roleMatchesAllowed(userRole, allowedRoles) {
     return userRole === allowed;
   });
 }
+
+/** Learner sign-in URL (default portal). */
+export function learnerLoginPath(query = '') {
+  return query ? `/login?${query.replace(/^\?/, '')}` : '/login';
+}
+
+/** Educator sign-in URL — dedicated path so navbar / CTAs never drop the portal role. */
+export function educatorLoginPath(query = '') {
+  return query ? `/educator/login?${query.replace(/^\?/, '')}` : '/educator/login';
+}
+
+/** True when the current route is the educator login portal. */
+export function isEducatorLoginRoute(pathname, searchParams) {
+  if (pathname === '/educator/login') return true;
+  if (pathname === '/login' && searchParams?.get?.('role') === 'educator') return true;
+  return false;
+}

@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
-import { roleHomeSegment, isEducatorRole } from '../../utils/rolePaths';
+import { roleHomeSegment, isEducatorRole, isEducatorLoginRoute, educatorLoginPath, learnerLoginPath } from '../../utils/rolePaths';
 import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 function GoogleIcon({ size = 20 }) {
@@ -26,9 +26,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login, googleLogin } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const sessionEvicted = searchParams.get('reason') === 'session_expired';
-  const isEducatorFlow = searchParams.get('role') === 'educator';
+  const isEducatorFlow = isEducatorLoginRoute(location.pathname, searchParams);
   const portalRole = isEducatorFlow ? 'educator' : 'learner';
   usePageTitle(isEducatorFlow ? 'Educator Sign In' : 'Sign In');
 
@@ -335,7 +336,7 @@ export default function Login() {
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3 px-1">
               {isEducatorFlow ? 'Using a learner account?' : 'Are you an educator?'}{' '}
               <Link
-                to={isEducatorFlow ? '/login?role=learner' : '/login?role=educator'}
+                to={isEducatorFlow ? learnerLoginPath() : educatorLoginPath()}
                 className="font-semibold text-purple-600 dark:text-purple-400 hover:underline"
               >
                 {isEducatorFlow ? 'Sign in as learner' : 'Sign in as educator'}

@@ -1,13 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { roleHomeSegment, roleMatchesAllowed } from '../../utils/rolePaths';
+import { roleHomeSegment, roleMatchesAllowed, educatorLoginPath, learnerLoginPath } from '../../utils/rolePaths';
 
 function loginPathForRoles(allowedRoles, pathname = '') {
   if (allowedRoles?.includes('admin')) return '/admin/login';
-  if (allowedRoles?.includes('educator')) return '/login?role=educator';
+  if (allowedRoles?.includes('educator')) return educatorLoginPath();
   if (pathname.startsWith('/admin')) return '/admin/login';
-  if (pathname.startsWith('/educator')) return '/login?role=educator';
-  return '/login?role=learner';
+  if (pathname.startsWith('/educator')) return educatorLoginPath();
+  return learnerLoginPath();
 }
 
 /**

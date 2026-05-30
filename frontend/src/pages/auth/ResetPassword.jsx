@@ -3,12 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { educatorLoginPath, learnerLoginPath } from '../../utils/rolePaths';
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
   const isEducatorFlow = params.get('role') === 'educator';
-  const loginPath = isEducatorFlow ? '/login?role=educator' : '/login';
+  const loginPath = isEducatorFlow ? educatorLoginPath() : learnerLoginPath();
   usePageTitle('Reset Password');
 
   const { resetPassword, forgotPassword } = useAuth();

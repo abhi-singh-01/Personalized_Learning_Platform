@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { roleHomeSegment, isLearnerRole } from '../../utils/rolePaths';
+import { roleHomeSegment, isLearnerRole, educatorLoginPath, learnerLoginPath } from '../../utils/rolePaths';
 import { useTheme } from '../../context/ThemeContext';
 import {
   GraduationCap, Sun, Moon, LogIn, Search, Menu, X,
@@ -104,6 +104,7 @@ export default function PublicNavbar() {
 
   const isActive = (p) => location.pathname === p;
   const closeMobile = () => setMobileOpen(false);
+  const signInPath = location.pathname === '/become-educator' ? educatorLoginPath() : learnerLoginPath();
 
   const navLink = (to, label) => (
     <Link to={to} className={`text-sm font-medium transition-colors ${
@@ -183,7 +184,7 @@ export default function PublicNavbar() {
             </Link>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Link to="/login" className={`text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-5 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all`}>
+              <Link to={signInPath} className={`text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-5 py-2 rounded-full shadow-md shadow-purple-500/25 hover:shadow-lg transition-all`}>
                 Sign in
               </Link>
             </div>
@@ -234,7 +235,7 @@ export default function PublicNavbar() {
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" onClick={closeMobile}
+                  <Link to={signInPath} onClick={closeMobile}
                     className="flex-1 text-center text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 py-2.5 rounded-full shadow-md">
                     Sign in
                   </Link>

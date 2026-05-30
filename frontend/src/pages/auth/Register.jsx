@@ -5,7 +5,7 @@ import { GraduationCap, ArrowRight, Phone, MapPin } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
-import { roleHomeSegment } from '../../utils/rolePaths';
+import { educatorLoginPath, learnerLoginPath } from '../../utils/rolePaths';
 import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 const locationData = {
@@ -179,7 +179,7 @@ export default function Register() {
               </div>
               {error.toLowerCase().includes('sign in') && (
                 <Link
-                  to={isEducatorFlow ? '/login?role=educator' : '/login'}
+                  to={isEducatorFlow ? educatorLoginPath() : learnerLoginPath()}
                   className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
                 >
                   Go to sign in →
@@ -291,7 +291,7 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
           Already have an account?{' '}
-          <Link to={isEducatorFlow ? '/login?role=educator' : '/login'} className="font-semibold text-purple-600 dark:text-purple-400 hover:underline">Sign in</Link>
+          <Link to={isEducatorFlow ? educatorLoginPath() : learnerLoginPath()} className="font-semibold text-purple-600 dark:text-purple-400 hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

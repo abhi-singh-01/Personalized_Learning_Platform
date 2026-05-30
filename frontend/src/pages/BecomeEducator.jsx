@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
 import { useToast } from '../context/ToastContext';
-import { isEducatorRole, isLearnerRole } from '../utils/rolePaths';
+import { isEducatorRole, isLearnerRole, educatorLoginPath } from '../utils/rolePaths';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { getAuthPortalRedirect } from '../utils/authPortalRedirect';
 import {
@@ -271,7 +271,7 @@ export default function BecomeEducator() {
     ? 'Go to Dashboard'
     : 'Start teaching';
 
-  const ctaLoginAction = () => nav('/login?role=educator');
+  const ctaLoginAction = () => nav(educatorLoginPath());
 
   const handleEducatorGoogleSignIn = async (credential) => {
     setSwitchError('');

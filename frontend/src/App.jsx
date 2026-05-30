@@ -4,7 +4,7 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/auth/ErrorBoundary';
 import ApiConfigWarning from './components/ui/ApiConfigWarning';
-import { roleHomeSegment, isLearnerRole } from './utils/rolePaths';
+import { roleHomeSegment, isLearnerRole, isEducatorLoginRoute } from './utils/rolePaths';
 
 // ── Only the shell loads eagerly — everything else is lazy ──
 const AppLayout = lazy(() => import('./components/layout/AppLayout'));
@@ -93,14 +93,19 @@ export default function App() {
   // Logged-in users hitting /login — send each role to the correct home (never educator login → admin via wrong portal)
   const LoginRedirect = () => {
     const params = new URLSearchParams(window.location.search);
+    const educatorLogin = isEducatorLoginRoute(window.location.pathname, params);
     if (user?.role === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
     }
-    if (params.get('role') === 'educator' && isLearnerRole(user?.role)) {
+    if (educatorLogin && isLearnerRole(user?.role)) {
       return <Navigate to="/become-educator" replace />;
     }
     return <Navigate to={`/${roleHomeSegment(user.role)}/dashboard`} replace />;
   };
+
+  const loginRouteElement = (
+    !loading && user ? <LoginRedirect /> : <Login />
+  );
 
   return (
     <ErrorBoundary>
@@ -109,16 +114,8 @@ export default function App() {
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<Home />} />
-        <Route
-          path="/login"
-          element={
-            !loading && user ? (
-              <LoginRedirect />
-            ) : (
-              <Login />
-            )
-          }
-        />
+        <Route path="/login" element={loginRouteElement} />
+        <Route path="/educator/login" element={loginRouteElement} />
         <Route
           path="/register"
           element={
