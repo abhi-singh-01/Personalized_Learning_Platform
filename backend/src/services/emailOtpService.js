@@ -257,6 +257,7 @@ module.exports = {
   hashOtp,
   isOtpCoolingDown,
   isPasswordResetOtpCoolingDown,
+  isEmailConfigured,
   issueEmailOtp,
   issuePasswordResetOtp,
   verifySmtpOnStartup,

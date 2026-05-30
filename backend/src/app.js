@@ -6,6 +6,7 @@ const path = require('path');
 const Material = require('./models/Material');
 const { NODE_ENV } = require('./config/env');
 const { isOriginAllowed } = require('./config/corsOrigins');
+const { isEmailConfigured } = require('./services/emailOtpService');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const maintenance = require('./middleware/maintenance');
@@ -101,6 +102,10 @@ app.get('/health', (_req, res) => {
     status: 'ok',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
+    auth: {
+      registration: 'instant',
+      passwordResetEmail: isEmailConfigured(),
+    },
   });
 });
 

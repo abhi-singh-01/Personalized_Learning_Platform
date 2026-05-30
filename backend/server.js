@@ -7,8 +7,10 @@ const { isOriginAllowed } = require('./src/config/corsOrigins');
 const initializeSocket = require('./src/services/socketService');
 const startPayoutCron = require('./src/services/payoutCron');
 const startFailedPaymentRetentionCron = require('./src/services/failedPaymentRetentionCron');
+const { verifySmtpOnStartup } = require('./src/services/emailOtpService');
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  await verifySmtpOnStartup();
   // Create HTTP server from Express app
   const server = http.createServer(app);
   const port = Number(process.env.PORT || PORT || 5000);

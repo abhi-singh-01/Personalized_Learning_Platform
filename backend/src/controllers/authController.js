@@ -10,6 +10,7 @@ const { JWT_SECRET, JWT_EXPIRES_IN, GOOGLE_CLIENT_ID } = require('../config/env'
 const {
   hashOtp,
   isPasswordResetOtpCoolingDown,
+  isEmailConfigured,
   issuePasswordResetOtp,
 } = require('../services/emailOtpService');
 
@@ -366,8 +367,21 @@ exports.forgotPassword = async (req, res, next) => {
     if (isPasswordResetOtpCoolingDown(user)) {
       throw new AppError('Please wait a minute before requesting another code', 429);
     }
+    if (process.env.NODE_ENV === 'production' && !isEmailConfigured()) {
+      throw new AppError(
+        'Password reset email is not configured on the server. Use Google sign-in or contact support.',
+        503
+      );
+    }
 
-    const emailResult = await issuePasswordResetOtp(user, { awaitDelivery: false });
+    const emailResult = await issuePasswordResetOtp(user, { awaitDelivery: true });
+    if (emailResult?.sent === false) {
+      throw new AppError(
+        emailResult.error || 'Could not send reset code. Try again later or use Google sign-in.',
+        503
+      );
+    }
+
     const message = emailResult?.queued
       ? 'Password reset code is being sent to your email.'
       : 'Password reset code sent to your email';
