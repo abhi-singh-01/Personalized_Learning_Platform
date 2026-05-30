@@ -458,13 +458,21 @@ exports.resetPassword = async (req, res, next) => {
 
 exports.getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id)
-      .select('+password -activeSessions -emailOtpHash -emailOtpExpiresAt -emailOtpLastSentAt -emailOtpAttempts -passwordResetOtpHash -passwordResetOtpExpiresAt -passwordResetOtpLastSentAt -passwordResetOtpAttempts')
-      .populate('enrolledCourses', 'title category thumbnail')
-      .populate('assignedLearners', 'name email aiLevel engagementScore averageScore streak');
+    const userId = req.user._id;
+    const sensitiveFields = '-password -activeSessions -emailOtpHash -emailOtpExpiresAt -emailOtpLastSentAt -emailOtpAttempts -passwordResetOtpHash -passwordResetOtpExpiresAt -passwordResetOtpLastSentAt -passwordResetOtpAttempts';
+
+    const [user, pwdRow] = await Promise.all([
+      User.findById(userId)
+        .select(sensitiveFields)
+        .populate('enrolledCourses', 'title category thumbnail')
+        .populate('assignedLearners', 'name email aiLevel engagementScore averageScore streak'),
+      User.findById(userId).select('password').lean(),
+    ]);
+
+    if (!user) throw new AppError('User not found', 404);
+
     const profile = user.toObject();
-    profile.hasPassword = !!profile.password;
-    delete profile.password;
+    profile.hasPassword = !!pwdRow?.password;
     sendResponse(res, 200, 'User profile', profile);
   } catch (err) { next(err); }
 };
