@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import PublicNavbar from '../components/layout/PublicNavbar';
 import usePageTitle from '../hooks/usePageTitle';
 import { useToast } from '../context/ToastContext';
-import { isEducatorRole, isLearnerRole, educatorLoginPath } from '../utils/rolePaths';
+import { isEducatorRole, isLearnerRole, isAdminRole, educatorLoginPath, adminLoginPath, adminDashboardPath } from '../utils/rolePaths';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { getAuthPortalRedirect } from '../utils/authPortalRedirect';
 import {
@@ -232,6 +232,10 @@ export default function BecomeEducator() {
   const isGoogleUser = user?.authProvider === 'google' && !user?.hasPassword;
 
   const ctaAction = () => {
+    if (user?.role === 'admin') {
+      nav(adminDashboardPath());
+      return;
+    }
     if (!user) nav('/register?role=educator');
     else if (isEducatorRole(user.role)) nav('/educator/dashboard');
     else {
@@ -265,7 +269,9 @@ export default function BecomeEducator() {
     }
   };
 
-  const ctaLabel = !user
+  const ctaLabel = user?.role === 'admin'
+    ? 'Go to Admin Dashboard'
+    : !user
     ? 'Get started'
     : isEducatorRole(user.role)
     ? 'Go to Dashboard'
@@ -277,6 +283,11 @@ export default function BecomeEducator() {
     setSwitchError('');
     try {
       const signedIn = await googleLogin(credential, 'educator');
+      if (isAdminRole(signedIn.role)) {
+        toast.success('Welcome back, Administrator!');
+        nav(adminDashboardPath(), { replace: true });
+        return;
+      }
       if (isEducatorRole(signedIn.role)) {
         toast.success('Welcome back, Educator!');
         nav('/educator/dashboard', { replace: true });
@@ -505,7 +516,18 @@ export default function BecomeEducator() {
               {!user && (
                 <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 max-w-lg">
                   Use <strong className="text-gray-700 dark:text-gray-200">Continue with Google</strong> on this page for one-step educator sign-in. Email/password sign-in is on the educator login page.
+                  {' '}Platform administrators are not educators — use{' '}
+                  <Link to={adminLoginPath()} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Admin Sign In
+                  </Link>
+                  .
                 </p>
+              )}
+              {user?.role === 'admin' && (
+                <div className="mt-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-800 dark:text-indigo-200">
+                  You are signed in as a <strong>platform administrator</strong>, not an educator account.
+                  Use the admin console to manage the platform.
+                </div>
               )}
             </div>
 
@@ -893,6 +915,13 @@ export default function BecomeEducator() {
                 Sign in as educator
               </button>
             )}
+            <Link
+              to={user?.role === 'admin' ? adminDashboardPath() : adminLoginPath()}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 hover:text-white border border-white/20 hover:border-white/50 px-6 py-3.5 rounded-xl transition-all duration-300"
+            >
+              <Shield size={16} />
+              {user?.role === 'admin' ? 'Admin Dashboard' : 'Platform admin sign in'}
+            </Link>
           </div>
         </div>
       </section>
@@ -911,6 +940,9 @@ export default function BecomeEducator() {
             <Link to="/features" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">Features</Link>
             <Link to="/tracks" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">Tracks</Link>
             <Link to="/insights" className="hover:text-gray-900 dark:hover:text-gray-300 transition-colors">Insights</Link>
+            <Link to={user?.role === 'admin' ? adminDashboardPath() : adminLoginPath()} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium">
+              {user?.role === 'admin' ? 'Admin Dashboard' : 'Admin Sign In'}
+            </Link>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-600">&copy; 2026 PLP. All rights reserved.</p>
         </div>

@@ -38,6 +38,19 @@ export function educatorLoginPath(query = '') {
   return query ? `/educator/login?${query.replace(/^\?/, '')}` : '/educator/login';
 }
 
+/** Admin sign-in URL — separate portal from learner/educator. */
+export function adminLoginPath() {
+  return '/admin/login';
+}
+
+export function adminDashboardPath() {
+  return '/admin/dashboard';
+}
+
+export function isAdminRole(role) {
+  return role === 'admin';
+}
+
 /** True when the current route is the educator login portal. */
 export function isEducatorLoginRoute(pathname, searchParams) {
   if (pathname === '/educator/login') return true;

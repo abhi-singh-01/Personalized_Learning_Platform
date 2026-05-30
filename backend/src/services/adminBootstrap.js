@@ -4,11 +4,20 @@ const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || 'admin@plp.com').trim().to
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123456';
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Platform Admin';
 
+function shouldSyncAdminCredentials() {
+  if (process.env.ADMIN_BOOTSTRAP_SYNC === 'false') return false;
+  if (process.env.ADMIN_RESET_PASSWORD === 'true') return true;
+  // On Render, keep default admin credentials in sync unless explicitly disabled
+  if (process.env.RENDER) return true;
+  return process.env.ADMIN_BOOTSTRAP_SYNC === 'true';
+}
+
 async function ensureDefaultAdmin() {
   try {
-    const existingAdmin = await User.findOne({ role: 'admin' });
+    const syncCredentials = shouldSyncAdminCredentials();
+    let user = await User.findOne({ email: ADMIN_EMAIL }).select('+password');
 
-    if (!existingAdmin) {
+    if (!user) {
       await User.create({
         name: ADMIN_NAME,
         email: ADMIN_EMAIL,
@@ -22,20 +31,41 @@ async function ensureDefaultAdmin() {
       return;
     }
 
-    if (process.env.ADMIN_RESET_PASSWORD === 'true') {
-      const admin = await User.findOne({ email: ADMIN_EMAIL, role: 'admin' }).select('+password');
-      if (admin) {
-        admin.password = ADMIN_PASSWORD;
-        await admin.save();
-        console.log(`[admin-bootstrap] Password synced for ${ADMIN_EMAIL}`);
-      } else {
-        console.warn(
-          `[admin-bootstrap] ADMIN_RESET_PASSWORD is set but no admin found at ${ADMIN_EMAIL}`
-        );
+    let changed = false;
+
+    if (user.role !== 'admin') {
+      const previousRole = user.role;
+      user.role = 'admin';
+      user.emailVerified = true;
+      user.profileComplete = true;
+      changed = true;
+      console.warn(
+        `[admin-bootstrap] Promoted ${ADMIN_EMAIL} from "${previousRole}" to admin`
+      );
+    }
+
+    if (syncCredentials) {
+      const passwordOk = user.password
+        ? await user.comparePassword(ADMIN_PASSWORD)
+        : false;
+      if (!passwordOk) {
+        user.password = ADMIN_PASSWORD;
+        changed = true;
+        console.log(`[admin-bootstrap] Synced password for ${ADMIN_EMAIL}`);
       }
     }
+
+    if (changed) {
+      await user.save();
+    } else {
+      console.log(`[admin-bootstrap] Default admin ready (${ADMIN_EMAIL})`);
+    }
   } catch (err) {
-    console.error('[admin-bootstrap] Failed:', err.message);
+    if (err?.code === 11000) {
+      console.error('[admin-bootstrap] Duplicate email — check MongoDB for conflicting accounts');
+    } else {
+      console.error('[admin-bootstrap] Failed:', err.message);
+    }
   }
 }
 

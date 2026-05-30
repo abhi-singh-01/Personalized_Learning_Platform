@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Shield, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, AlertTriangle, Sun, Moon } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
+import { adminDashboardPath } from '../../utils/rolePaths';
 import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 export default function AdminLogin() {
@@ -33,7 +34,7 @@ export default function AdminLogin() {
     try {
       await login(form.email, form.password, 'admin');
       toast.success('Welcome back, Administrator!');
-      nav('/admin/dashboard', { replace: true });
+      nav(adminDashboardPath(), { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
       if (redirectToMatchingPortal(msg)) return;

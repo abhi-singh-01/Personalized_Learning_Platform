@@ -4,7 +4,7 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/auth/ErrorBoundary';
 import ApiConfigWarning from './components/ui/ApiConfigWarning';
-import { roleHomeSegment, isLearnerRole, isEducatorLoginRoute } from './utils/rolePaths';
+import { roleHomeSegment, isLearnerRole, isEducatorLoginRoute, adminDashboardPath } from './utils/rolePaths';
 
 // ── Only the shell loads eagerly — everything else is lazy ──
 const AppLayout = lazy(() => import('./components/layout/AppLayout'));
@@ -95,7 +95,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const educatorLogin = isEducatorLoginRoute(window.location.pathname, params);
     if (user?.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={adminDashboardPath()} replace />;
     }
     if (educatorLogin && isLearnerRole(user?.role)) {
       return <Navigate to="/become-educator" replace />;
@@ -137,7 +137,7 @@ export default function App() {
           path="/admin/login"
           element={
             !loading && user && user.role === 'admin'
-              ? <Navigate to="/admin/dashboard" replace />
+              ? <Navigate to={adminDashboardPath()} replace />
               : <AdminLogin />
           }
         />

@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const Material = require('./models/Material');
+const User = require('./models/User');
 const { NODE_ENV } = require('./config/env');
 const { isOriginAllowed, buildFrameAncestorsDirective } = require('./config/corsOrigins');
 const { isEmailConfigured } = require('./services/emailOtpService');
@@ -96,7 +97,15 @@ app.get('/', (_req, res) => {
   });
 });
 
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
+  const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@plp.com').trim().toLowerCase();
+  let defaultAdminReady = false;
+  try {
+    defaultAdminReady = Boolean(await User.exists({ email: adminEmail, role: 'admin' }));
+  } catch {
+    /* ignore */
+  }
+
   res.status(200).json({
     success: true,
     status: 'ok',
@@ -105,6 +114,7 @@ app.get('/health', (_req, res) => {
     auth: {
       registration: 'instant',
       passwordResetEmail: isEmailConfigured(),
+      defaultAdminReady,
     },
   });
 });

@@ -5,7 +5,7 @@ import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
-import { roleHomeSegment, isEducatorRole, isEducatorLoginRoute, educatorLoginPath, learnerLoginPath } from '../../utils/rolePaths';
+import { roleHomeSegment, isEducatorRole, isEducatorLoginRoute, educatorLoginPath, learnerLoginPath, adminLoginPath } from '../../utils/rolePaths';
 import { getAuthPortalRedirect } from '../../utils/authPortalRedirect';
 
 function GoogleIcon({ size = 20 }) {
@@ -179,7 +179,7 @@ export default function Login() {
               {isEducatorFlow && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                   Platform administrators must sign in at{' '}
-                  <Link to="/admin/login" className="text-purple-600 dark:text-purple-400 font-semibold hover:underline">
+                  <Link to={adminLoginPath()} className="text-purple-600 dark:text-purple-400 font-semibold hover:underline">
                     Admin Sign In
                   </Link>
                   , not here.
@@ -202,7 +202,7 @@ export default function Login() {
                 </div>
                 {error.toLowerCase().includes('admin sign in') && (
                   <Link
-                    to="/admin/login"
+                    to={adminLoginPath()}
                     className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
                   >
                     Open admin sign in →
@@ -332,6 +332,19 @@ export default function Login() {
                 {isEducatorFlow ? 'Create educator account' : 'Sign up for free'}
               </Link>
             </p>
+
+            {isEducatorFlow && (
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3 px-1">
+                Platform administrator?{' '}
+                <Link
+                  to={adminLoginPath()}
+                  className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Admin Sign In
+                </Link>
+                {' '}(not educator or learner)
+              </p>
+            )}
 
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3 px-1">
               {isEducatorFlow ? 'Using a learner account?' : 'Are you an educator?'}{' '}
