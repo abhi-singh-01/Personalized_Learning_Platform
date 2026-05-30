@@ -194,6 +194,9 @@ export default function CourseVideoPlayer({ title, src, youtubeId }) {
     v.addEventListener('pause', onPause);
 
     return () => {
+      v.pause();
+      v.removeAttribute('src');
+      v.load();
       v.removeEventListener('loadedmetadata', onMeta);
       v.removeEventListener('timeupdate', onTime);
       v.removeEventListener('play', onPlay);

@@ -63,7 +63,7 @@ export default function QuizAttempt() {
 
     const key = quizAttemptDraftKey(id);
 
-    api.get('/quizzes/' + id).then((res) => {
+    api.get('/quizzes/' + id).then(async (res) => {
       const qz = unwrapApiData(res);
       if (!qz) {
         setQuiz(null);
@@ -117,6 +117,23 @@ export default function QuizAttempt() {
       if (draft) clearDraft(key);
 
       if (!status.canStart) {
+        if (status.lastResult && status.attemptsUsed >= status.totalAttemptsAllowed) {
+          setAccessBlock(null);
+          setQuiz({ ...qz, questions: [] });
+          setIsAdaptiveMode(false);
+          setAnswers({});
+          try {
+            const resultRes = await api.get('/progress/quiz/' + id + '/result');
+            setResult(unwrapApiData(resultRes));
+          } catch {
+            setResult({
+              score: status.lastResult.score,
+              correctCount: status.lastResult.correctCount,
+              totalQuestions: status.lastResult.totalQuestions,
+            });
+          }
+          return;
+        }
         setAccessBlock({ title: qz.title, reason: status.reason || 'You cannot take this quiz right now.' });
         setQuiz(null);
         setIsAdaptiveMode(false);
@@ -335,6 +352,24 @@ export default function QuizAttempt() {
           };
         });
       }
+      if (!isAdaptiveMode && result?.explanations?.length) {
+        return result.explanations.map((explanation, i) => {
+          const submitted = result.answers?.[i] || {};
+          const selectedOriginalIndex =
+            typeof submitted.selectedAnswer === 'number' ? submitted.selectedAnswer : undefined;
+          const correctOriginalIndex =
+            typeof explanation.correctAnswer === 'number' ? explanation.correctAnswer : undefined;
+          const options = explanation.options || [];
+          return {
+            question: explanation.question,
+            options,
+            selectedIndex: selectedOriginalIndex,
+            correctIndex: correctOriginalIndex,
+            explanation: explanation.explanation,
+            isCorrect: Boolean(submitted.isCorrect),
+          };
+        });
+      }
       return [];
     })();
 
@@ -345,13 +380,18 @@ export default function QuizAttempt() {
             <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-purple-500 to-indigo-500" />
           )}
           <h1 className="text-2xl font-bold mb-2">
-            {isAdaptiveMode ? 'Adaptive Challenge Complete!' : 'Quiz Complete!'}
+            {isAdaptiveMode ? 'Adaptive Challenge Complete!' : (quiz?.title ? `${quiz.title} — Complete!` : 'Quiz Complete!')}
           </h1>
           <div className="my-6">
             <p className="text-6xl font-bold text-primary-600">{activeResult.score}%</p>
             <p className="text-gray-500 mt-2">
               {activeResult.correctCount} out of {activeResult.totalQuestions} correct
             </p>
+            {activeResult.completedAt && (
+              <p className="text-xs text-gray-400 mt-2">
+                Submitted {new Date(activeResult.completedAt).toLocaleString()}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row justify-center gap-3">
@@ -458,6 +498,11 @@ export default function QuizAttempt() {
           {!isAdaptiveMode && attemptStatus && (
             <p className="text-xs text-gray-500 mt-1">
               Attempts used: {attemptStatus.attemptsUsed} / {attemptStatus.totalAttemptsAllowed}
+              {attemptStatus.lastResult && attemptStatus.canStart && (
+                <span className="ml-2 text-primary-600 font-medium">
+                  · Last score: {attemptStatus.lastResult.score}%
+                </span>
+              )}
             </p>
           )}
         </div>

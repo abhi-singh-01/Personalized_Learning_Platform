@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const role = require('../middleware/role');
 
 router.post('/submit', auth, role('learner'), c.submitQuiz);
+router.get('/quiz/:quizId/result', auth, role('learner'), c.getQuizResult);
 router.get('/my', auth, role('learner'), c.getLearnerProgress);
 router.get('/course/:courseId', auth, role('learner'), c.getCourseProgress);
 

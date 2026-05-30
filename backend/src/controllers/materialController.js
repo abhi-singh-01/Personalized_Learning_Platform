@@ -9,6 +9,7 @@ const { sendResponse } = require('../utils/response');
 const { extractYouTubeId } = require('../utils/helpers');
 const { updateLearnerStreak } = require('../services/analyticsService');
 const storageService = require('../services/storageService');
+const { isOriginAllowed } = require('../config/corsOrigins');
 const {
   assertCanManageCourse,
   assertCanViewCourseContent,
@@ -17,6 +18,20 @@ const {
 } = require('../services/courseAccessService');
 
 const FILE_TYPES = new Set(['pdf', 'ppt', 'video']);
+
+function setEmbeddableFileHeaders(req, res) {
+  const origin = req.headers.origin;
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' " + (origin && isOriginAllowed(origin) ? origin : '')
+  );
+  res.removeHeader('X-Frame-Options');
+}
 
 function guessContentType(fileName) {
   const ext = path.extname(fileName || '').toLowerCase();
@@ -220,6 +235,7 @@ exports.serveFile = async (req, res, next) => {
     if (!material.fileUrl) throw new AppError('No file found for this material', 404);
 
     const rangeHeader = req.headers.range;
+    setEmbeddableFileHeaders(req, res);
 
     if (/^https?:\/\//i.test(material.fileUrl)) {
       res.setHeader('Cache-Control', 'private, max-age=3600');

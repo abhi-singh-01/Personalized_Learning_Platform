@@ -32,7 +32,14 @@ function checkScheduleWindow(quiz, now = new Date()) {
  */
 async function buildLearnerAttemptStatus(quiz, learnerId) {
   const maxAttempts = Math.max(1, quiz.maxAttempts == null ? 1 : quiz.maxAttempts);
-  const { attemptsUsed, override } = await getAttemptCountsAndOverride(learnerId, quiz._id);
+  const [attemptsUsed, override, latestProgress] = await Promise.all([
+    Progress.countDocuments({ learner: learnerId, quiz: quiz._id }),
+    QuizLearnerAccess.findOne({ learner: learnerId, quiz: quiz._id }).lean(),
+    Progress.findOne({ learner: learnerId, quiz: quiz._id })
+      .sort({ completedAt: -1 })
+      .select('score answers completedAt timeTaken')
+      .lean(),
+  ]);
   const extra = override?.extraAttempts || 0;
   const totalAttemptsAllowed = maxAttempts + extra;
   const window = checkScheduleWindow(quiz);
@@ -65,6 +72,15 @@ async function buildLearnerAttemptStatus(quiz, learnerId) {
     availableFrom: quiz.availableFrom || null,
     availableUntil: quiz.availableUntil || null,
     timeLimitMinutes: quiz.timeLimit == null ? 15 : quiz.timeLimit,
+    lastResult: latestProgress
+      ? {
+          score: latestProgress.score,
+          correctCount: (latestProgress.answers || []).filter((a) => a.isCorrect).length,
+          totalQuestions: (latestProgress.answers || []).length,
+          completedAt: latestProgress.completedAt,
+          timeTaken: latestProgress.timeTaken || 0,
+        }
+      : null,
   };
 }
 

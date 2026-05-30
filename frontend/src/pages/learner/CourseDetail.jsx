@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 const AIVideoPanel = lazy(() => import('../../components/ui/AIVideoPanel'));
 import CourseVideoPlayer from '../../components/ui/CourseVideoPlayer';
+import PdfViewer from '../../components/ui/PdfViewer';
 import { unwrapApiData } from '../../utils/apiData';
 import { getProtectedMaterialStreamUrl, resolveMaterialUrl } from '../../utils/materialUrl';
 import { useToast } from '../../context/ToastContext';
@@ -177,12 +178,7 @@ export default function CourseDetail() {
     });
   };
 
-  const openMaterial = (m) => {
-    if (m.type === 'youtube' || m.type === 'video') {
-      playVideo(m);
-      return;
-    }
-
+  const openDocument = (m) => {
     setActiveVideo(null);
     setActiveArticle(null);
     setActiveDocument(null);
@@ -191,6 +187,9 @@ export default function CourseDetail() {
       setActiveTab('documents');
       setActiveArticle(m);
       trackView(m._id);
+      requestAnimationFrame(() => {
+        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
       return;
     }
 
@@ -205,6 +204,16 @@ export default function CourseDetail() {
       requestAnimationFrame(() => {
         playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+    }
+  };
+
+  const openMaterial = (m) => {
+    if (m.type === 'youtube' || m.type === 'video') {
+      playVideo(m);
+      return;
+    }
+    if (m.type === 'article' || m.type === 'pdf' || m.type === 'ppt') {
+      openDocument(m);
       return;
     }
 
@@ -217,16 +226,34 @@ export default function CourseDetail() {
     const Icon = icons[m.type] || FileText;
     const isCompleted = progress.completedMaterials.includes(m._id);
     const isVideo = m.type === 'youtube' || m.type === 'video';
-    const isActive = activeVideo?._id === m._id;
+    const isDocument = m.type === 'pdf' || m.type === 'ppt' || m.type === 'article';
+    const isActive = activeVideo?._id === m._id
+      || activeDocument?._id === m._id
+      || activeArticle?._id === m._id;
+    const viewLabel = isVideo
+      ? 'View Video'
+      : m.type === 'pdf'
+        ? 'View PDF'
+        : m.type === 'ppt'
+          ? 'Open File'
+          : m.type === 'article'
+            ? 'Read'
+            : 'View';
 
     return (
       <div
-        role={isVideo ? 'button' : undefined}
-        tabIndex={isVideo ? 0 : undefined}
-        onClick={isVideo ? () => playVideo(m) : undefined}
-        onKeyDown={isVideo ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playVideo(m); } } : undefined}
+        role={isVideo || isDocument ? 'button' : undefined}
+        tabIndex={isVideo || isDocument ? 0 : undefined}
+        onClick={isVideo ? () => playVideo(m) : isDocument ? () => openDocument(m) : undefined}
+        onKeyDown={(isVideo || isDocument) ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (isVideo) playVideo(m);
+            else openDocument(m);
+          }
+        } : undefined}
         className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
-          isVideo ? 'cursor-pointer' : ''
+          (isVideo || isDocument) ? 'cursor-pointer' : ''
         } ${
           isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-200 dark:ring-primary-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'
         }`}
@@ -253,11 +280,13 @@ export default function CourseDetail() {
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
             isVideo
               ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-primary-600 hover:bg-primary-700 text-white'
+              : m.type === 'pdf'
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-primary-600 hover:bg-primary-700 text-white'
           }`}
         >
-          <Play size={12} fill="currentColor" />
-          {isVideo ? 'View Video' : 'View'}
+          {isVideo ? <Play size={12} fill="currentColor" /> : <FileText size={12} />}
+          {viewLabel}
         </button>
         <button
           onClick={(e) => toggleComplete(m._id, e)}
@@ -408,15 +437,14 @@ export default function CourseDetail() {
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
                 >
                   <ExternalLink size={14} />
-                  Open in new tab
+                  {activeDocument.type === 'pdf' ? 'Open PDF in new tab' : 'Open in new tab'}
                 </a>
               </div>
               {activeDocument.type === 'pdf' ? (
-                <iframe
+                <PdfViewer
                   key={activeDocument._id}
                   src={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                   title={activeDocument.title}
-                  className="w-full h-[70vh] min-h-[420px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
                 />
               ) : (
                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-8 text-center">
@@ -539,6 +567,7 @@ export default function CourseDetail() {
                 <div className="space-y-2">
                   {quizzes.map((q) => {
                     const can = q.attemptStatus?.canStart !== false;
+                    const lastResult = q.attemptStatus?.lastResult;
                     const inner = (
                       <div className="flex items-center justify-between w-full gap-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -550,35 +579,68 @@ export default function CourseDetail() {
                             <p className="text-xs text-gray-400 mt-0.5">
                               {q.questions?.length || 0} questions
                               {q.isAIGenerated && <span className="ml-2 text-purple-400">✦ AI</span>}
+                              {lastResult && (
+                                <span className="ml-2 font-semibold text-primary-600">
+                                  · Score: {lastResult.score}% ({lastResult.correctCount}/{lastResult.totalQuestions})
+                                </span>
+                              )}
                             </p>
                             {!can && q.attemptStatus?.reason && (
                               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{q.attemptStatus.reason}</p>
                             )}
                           </div>
                         </div>
-                        <Badge
-                          variant={
-                            q.difficulty === 'easy'
-                              ? 'success'
-                              : q.difficulty === 'hard'
-                                ? 'danger'
-                                : 'warning'
-                          }
-                          className="shrink-0"
-                        >
-                          {q.difficulty}
-                        </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {lastResult && (
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                              lastResult.score >= 80
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : lastResult.score >= 50
+                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {lastResult.score}%
+                            </span>
+                          )}
+                          <Badge
+                            variant={
+                              q.difficulty === 'easy'
+                                ? 'success'
+                                : q.difficulty === 'hard'
+                                  ? 'danger'
+                                  : 'warning'
+                            }
+                          >
+                            {q.difficulty}
+                          </Badge>
+                        </div>
                       </div>
                     );
-                    return can ? (
-                      <Link
-                        key={q._id}
-                        to={'/learner/quiz/' + q._id}
-                        className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all group"
-                      >
-                        {inner}
-                      </Link>
-                    ) : (
+                    const quizPath = '/learner/quiz/' + q._id;
+                    if (can) {
+                      return (
+                        <Link
+                          key={q._id}
+                          to={quizPath}
+                          className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all group"
+                        >
+                          {inner}
+                        </Link>
+                      );
+                    }
+                    if (lastResult) {
+                      return (
+                        <Link
+                          key={q._id}
+                          to={quizPath}
+                          className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all group border border-primary-100 dark:border-primary-900/40"
+                        >
+                          {inner}
+                          <span className="sr-only">View quiz result</span>
+                        </Link>
+                      );
+                    }
+                    return (
                       <div
                         key={q._id}
                         className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50/80 dark:bg-gray-800/50 opacity-90 cursor-not-allowed"

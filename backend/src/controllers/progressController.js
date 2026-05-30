@@ -98,3 +98,37 @@ exports.getCourseProgress = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.getQuizResult = async (req, res, next) => {
+  try {
+    const quiz = await Quiz.findById(req.params.quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404);
+    await assertCanViewQuiz(req.user, quiz);
+
+    const progress = await Progress.findOne({
+      learner: req.user._id,
+      quiz: quiz._id,
+    })
+      .sort({ completedAt: -1 });
+
+    if (!progress) throw new AppError('No submitted attempt found for this quiz', 404);
+
+    const correctCount = (progress.answers || []).filter((a) => a.isCorrect).length;
+    const result = {
+      score: progress.score,
+      correctCount,
+      totalQuestions: quiz.questions.length,
+      completedAt: progress.completedAt,
+      timeTaken: progress.timeTaken || 0,
+      answers: progress.answers,
+      explanations: quiz.questions.map((q) => ({
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+      })),
+    };
+
+    sendResponse(res, 200, 'Quiz result', result);
+  } catch (err) { next(err); }
+};
+
