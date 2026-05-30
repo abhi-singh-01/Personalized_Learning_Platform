@@ -15,6 +15,21 @@ const {
   enrollLearnerInCourse,
 } = require('../services/courseAccessService');
 
+const DEFAULT_THUMBNAIL_SVG = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">'
+  + '<rect fill="#e5e7eb" width="640" height="360"/>'
+  + '<text x="320" y="180" text-anchor="middle" fill="#9ca3af" font-family="Arial,sans-serif" font-size="18">'
+  + 'Course thumbnail unavailable'
+  + '</text></svg>'
+);
+
+function sendDefaultThumbnail(res) {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  return res.send(DEFAULT_THUMBNAIL_SVG);
+}
+
 const COURSE_FIELDS = [
   'title',
   'description',
@@ -158,15 +173,23 @@ exports.serveThumbnail = async (req, res, next) => {
     const course = await Course.findById(req.params.id);
     if (!course) throw new AppError('Course not found', 404);
     await assertCanViewCourse(req.user, course);
-    if (!course.thumbnail) throw new AppError('Course thumbnail not found', 404);
+    if (!course.thumbnail) {
+      return sendDefaultThumbnail(res);
+    }
 
     if (/^https?:\/\//i.test(course.thumbnail)) {
-      await pipeRemoteThumbnail(course.thumbnail, res);
+      try {
+        await pipeRemoteThumbnail(course.thumbnail, res);
+      } catch {
+        return sendDefaultThumbnail(res);
+      }
       return;
     }
 
     const relativePath = course.thumbnail.replace(/^\/+/, '');
-    if (!relativePath.startsWith('uploads/')) throw new AppError('Invalid thumbnail path', 400);
+    if (!relativePath.startsWith('uploads/')) {
+      return sendDefaultThumbnail(res);
+    }
 
     const fileName = path.basename(relativePath);
     const absolutePath = path.join(__dirname, '..', '..', 'uploads', fileName);
@@ -174,13 +197,13 @@ exports.serveThumbnail = async (req, res, next) => {
     try {
       await fsp.access(absolutePath, fs.constants.R_OK);
     } catch {
-      throw new AppError('Course thumbnail file is missing on server', 404);
+      return sendDefaultThumbnail(res);
     }
 
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'private, max-age=300');
     return res.sendFile(absolutePath, (err) => {
-      if (err && !res.headersSent) next(new AppError('Course thumbnail not found', 404));
+      if (err && !res.headersSent) sendDefaultThumbnail(res);
     });
   } catch (err) { next(err); }
 };

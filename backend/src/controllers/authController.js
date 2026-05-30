@@ -159,10 +159,12 @@ exports.register = async (req, res, next) => {
       emailVerified: false,
     });
 
-    const emailResult = await issueEmailOtp(user, { awaitDelivery: true });
-    const message = emailResult?.sent === false
-      ? 'Account created. We could not send the verification email — use Resend code on the sign-in page.'
-      : 'Verification code sent to your email';
+    const emailResult = await issueEmailOtp(user, { awaitDelivery: false });
+    const message = emailResult?.queued
+      ? 'Account created. Verification code is being sent to your email.'
+      : emailResult?.sent === false
+        ? 'Account created. We could not send the verification email — use Resend code on the sign-in page.'
+        : 'Verification code sent to your email';
 
     sendResponse(res, 201, message, {
       verificationRequired: true,
