@@ -1,9 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 
 export default function PdfViewer({ src, title }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const loadTimerRef = useRef(null);
+
+  const clearLoadTimer = () => {
+    if (loadTimerRef.current) {
+      clearTimeout(loadTimerRef.current);
+      loadTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    setFailed(false);
+    clearLoadTimer();
+
+    if (!src) {
+      setLoading(false);
+      return undefined;
+    }
+
+    loadTimerRef.current = setTimeout(() => {
+      setLoading(false);
+      setFailed(true);
+    }, 15000);
+
+    return clearLoadTimer;
+  }, [src]);
+
+  const handleLoad = () => {
+    clearLoadTimer();
+    setLoading(false);
+    setFailed(false);
+  };
 
   if (!src) {
     return (
@@ -25,7 +57,7 @@ export default function PdfViewer({ src, title }) {
         </div>
       )}
       {failed ? (
-        <div className="p-8 text-center">
+        <div className="p-8 text-center min-h-[280px] flex flex-col items-center justify-center">
           <FileText size={40} className="mx-auto text-blue-400 mb-3" />
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Could not preview this PDF in the browser. Open it in a new tab instead.
@@ -45,11 +77,7 @@ export default function PdfViewer({ src, title }) {
           src={iframeSrc}
           title={title || 'PDF document'}
           className="w-full h-[70vh] min-h-[420px] bg-white dark:bg-gray-950"
-          onLoad={() => setLoading(false)}
-          onError={() => {
-            setLoading(false);
-            setFailed(true);
-          }}
+          onLoad={handleLoad}
         />
       )}
     </div>

@@ -76,7 +76,7 @@ async function buildLearnerAttemptStatus(quiz, learnerId) {
       ? {
           score: latestProgress.score,
           correctCount: (latestProgress.answers || []).filter((a) => a.isCorrect).length,
-          totalQuestions: (latestProgress.answers || []).length,
+          totalQuestions: quiz.questions?.length || (latestProgress.answers || []).length,
           completedAt: latestProgress.completedAt,
           timeTaken: latestProgress.timeTaken || 0,
         }

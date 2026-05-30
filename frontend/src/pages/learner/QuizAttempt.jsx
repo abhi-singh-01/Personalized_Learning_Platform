@@ -20,6 +20,15 @@ function mainDraftMatchesServer(draft, qz) {
   return true;
 }
 
+async function fetchPastResult(api, quizId, fallback) {
+  try {
+    const resultRes = await api.get('/progress/quiz/' + quizId + '/result');
+    return unwrapApiData(resultRes);
+  } catch {
+    return fallback;
+  }
+}
+
 export default function QuizAttempt() {
   usePageTitle('Quiz');
   const { id } = useParams();
@@ -98,6 +107,19 @@ export default function QuizAttempt() {
       if (mainDraftMatchesServer(draft, qz)) {
         if (!status.canStart) {
           clearDraft(key);
+          if (status.lastResult) {
+            setAccessBlock(null);
+            setQuiz({ ...qz, questions: [] });
+            setIsAdaptiveMode(false);
+            setAnswers({});
+            setResult(await fetchPastResult(api, id, {
+              score: status.lastResult.score,
+              correctCount: status.lastResult.correctCount,
+              totalQuestions: status.lastResult.totalQuestions,
+              completedAt: status.lastResult.completedAt,
+            }));
+            return;
+          }
           setAccessBlock({ title: qz.title, reason: status.reason || 'You cannot continue this quiz.' });
           setQuiz(null);
           setIsAdaptiveMode(false);
@@ -117,21 +139,17 @@ export default function QuizAttempt() {
       if (draft) clearDraft(key);
 
       if (!status.canStart) {
-        if (status.lastResult && status.attemptsUsed >= status.totalAttemptsAllowed) {
+        if (status.lastResult) {
           setAccessBlock(null);
           setQuiz({ ...qz, questions: [] });
           setIsAdaptiveMode(false);
           setAnswers({});
-          try {
-            const resultRes = await api.get('/progress/quiz/' + id + '/result');
-            setResult(unwrapApiData(resultRes));
-          } catch {
-            setResult({
-              score: status.lastResult.score,
-              correctCount: status.lastResult.correctCount,
-              totalQuestions: status.lastResult.totalQuestions,
-            });
-          }
+          setResult(await fetchPastResult(api, id, {
+            score: status.lastResult.score,
+            correctCount: status.lastResult.correctCount,
+            totalQuestions: status.lastResult.totalQuestions,
+            completedAt: status.lastResult.completedAt,
+          }));
           return;
         }
         setAccessBlock({ title: qz.title, reason: status.reason || 'You cannot take this quiz right now.' });
@@ -382,6 +400,11 @@ export default function QuizAttempt() {
           <h1 className="text-2xl font-bold mb-2">
             {isAdaptiveMode ? 'Adaptive Challenge Complete!' : (quiz?.title ? `${quiz.title} — Complete!` : 'Quiz Complete!')}
           </h1>
+          {!isAdaptiveMode && attemptStatus && !attemptStatus.canStart && attemptStatus.lastResult && (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+              This quiz is closed. Showing your latest submitted attempt.
+            </p>
+          )}
           <div className="my-6">
             <p className="text-6xl font-bold text-primary-600">{activeResult.score}%</p>
             <p className="text-gray-500 mt-2">

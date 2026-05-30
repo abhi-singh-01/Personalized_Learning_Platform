@@ -42,9 +42,10 @@ exports.submitQuiz = async (req, res, next) => {
       totalQuestions: quiz.questions.length,
       explanations: quiz.questions.map((q) => ({
         question: q.question,
+        options: q.options,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
-      }))
+      })),
     };
 
     // --- ADAPTIVE AI QUIZ LOGIC ---

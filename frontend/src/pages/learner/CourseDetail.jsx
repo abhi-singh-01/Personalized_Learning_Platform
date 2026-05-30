@@ -43,10 +43,15 @@ export default function CourseDetail() {
     api.get('/courses/' + id).then((res) => setCourse(unwrapApiData(res)));
     api.get('/materials/course/' + id).then((res) => setMaterials(unwrapApiData(res) || []));
     api.get('/quizzes/course/' + id).then((res) => setQuizzes(unwrapApiData(res) || []));
-    api.get('/courses/' + id + '/progress').then((res) => setProgress(res.data || { completedMaterials: [] }));
-    api.get('/courses/' + id + '/comments').then((res) => setComments(res.data || []));
-    api.get('/reviews/course/' + id).then((res) => setReviews(res.data?.reviews || []));
+    api.get('/courses/' + id + '/progress').then((res) => setProgress(unwrapApiData(res) || { completedMaterials: [] }));
+    api.get('/courses/' + id + '/comments').then((res) => setComments(unwrapApiData(res) || []));
+    api.get('/reviews/course/' + id).then((res) => setReviews(unwrapApiData(res)?.reviews || []));
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab !== 'quizzes') return;
+    api.get('/quizzes/course/' + id).then((res) => setQuizzes(unwrapApiData(res) || []));
+  }, [activeTab, id]);
 
   useEffect(() => {
     if (activeVideo || activeDocument || activeArticle) {
@@ -67,7 +72,7 @@ export default function CourseDetail() {
     e.stopPropagation();
     try {
       const res = await api.post('/courses/' + id + '/materials/' + materialId + '/complete');
-      setProgress(res.data);
+      setProgress(unwrapApiData(res) || { completedMaterials: [] });
     } catch (err) {
       console.error(err);
     }
@@ -78,7 +83,7 @@ export default function CourseDetail() {
     if (!newComment.trim()) return;
     try {
       const res = await api.post('/courses/' + id + '/comments', { text: newComment });
-      setComments([res.data, ...comments]);
+      setComments([unwrapApiData(res), ...comments]);
       setNewComment('');
     } catch (err) {
       console.error(err);
@@ -93,7 +98,7 @@ export default function CourseDetail() {
       const res = own
         ? await api.put(`/reviews/${own._id}`, payload)
         : await api.post('/reviews', payload);
-      const saved = res.data;
+      const saved = unwrapApiData(res);
       const learnerRef = { _id: user?.id, name: user?.name, avatar: user?.avatar };
       setReviews((prev) => own ? prev.map((r) => r._id === own._id ? { ...r, ...saved, learner: r.learner } : r) : [{ ...saved, learner: learnerRef }, ...prev]);
       toast.success(own ? 'Review updated' : 'Review submitted');
@@ -115,7 +120,7 @@ export default function CourseDetail() {
   const markHelpful = async (reviewId) => {
     try {
       const res = await api.post(`/reviews/${reviewId}/helpful`);
-      setReviews((prev) => prev.map((r) => r._id === reviewId ? { ...r, helpful: res.data?.helpful ?? r.helpful } : r));
+      setReviews((prev) => prev.map((r) => r._id === reviewId ? { ...r, helpful: unwrapApiData(res)?.helpful ?? r.helpful } : r));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not update helpful vote');
     }
@@ -180,10 +185,9 @@ export default function CourseDetail() {
 
   const openDocument = (m) => {
     setActiveVideo(null);
-    setActiveArticle(null);
-    setActiveDocument(null);
 
     if (m.type === 'article') {
+      setActiveDocument(null);
       setActiveTab('documents');
       setActiveArticle(m);
       trackView(m._id);
@@ -198,6 +202,7 @@ export default function CourseDetail() {
         toast.error('This document has no file. Ask your educator to re-upload it.');
         return;
       }
+      setActiveArticle(null);
       setActiveDocument({ ...m, streamUrl: getProtectedMaterialStreamUrl(m._id) });
       setActiveTab('documents');
       trackView(m._id);
@@ -636,7 +641,11 @@ export default function CourseDetail() {
                           className="flex items-center justify-between p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all group border border-primary-100 dark:border-primary-900/40"
                         >
                           {inner}
-                          <span className="sr-only">View quiz result</span>
+                          {!can && (
+                            <span className="text-xs font-semibold text-primary-600 shrink-0 ml-2">
+                              View score
+                            </span>
+                          )}
                         </Link>
                       );
                     }

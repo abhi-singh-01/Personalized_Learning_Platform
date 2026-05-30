@@ -18,32 +18,32 @@ const auth = async (req, res, next) => {
     const user = await User.findById(decoded.id).select('-password');
     if (!user) throw new AppError('User not found', 401);
 
-    // Check if user is blocked
     if (user.isBlocked) {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }
 
-    // Validate that the session (tokenId) is still active
+    const isMaterialStream =
+      req.method === 'GET' && /\/materials\/[^/]+\/file(?:\?|$)/i.test(req.originalUrl || '');
+
     if (decoded.tokenId) {
-      const sessionExists = user.activeSessions.some(s => s.tokenId === decoded.tokenId);
+      const sessionExists = user.activeSessions.some((s) => s.tokenId === decoded.tokenId);
       if (!sessionExists) {
         throw new AppError('Session expired. You may have been logged out from another device.', 401);
       }
 
-      // Update lastActiveAt for this session (throttled — only every 5 minutes)
-      const session = user.activeSessions.find(s => s.tokenId === decoded.tokenId);
-      if (session) {
-        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-        if (!session.lastActiveAt || new Date(session.lastActiveAt) < fiveMinAgo) {
-          session.lastActiveAt = new Date();
-          await user.save();
+      if (!isMaterialStream) {
+        const session = user.activeSessions.find((s) => s.tokenId === decoded.tokenId);
+        if (session) {
+          const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+          if (!session.lastActiveAt || new Date(session.lastActiveAt) < fiveMinAgo) {
+            session.lastActiveAt = new Date();
+            await user.save();
+          }
         }
       }
 
-      // Attach tokenId so logout/revoke endpoints can use it
       req.tokenId = decoded.tokenId;
     }
-
 
     req.user = user;
     next();
