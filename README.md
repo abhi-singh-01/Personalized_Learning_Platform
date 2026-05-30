@@ -169,14 +169,14 @@ GEMINI_API_KEY=your_google_gemini_api_key
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 
-# Optional: email OTP delivery through free SMTP-compatible providers
+# Email OTP (Brevo — recommended for production / Render)
 # APP_NAME=PLP
-# SMTP_HOST=smtp.gmail.com
+# SMTP_HOST=smtp-relay.brevo.com
 # SMTP_PORT=587
 # SMTP_SECURE=false
-# SMTP_USER=your_email@example.com
-# SMTP_PASS=your_app_password
-# SMTP_FROM="PLP <your_email@example.com>"
+# SMTP_USER=your-brevo-login-email@example.com
+# SMTP_PASS=your-brevo-smtp-key
+# SMTP_FROM="PLP <noreply@yourdomain.com>"
 # EMAIL_OTP_TTL_MINUTES=10
 
 # Optional: durable uploads (see “Durable uploads” below)

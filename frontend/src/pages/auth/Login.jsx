@@ -74,6 +74,10 @@ export default function Login() {
       if (redirectToMatchingPortal(msg)) return;
       if (err.response?.status === 403 && msg.toLowerCase().includes('verify')) {
         setVerificationEmail(form.email);
+        setError('');
+        toast.info(msg);
+        setLoading(false);
+        return;
       }
       setError(msg);
       toast.error(msg);

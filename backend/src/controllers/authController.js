@@ -149,8 +149,46 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role, phone, country, state, city } = req.body;
     const normalizedEmail = String(email).trim().toLowerCase();
-    const exists = await User.findOne({ email: normalizedEmail });
-    if (exists) throw new AppError('Email already registered', 400);
+    const exists = await User.findOne({ email: normalizedEmail }).select(
+      '+password name email role profileComplete authProvider emailVerified emailOtpLastSentAt'
+    );
+
+    if (exists) {
+      if (exists.emailVerified) {
+        throw new AppError('An account with this email already exists. Please sign in instead.', 400);
+      }
+      if (exists.authProvider === 'google') {
+        throw new AppError('This email is linked to Google sign-in. Use Continue with Google on the sign-in page.', 400);
+      }
+
+      const passwordMatch = await exists.comparePassword(password);
+      if (!passwordMatch) {
+        throw new AppError(
+          'This email is registered but not verified yet. Sign in with the password you used when registering, then enter the verification code.',
+          400,
+          { pendingVerification: true, email: normalizedEmail }
+        );
+      }
+
+      const emailResult = await issueEmailOtp(exists, { awaitDelivery: false });
+      const message = emailResult?.queued
+        ? 'Your account was created but email is not verified yet. A new verification code is being sent.'
+        : 'Your account was created but email is not verified yet. Sign in to enter your verification code.';
+
+      return sendResponse(res, 200, message, {
+        verificationRequired: true,
+        pendingVerification: true,
+        email: exists.email,
+        user: {
+          id: exists._id,
+          name: exists.name,
+          email: exists.email,
+          role: exists.role,
+          profileComplete: exists.profileComplete,
+          emailVerified: false,
+        },
+      });
+    }
 
     const user = await User.create({
       name, email: normalizedEmail, password, role, authProvider: 'local',
@@ -209,7 +247,11 @@ exports.login = async (req, res, next) => {
       if (!isOtpCoolingDown(user)) {
         issueEmailOtp(user, { awaitDelivery: false });
       }
-      throw new AppError('Please verify your email with the OTP sent to your inbox', 403);
+      throw new AppError(
+        'Please verify your email before signing in. Enter the code below or use Resend code.',
+        403,
+        { verificationRequired: true, email: normalizedEmail }
+      );
     }
 
     const settings = await settingsPromise;

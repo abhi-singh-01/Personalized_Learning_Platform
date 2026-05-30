@@ -164,7 +164,7 @@ async function verifySmtpOnStartup() {
     console.error('[Email OTP] SMTP verify failed:', err.message);
     console.error(
       '[Email OTP] Check Render env: SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_FROM. '
-      + 'For Gmail on cloud hosts, use an App Password or switch to Brevo/SendGrid.'
+      + 'Use Brevo SMTP (smtp-relay.brevo.com) for production email delivery.'
     );
   }
 }

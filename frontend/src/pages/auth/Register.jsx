@@ -116,7 +116,11 @@ export default function Register() {
       const result = await register({ ...form, role: selectedRole });
       if (result?.verificationRequired) {
         setVerificationEmail(result.email || form.email);
-        toast.success('Verification code sent to your email');
+        toast.success(
+          result.pendingVerification
+            ? 'Account found — enter the verification code sent to your email.'
+            : 'Verification code sent to your email'
+        );
         return;
       }
       const user = result;
@@ -124,9 +128,14 @@ export default function Register() {
       nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed';
+      const pending = err.response?.data?.data?.pendingVerification;
       if (redirectToMatchingPortal(msg)) return;
       setError(msg);
-      toast.error(msg);
+      if (pending) {
+        toast.info('Use Sign in with the same password, then verify your email.');
+      } else {
+        toast.error(msg);
+      }
     } finally { setLoading(false); }
   };
 
@@ -217,8 +226,19 @@ export default function Register() {
           </p>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" /> {error}
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                {error}
+              </div>
+              {(error.toLowerCase().includes('sign in') || error.toLowerCase().includes('not verified')) && (
+                <Link
+                  to={isEducatorFlow ? '/login?role=educator' : '/login'}
+                  className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
+                >
+                  Go to sign in →
+                </Link>
+              )}
             </div>
           )}
 
