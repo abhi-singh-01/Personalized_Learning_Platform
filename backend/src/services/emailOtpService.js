@@ -4,7 +4,9 @@ const nodemailer = require('nodemailer');
 
 const OTP_TTL_MINUTES = Number(process.env.EMAIL_OTP_TTL_MINUTES || 10);
 const RESEND_COOLDOWN_MS = 60 * 1000;
-const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS || 12000);
+const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS || 20000);
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+const SMTP_SECURE = process.env.SMTP_SECURE === 'true';
 
 function generateOtp() {
   return String(crypto.randomInt(100000, 1000000));
@@ -44,9 +46,10 @@ function getTransporter() {
 
   return nodemailer.createTransport({
     host,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
     auth: { user, pass },
+    requireTLS: !SMTP_SECURE && SMTP_PORT === 587,
     connectionTimeout: SMTP_SEND_TIMEOUT_MS,
     greetingTimeout: SMTP_SEND_TIMEOUT_MS,
     socketTimeout: SMTP_SEND_TIMEOUT_MS,
@@ -56,8 +59,17 @@ function getTransporter() {
   });
 }
 
+let cachedTransporter = null;
+
+function getCachedTransporter() {
+  if (cachedTransporter === null) {
+    cachedTransporter = getTransporter() || false;
+  }
+  return cachedTransporter || null;
+}
+
 async function sendOtpEmail({ to, name, otp, purpose = 'email_verification' }) {
-  const transporter = getTransporter();
+  const transporter = getCachedTransporter();
   const appName = process.env.APP_NAME || 'PLP';
   const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@example.com';
   const isPasswordReset = purpose === 'password_reset';
@@ -111,7 +123,7 @@ async function deliverOtpEmail(payload, awaitDelivery) {
   }
 }
 
-async function issueEmailOtp(user, { awaitDelivery = true } = {}) {
+async function issueEmailOtp(user, { awaitDelivery = false } = {}) {
   const otp = generateOtp();
   user.emailOtpHash = hashOtp(otp);
   user.emailOtpExpiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
@@ -121,7 +133,7 @@ async function issueEmailOtp(user, { awaitDelivery = true } = {}) {
   return deliverOtpEmail({ to: user.email, name: user.name, otp }, awaitDelivery);
 }
 
-async function issuePasswordResetOtp(user, { awaitDelivery = true } = {}) {
+async function issuePasswordResetOtp(user, { awaitDelivery = false } = {}) {
   const otp = generateOtp();
   user.passwordResetOtpHash = hashOtp(otp);
   user.passwordResetOtpExpiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
@@ -134,6 +146,29 @@ async function issuePasswordResetOtp(user, { awaitDelivery = true } = {}) {
   );
 }
 
+async function verifySmtpOnStartup() {
+  const transporter = getCachedTransporter();
+  if (!transporter) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[Email OTP] SMTP not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS on Render.');
+    } else {
+      console.log('[Email OTP] SMTP not configured — OTP codes will log to console in development.');
+    }
+    return;
+  }
+
+  try {
+    await withTimeout(transporter.verify(), SMTP_SEND_TIMEOUT_MS, 'SMTP verify');
+    console.log(`[Email OTP] SMTP ready (${process.env.SMTP_HOST}:${SMTP_PORT}, secure=${SMTP_SECURE})`);
+  } catch (err) {
+    console.error('[Email OTP] SMTP verify failed:', err.message);
+    console.error(
+      '[Email OTP] Check Render env: SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_FROM. '
+      + 'For Gmail on cloud hosts, use an App Password or switch to Brevo/SendGrid.'
+    );
+  }
+}
+
 module.exports = {
   OTP_TTL_MINUTES,
   RESEND_COOLDOWN_MS,
@@ -143,4 +178,5 @@ module.exports = {
   isPasswordResetOtpCoolingDown,
   issueEmailOtp,
   issuePasswordResetOtp,
+  verifySmtpOnStartup,
 };

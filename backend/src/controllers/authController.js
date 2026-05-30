@@ -393,8 +393,11 @@ exports.resendEmailOtp = async (req, res, next) => {
     if (user.emailVerified) throw new AppError('Email already verified', 400);
     if (isOtpCoolingDown(user)) throw new AppError('Please wait a minute before requesting another code', 429);
 
-    await issueEmailOtp(user);
-    sendResponse(res, 200, 'Verification code sent');
+    const emailResult = await issueEmailOtp(user, { awaitDelivery: false });
+    const message = emailResult?.queued
+      ? 'Verification code is being sent to your email.'
+      : 'Verification code sent';
+    sendResponse(res, 200, message);
   } catch (err) { next(err); }
 };
 
@@ -414,9 +417,11 @@ exports.forgotPassword = async (req, res, next) => {
       throw new AppError('Please wait a minute before requesting another code', 429);
     }
 
-    // Works for both local and Google-auth users.
-    await issuePasswordResetOtp(user);
-    sendResponse(res, 200, 'Password reset code sent to your email');
+    const emailResult = await issuePasswordResetOtp(user, { awaitDelivery: false });
+    const message = emailResult?.queued
+      ? 'Password reset code is being sent to your email.'
+      : 'Password reset code sent to your email';
+    sendResponse(res, 200, message);
   } catch (err) { next(err); }
 };
 

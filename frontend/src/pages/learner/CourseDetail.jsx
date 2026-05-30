@@ -13,7 +13,7 @@ const AIVideoPanel = lazy(() => import('../../components/ui/AIVideoPanel'));
 import CourseVideoPlayer from '../../components/ui/CourseVideoPlayer';
 import PdfViewer from '../../components/ui/PdfViewer';
 import { unwrapApiData } from '../../utils/apiData';
-import { getProtectedMaterialStreamUrl, resolveMaterialUrl } from '../../utils/materialUrl';
+import { getProtectedMaterialStreamUrl, resolveMaterialUrl, openProtectedMaterialInNewTab } from '../../utils/materialUrl';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
@@ -35,6 +35,7 @@ export default function CourseDetail() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState('lectures');
+  const [openingDocId, setOpeningDocId] = useState(null);
   const playerRef = useRef(null);
   const tabsRef = useRef(null);
   usePageTitle(course?.title || 'Course');
@@ -212,6 +213,18 @@ export default function CourseDetail() {
     }
   };
 
+  const handleOpenInNewTab = async (materialId) => {
+    if (!materialId) return;
+    setOpeningDocId(materialId);
+    try {
+      await openProtectedMaterialInNewTab(materialId);
+    } catch (err) {
+      toast.error(err.message || 'Could not open file in a new tab.');
+    } finally {
+      setOpeningDocId(null);
+    }
+  };
+
   const openMaterial = (m) => {
     if (m.type === 'youtube' || m.type === 'video') {
       playVideo(m);
@@ -223,7 +236,7 @@ export default function CourseDetail() {
     }
 
     if (m.fileUrl) {
-      window.open(getProtectedMaterialStreamUrl(m._id), '_blank', 'noopener,noreferrer');
+      handleOpenInNewTab(m._id);
     }
   };
 
@@ -435,20 +448,26 @@ export default function CourseDetail() {
                     {activeDocument.type === 'pdf' ? 'PDF document' : 'Presentation file'}
                   </p>
                 </div>
-                <a
-                  href={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
+                <button
+                  type="button"
+                  disabled={openingDocId === activeDocument._id}
+                  onClick={() => handleOpenInNewTab(activeDocument._id)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline disabled:opacity-60"
                 >
                   <ExternalLink size={14} />
-                  {activeDocument.type === 'pdf' ? 'Open PDF in new tab' : 'Open in new tab'}
-                </a>
+                  {openingDocId === activeDocument._id
+                    ? 'Opening…'
+                    : activeDocument.type === 'pdf'
+                      ? 'Open PDF in new tab'
+                      : 'Open in new tab'}
+                </button>
               </div>
               {activeDocument.type === 'pdf' ? (
                 <PdfViewer
                   key={activeDocument._id}
-                  src={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
+                  src={activeDocument.streamUrl}
+                  materialId={activeDocument._id}
+                  onOpenInNewTab={handleOpenInNewTab}
                   title={activeDocument.title}
                 />
               ) : (
@@ -457,15 +476,15 @@ export default function CourseDetail() {
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                     Presentations open best in PowerPoint or Google Slides.
                   </p>
-                  <a
-                    href={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary inline-flex items-center gap-2"
+                  <button
+                    type="button"
+                    disabled={openingDocId === activeDocument._id}
+                    onClick={() => handleOpenInNewTab(activeDocument._id)}
+                    className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
                   >
                     <ExternalLink size={16} />
-                    Download / open file
-                  </a>
+                    {openingDocId === activeDocument._id ? 'Opening…' : 'Download / open file'}
+                  </button>
                 </div>
               )}
             </div>

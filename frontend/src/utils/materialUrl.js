@@ -104,6 +104,18 @@ export async function createProtectedMaterialObjectUrl(materialId) {
   }
 }
 
+/** Open protected file in a new browser tab (uses auth header, not a raw API URL). */
+export async function openProtectedMaterialInNewTab(materialId) {
+  const blobUrl = await createProtectedMaterialObjectUrl(materialId);
+  const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    URL.revokeObjectURL(blobUrl);
+    throw new Error('Pop-up blocked. Allow pop-ups for this site and try again.');
+  }
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60 * 1000);
+  return blobUrl;
+}
+
 export async function createProtectedCourseThumbnailObjectUrl(courseId) {
   try {
     const res = await API.get(`/courses/${courseId}/thumbnail`, { responseType: 'blob' });

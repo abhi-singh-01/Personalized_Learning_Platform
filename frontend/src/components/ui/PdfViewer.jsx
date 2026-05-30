@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 
-export default function PdfViewer({ src, title }) {
+export default function PdfViewer({ src, title, materialId, onOpenInNewTab }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [opening, setOpening] = useState(false);
   const loadTimerRef = useRef(null);
 
   const clearLoadTimer = () => {
@@ -37,6 +38,16 @@ export default function PdfViewer({ src, title }) {
     setFailed(false);
   };
 
+  const handleOpenExternal = async () => {
+    if (!materialId || !onOpenInNewTab) return;
+    setOpening(true);
+    try {
+      await onOpenInNewTab(materialId);
+    } finally {
+      setOpening(false);
+    }
+  };
+
   if (!src) {
     return (
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-8 text-center">
@@ -62,15 +73,15 @@ export default function PdfViewer({ src, title }) {
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Could not preview this PDF in the browser. Open it in a new tab instead.
           </p>
-          <a
-            href={src}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary inline-flex items-center gap-2"
+          <button
+            type="button"
+            disabled={opening || !materialId || !onOpenInNewTab}
+            onClick={handleOpenExternal}
+            className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
           >
             <ExternalLink size={16} />
-            Open PDF
-          </a>
+            {opening ? 'Opening…' : 'Open PDF'}
+          </button>
         </div>
       ) : (
         <iframe
