@@ -25,8 +25,7 @@ export default function CourseDetail() {
   const [course, setCourse] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
-  const [activeYoutube, setActiveYoutube] = useState(null);
-  const [activeUploadedVideo, setActiveUploadedVideo] = useState(null);
+  const [activeVideo, setActiveVideo] = useState(null);
   const [activeArticle, setActiveArticle] = useState(null);
   const [activeDocument, setActiveDocument] = useState(null);
   const [progress, setProgress] = useState({ completedMaterials: [] });
@@ -49,12 +48,12 @@ export default function CourseDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (activeYoutube || activeUploadedVideo || activeDocument || activeArticle) {
+    if (activeVideo || activeDocument || activeArticle) {
       requestAnimationFrame(() => {
         playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-  }, [activeYoutube, activeUploadedVideo, activeDocument, activeArticle]);
+  }, [activeVideo, activeDocument, activeArticle]);
 
   const scrollToTabs = (tab) => {
     setActiveTab(tab);
@@ -151,38 +150,42 @@ export default function CourseDetail() {
     ? Math.round((progress.completedMaterials.length / materials.length) * 100)
     : 0;
 
-  const openMaterial = (m) => {
-    setActiveYoutube(null);
-    setActiveUploadedVideo(null);
+  const playVideo = (m) => {
     setActiveArticle(null);
     setActiveDocument(null);
 
     if (m.type === 'youtube') {
-      setActiveTab('lectures');
-      setActiveYoutube({ videoId: m.videoId, title: m.title, _id: m._id });
-      trackView(m._id);
-      requestAnimationFrame(() => {
-        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      return;
-    }
-
-    if (m.type === 'video') {
-      setActiveTab('lectures');
+      setActiveVideo({ _id: m._id, title: m.title, kind: 'youtube', videoId: m.videoId });
+    } else if (m.type === 'video') {
       if (!m.fileUrl) {
         toast.error('This video has no file. Ask your educator to re-upload it.');
         return;
       }
-      setActiveUploadedVideo({
-        ...m,
+      setActiveVideo({
+        _id: m._id,
+        title: m.title,
+        kind: 'upload',
         streamUrl: getProtectedMaterialStreamUrl(m._id),
+        fileUrl: m.fileUrl,
       });
-      trackView(m._id);
-      requestAnimationFrame(() => {
-        playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+    }
+
+    setActiveTab('lectures');
+    trackView(m._id);
+    requestAnimationFrame(() => {
+      playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const openMaterial = (m) => {
+    if (m.type === 'youtube' || m.type === 'video') {
+      playVideo(m);
       return;
     }
+
+    setActiveVideo(null);
+    setActiveArticle(null);
+    setActiveDocument(null);
 
     if (m.type === 'article') {
       setActiveTab('documents');
@@ -214,13 +217,17 @@ export default function CourseDetail() {
     const Icon = icons[m.type] || FileText;
     const isCompleted = progress.completedMaterials.includes(m._id);
     const isVideo = m.type === 'youtube' || m.type === 'video';
-    const isActive =
-      (m.type === 'youtube' && activeYoutube?._id === m._id)
-      || (m.type === 'video' && activeUploadedVideo?._id === m._id);
+    const isActive = activeVideo?._id === m._id;
 
     return (
       <div
+        role={isVideo ? 'button' : undefined}
+        tabIndex={isVideo ? 0 : undefined}
+        onClick={isVideo ? () => playVideo(m) : undefined}
+        onKeyDown={isVideo ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playVideo(m); } } : undefined}
         className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
+          isVideo ? 'cursor-pointer' : ''
+        } ${
           isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-200 dark:ring-primary-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'
         }`}
       >
@@ -242,7 +249,7 @@ export default function CourseDetail() {
         </div>
         <button
           type="button"
-          onClick={() => openMaterial(m)}
+          onClick={(e) => { e.stopPropagation(); openMaterial(m); }}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
             isVideo
               ? 'bg-red-500 hover:bg-red-600 text-white'
@@ -357,27 +364,28 @@ export default function CourseDetail() {
         </Link>
       </div>
 
-      {/* Video / document / article player */}
-      {(activeYoutube || activeArticle || activeUploadedVideo || activeDocument) && (
+      {/* Video player — one video at a time */}
+      {activeVideo && (
         <div ref={playerRef} className="card scroll-mt-20">
-          {activeYoutube && (
-            <CourseVideoPlayer
-              youtubeId={activeYoutube.videoId}
-              title={activeYoutube.title}
-            />
+          <CourseVideoPlayer
+            key={activeVideo._id}
+            youtubeId={activeVideo.kind === 'youtube' ? activeVideo.videoId : undefined}
+            src={activeVideo.kind === 'upload'
+              ? activeVideo.streamUrl || resolveMaterialUrl(activeVideo.fileUrl)
+              : undefined}
+            title={activeVideo.title}
+          />
+          {activeVideo.kind === 'upload' && (
+            <Suspense fallback={null}>
+              <AIVideoPanel materialId={activeVideo._id} materialTitle={activeVideo.title} />
+            </Suspense>
           )}
-          {activeUploadedVideo && (
-            <>
-              <CourseVideoPlayer
-                key={activeUploadedVideo._id}
-                src={activeUploadedVideo.streamUrl || resolveMaterialUrl(activeUploadedVideo.fileUrl)}
-                title={activeUploadedVideo.title}
-              />
-              <Suspense fallback={null}>
-                <AIVideoPanel materialId={activeUploadedVideo._id} materialTitle={activeUploadedVideo.title} />
-              </Suspense>
-            </>
-          )}
+        </div>
+      )}
+
+      {/* Document / article viewer */}
+      {(activeArticle || activeDocument) && (
+        <div ref={playerRef} className="card scroll-mt-20">
           {activeArticle && (
             <div className="prose dark:prose-invert max-w-none">
               <h2 className="text-2xl font-bold mb-4">{activeArticle.title}</h2>
@@ -417,7 +425,7 @@ export default function CourseDetail() {
                     Presentations open best in PowerPoint or Google Slides.
                   </p>
                   <a
-                    href={activeDocument.protectedUrl || resolveMaterialUrl(activeDocument.fileUrl)}
+                    href={activeDocument.streamUrl || resolveMaterialUrl(activeDocument.fileUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-primary inline-flex items-center gap-2"

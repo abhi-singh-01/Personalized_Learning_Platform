@@ -114,6 +114,7 @@ export default function CourseVideoPlayer({ title, src, youtubeId }) {
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
+          autoplay: 1,
           origin: window.location.origin,
         },
         events: {
@@ -150,12 +151,14 @@ export default function CourseVideoPlayer({ title, src, youtubeId }) {
 
     return () => {
       clearInterval(tick);
-      ytPlayerRef.current = null;
       try {
+        player?.pauseVideo?.();
+        player?.stopVideo?.();
         player?.destroy?.();
       } catch {
         /* ignore */
       }
+      ytPlayerRef.current = null;
     };
   }, [isYouTube, youtubeId]);
 
