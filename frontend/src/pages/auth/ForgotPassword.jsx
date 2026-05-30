@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function ForgotPassword() {
-  usePageTitle('Forgot Password');
+  const [searchParams] = useSearchParams();
+  const isEducatorFlow = searchParams.get('role') === 'educator';
+  const loginPath = isEducatorFlow ? '/login?role=educator' : '/login';
+  usePageTitle(isEducatorFlow ? 'Educator Forgot Password' : 'Forgot Password');
+
   const { forgotPassword } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
@@ -21,7 +25,8 @@ export default function ForgotPassword() {
     try {
       await forgotPassword(email);
       toast.success('If the account exists, a reset code was sent');
-      nav(`/reset-password?email=${encodeURIComponent(email)}`, { replace: true });
+      const roleQuery = isEducatorFlow ? '&role=educator' : '';
+      nav(`/reset-password?email=${encodeURIComponent(email)}${roleQuery}`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Could not send reset code';
       setError(msg);
@@ -34,13 +39,17 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-8">
-        <Link to="/login" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6">
+        <Link to={loginPath} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6">
           <ArrowLeft size={16} />
           Back to sign in
         </Link>
 
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">Reset your password</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enter your account email and we will send a 6-digit reset code.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          {isEducatorFlow
+            ? 'Enter your educator account email and we will send a 6-digit reset code.'
+            : 'Enter your learner account email and we will send a 6-digit reset code.'}
+        </p>
 
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100 dark:border-red-800/40">

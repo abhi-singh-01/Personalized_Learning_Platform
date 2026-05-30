@@ -7,6 +7,7 @@ const RESEND_COOLDOWN_MS = 60 * 1000;
 const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS || 20000);
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true';
+const BREVO_API_KEY = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
 
 function generateOtp() {
   return String(crypto.randomInt(100000, 1000000));
@@ -36,6 +37,33 @@ function withTimeout(promise, ms, label) {
       setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
     }),
   ]);
+}
+
+function parseFromAddress(fromRaw) {
+  const from = String(fromRaw || '').trim();
+  const match = from.match(/^(.+?)\s*<([^>]+)>$/);
+  if (match) {
+    return { name: match[1].trim().replace(/^["']|["']$/g, ''), email: match[2].trim() };
+  }
+  return { name: process.env.APP_NAME || 'PLP', email: from };
+}
+
+function buildOtpEmailContent({ name, otp, purpose = 'email_verification' }) {
+  const appName = process.env.APP_NAME || 'PLP';
+  const isPasswordReset = purpose === 'password_reset';
+  const heading = isPasswordReset ? 'Password reset verification' : 'Email verification';
+  const subject = isPasswordReset ? `${appName} password reset code` : `${appName} email verification code`;
+  const text = `Hi ${name || 'there'},\n\nYour ${appName} verification code is ${otp}.\nIt expires in ${OTP_TTL_MINUTES} minutes.\n\nIf you did not request this, you can ignore this email.`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">
+      <h2 style="margin:0 0 12px">${appName} ${heading}</h2>
+      <p>Hi ${name || 'there'},</p>
+      <p>Your verification code is:</p>
+      <div style="font-size:28px;font-weight:700;letter-spacing:6px;background:#f3f4f6;border-radius:12px;padding:14px 18px;display:inline-block">${otp}</div>
+      <p style="color:#6b7280;font-size:13px">This code expires in ${OTP_TTL_MINUTES} minutes.</p>
+    </div>
+  `;
+  return { subject, text, html };
 }
 
 function getTransporter() {
@@ -68,15 +96,63 @@ function getCachedTransporter() {
   return cachedTransporter || null;
 }
 
-async function sendOtpEmail({ to, name, otp, purpose = 'email_verification' }) {
-  const transporter = getCachedTransporter();
-  const appName = process.env.APP_NAME || 'PLP';
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@example.com';
-  const isPasswordReset = purpose === 'password_reset';
-  const heading = isPasswordReset ? 'Password reset verification' : 'Email verification';
-  const subject = isPasswordReset ? `${appName} password reset code` : `${appName} email verification code`;
+function isEmailConfigured() {
+  return Boolean(BREVO_API_KEY || getCachedTransporter());
+}
 
+async function sendViaBrevoApi({ to, name, subject, text, html }) {
+  const fromRaw = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@example.com';
+  const sender = parseFromAddress(fromRaw);
+
+  const response = await withTimeout(
+    fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to, name: name || to }],
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
+    }),
+    SMTP_SEND_TIMEOUT_MS,
+    'Brevo API send'
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Brevo API ${response.status}: ${body.slice(0, 200) || response.statusText}`);
+  }
+
+  return { sent: true, provider: 'brevo-api' };
+}
+
+async function sendViaSmtp({ to, name, subject, text, html }) {
+  const transporter = getCachedTransporter();
   if (!transporter) {
+    throw new Error('SMTP is not configured');
+  }
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@example.com';
+
+  await withTimeout(
+    transporter.sendMail({ from, to, subject, text, html }),
+    SMTP_SEND_TIMEOUT_MS,
+    'SMTP send'
+  );
+
+  return { sent: true, provider: 'smtp' };
+}
+
+async function sendOtpEmail({ to, name, otp, purpose = 'email_verification' }) {
+  const { subject, text, html } = buildOtpEmailContent({ name, otp, purpose });
+
+  if (!isEmailConfigured()) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Email delivery is not configured');
     }
@@ -84,27 +160,11 @@ async function sendOtpEmail({ to, name, otp, purpose = 'email_verification' }) {
     return { sent: false, fallback: 'console' };
   }
 
-  await withTimeout(
-    transporter.sendMail({
-      from,
-      to,
-      subject,
-      text: `Hi ${name || 'there'},\n\nYour ${appName} verification code is ${otp}.\nIt expires in ${OTP_TTL_MINUTES} minutes.\n\nIf you did not request this, you can ignore this email.`,
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">
-          <h2 style="margin:0 0 12px">${appName} ${heading}</h2>
-          <p>Hi ${name || 'there'},</p>
-          <p>Your verification code is:</p>
-          <div style="font-size:28px;font-weight:700;letter-spacing:6px;background:#f3f4f6;border-radius:12px;padding:14px 18px;display:inline-block">${otp}</div>
-          <p style="color:#6b7280;font-size:13px">This code expires in ${OTP_TTL_MINUTES} minutes.</p>
-        </div>
-      `,
-    }),
-    SMTP_SEND_TIMEOUT_MS,
-    'SMTP send'
-  );
+  if (BREVO_API_KEY) {
+    return sendViaBrevoApi({ to, name, subject, text, html });
+  }
 
-  return { sent: true };
+  return sendViaSmtp({ to, name, subject, text, html });
 }
 
 async function deliverOtpEmail(payload, awaitDelivery) {
@@ -147,12 +207,34 @@ async function issuePasswordResetOtp(user, { awaitDelivery = false } = {}) {
 }
 
 async function verifySmtpOnStartup() {
+  if (BREVO_API_KEY) {
+    try {
+      const response = await withTimeout(
+        fetch('https://api.brevo.com/v3/account', {
+          headers: { accept: 'application/json', 'api-key': BREVO_API_KEY },
+        }),
+        SMTP_SEND_TIMEOUT_MS,
+        'Brevo API verify'
+      );
+      if (response.ok) {
+        console.log('[Email OTP] Brevo API ready (HTTPS — recommended on Render)');
+        return;
+      }
+      const body = await response.text().catch(() => '');
+      console.error('[Email OTP] Brevo API verify failed:', response.status, body.slice(0, 160));
+    } catch (err) {
+      console.error('[Email OTP] Brevo API verify failed:', err.message);
+    }
+    console.error('[Email OTP] Set BREVO_API_KEY from Brevo → SMTP & API → API Keys (xkeysib-...)');
+    return;
+  }
+
   const transporter = getCachedTransporter();
   if (!transporter) {
     if (process.env.NODE_ENV === 'production') {
-      console.warn('[Email OTP] SMTP not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS on Render.');
+      console.warn('[Email OTP] Email not configured — set BREVO_API_KEY (recommended) or SMTP_* on Render.');
     } else {
-      console.log('[Email OTP] SMTP not configured — OTP codes will log to console in development.');
+      console.log('[Email OTP] Email not configured — OTP codes log to console in development.');
     }
     return;
   }
@@ -163,8 +245,7 @@ async function verifySmtpOnStartup() {
   } catch (err) {
     console.error('[Email OTP] SMTP verify failed:', err.message);
     console.error(
-      '[Email OTP] Check Render env: SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_FROM. '
-      + 'Use Brevo SMTP (smtp-relay.brevo.com) for production email delivery.'
+      '[Email OTP] SMTP often times out on Render. Prefer BREVO_API_KEY (HTTPS) from Brevo → SMTP & API → API Keys.'
     );
   }
 }

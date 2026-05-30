@@ -199,23 +199,11 @@ export function AuthProvider({ children }) {
     const res = await API.post('/auth/register', data);
     const payload = res.data.data;
     if (payload?.token && payload?.user) {
+      assertClientPortalAccess(payload.user, data.role);
       persistLogin(payload.token, payload.user);
       return payload.user;
     }
-    return payload;
-  };
-
-  const verifyEmailOtp = async (email, otp, role) => {
-    const res = await API.post('/auth/verify-email', { email, otp, role });
-    const { token: t, user: u } = res.data.data;
-    assertClientPortalAccess(u, role);
-    persistLogin(t, u);
-    return u;
-  };
-
-  const resendEmailOtp = async (email) => {
-    const res = await API.post('/auth/resend-email-otp', { email });
-    return res.data.data;
+    return payload?.user || payload;
   };
 
   const forgotPassword = async (email) => {
@@ -262,8 +250,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, role, token,
-      login, googleLogin, register, verifyEmailOtp, resendEmailOtp,
-      forgotPassword, resetPassword, logout, refreshUser, switchRole,
+      login, googleLogin, register, forgotPassword, resetPassword, logout, refreshUser, switchRole,
       sessionWarning, extendSession,
     }}>
       {children}

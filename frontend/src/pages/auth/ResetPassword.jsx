@@ -6,8 +6,11 @@ import { useToast } from '../../context/ToastContext';
 import usePageTitle from '../../hooks/usePageTitle';
 
 export default function ResetPassword() {
-  usePageTitle('Reset Password');
   const [params] = useSearchParams();
+  const isEducatorFlow = params.get('role') === 'educator';
+  const loginPath = isEducatorFlow ? '/login?role=educator' : '/login';
+  usePageTitle('Reset Password');
+
   const { resetPassword, forgotPassword } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
@@ -32,7 +35,7 @@ export default function ResetPassword() {
     try {
       await resetPassword({ email: form.email, otp: form.otp, password: form.password });
       toast.success('Password reset successfully. Please sign in.');
-      nav('/login', { replace: true });
+      nav(loginPath, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Password reset failed';
       setError(msg);
@@ -60,7 +63,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-8">
-        <Link to="/login" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6">
+        <Link to={loginPath} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6">
           <ArrowLeft size={16} />
           Back to sign in
         </Link>

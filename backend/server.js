@@ -7,7 +7,6 @@ const { isOriginAllowed } = require('./src/config/corsOrigins');
 const initializeSocket = require('./src/services/socketService');
 const startPayoutCron = require('./src/services/payoutCron');
 const startFailedPaymentRetentionCron = require('./src/services/failedPaymentRetentionCron');
-const { verifySmtpOnStartup } = require('./src/services/emailOtpService');
 
 connectDB().then(() => {
   // Create HTTP server from Express app
@@ -39,8 +38,5 @@ connectDB().then(() => {
   server.listen(port, () => {
     console.log(`Server running on port ${port}`);
     console.log(`Socket.io ready for connections`);
-    verifySmtpOnStartup().catch((err) => {
-      console.error('[Email OTP] Startup verify error:', err.message);
-    });
   });
 });

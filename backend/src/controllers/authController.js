@@ -9,9 +9,7 @@ const { getCachedSettings } = require('../utils/settingsCache');
 const { JWT_SECRET, JWT_EXPIRES_IN, GOOGLE_CLIENT_ID } = require('../config/env');
 const {
   hashOtp,
-  isOtpCoolingDown,
   isPasswordResetOtpCoolingDown,
-  issueEmailOtp,
   issuePasswordResetOtp,
 } = require('../services/emailOtpService');
 
@@ -138,6 +136,27 @@ const registerSession = async (user, tokenId, req) => {
   return session;
 };
 
+async function createAuthResponse(user, req) {
+  const tokenId = generateTokenId();
+  const session = await registerSession(user, tokenId, req);
+  const token = signToken(user._id, user.role, tokenId);
+  return {
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      aiLevel: user.aiLevel,
+      authProvider: user.authProvider,
+      profileComplete: user.profileComplete,
+      emailVerified: true,
+    },
+    deviceInfo: session.deviceInfo,
+  };
+};
+
 exports.registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
@@ -149,66 +168,20 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role, phone, country, state, city } = req.body;
     const normalizedEmail = String(email).trim().toLowerCase();
-    const exists = await User.findOne({ email: normalizedEmail }).select(
-      '+password name email role profileComplete authProvider emailVerified emailOtpLastSentAt'
-    );
-
+    const exists = await User.findOne({ email: normalizedEmail });
     if (exists) {
-      if (exists.emailVerified) {
-        throw new AppError('An account with this email already exists. Please sign in instead.', 400);
-      }
-      if (exists.authProvider === 'google') {
-        throw new AppError('This email is linked to Google sign-in. Use Continue with Google on the sign-in page.', 400);
-      }
-
-      const passwordMatch = await exists.comparePassword(password);
-      if (!passwordMatch) {
-        throw new AppError(
-          'This email is registered but not verified yet. Sign in with the password you used when registering, then enter the verification code.',
-          400,
-          { pendingVerification: true, email: normalizedEmail }
-        );
-      }
-
-      const emailResult = await issueEmailOtp(exists, { awaitDelivery: false });
-      const message = emailResult?.queued
-        ? 'Your account was created but email is not verified yet. A new verification code is being sent.'
-        : 'Your account was created but email is not verified yet. Sign in to enter your verification code.';
-
-      return sendResponse(res, 200, message, {
-        verificationRequired: true,
-        pendingVerification: true,
-        email: exists.email,
-        user: {
-          id: exists._id,
-          name: exists.name,
-          email: exists.email,
-          role: exists.role,
-          profileComplete: exists.profileComplete,
-          emailVerified: false,
-        },
-      });
+      throw new AppError('An account with this email already exists. Please sign in instead.', 400);
     }
 
     const user = await User.create({
       name, email: normalizedEmail, password, role, authProvider: 'local',
       phone: phone || '', country: country || '', state: state || '', city: city || '',
       profileComplete: !!(phone && country && state && city),
-      emailVerified: false,
+      emailVerified: true,
     });
 
-    const emailResult = await issueEmailOtp(user, { awaitDelivery: false });
-    const message = emailResult?.queued
-      ? 'Account created. Verification code is being sent to your email.'
-      : emailResult?.sent === false
-        ? 'Account created. We could not send the verification email — use Resend code on the sign-in page.'
-        : 'Verification code sent to your email';
-
-    sendResponse(res, 201, message, {
-      verificationRequired: true,
-      email: user.email,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, profileComplete: user.profileComplete, emailVerified: false },
-    });
+    const auth = await createAuthResponse(user, req);
+    sendResponse(res, 201, 'Account created successfully', auth);
   } catch (err) { next(err); }
 };
 
@@ -224,7 +197,7 @@ exports.login = async (req, res, next) => {
     const normalizedEmail = String(email).trim().toLowerCase();
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+password name email role avatar aiLevel authProvider isBlocked blockedReason emailVerified emailOtpHash emailOtpExpiresAt emailOtpLastSentAt activeSessions maxDevices'
+      '+password name email role avatar aiLevel authProvider isBlocked blockedReason emailVerified activeSessions maxDevices profileComplete'
     );
 
     const settingsPromise = getCachedSettings();
@@ -243,15 +216,9 @@ exports.login = async (req, res, next) => {
 
     assertPortalRoleAccess(user, role, portalAuthOptions(role));
 
-    if (user.authProvider === 'local' && user.emailVerified === false) {
-      if (!isOtpCoolingDown(user)) {
-        issueEmailOtp(user, { awaitDelivery: false });
-      }
-      throw new AppError(
-        'Please verify your email before signing in. Enter the code below or use Resend code.',
-        403,
-        { verificationRequired: true, email: normalizedEmail }
-      );
+    if (!user.emailVerified) {
+      user.emailVerified = true;
+      await User.updateOne({ _id: user._id }, { $set: { emailVerified: true } });
     }
 
     const settings = await settingsPromise;
@@ -369,91 +336,32 @@ exports.googleLogin = async (req, res, next) => {
   }
 };
 
-exports.verifyEmailOtp = async (req, res, next) => {
-  try {
-    const { email, otp, role } = req.body;
-    if (!email || !otp) throw new AppError('Email and OTP are required', 400);
-    if (!role || !['learner', 'educator', 'admin'].includes(role)) {
-      throw new AppError('Sign-in portal role is required', 400);
-    }
-
-    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
-    if (!user) throw new AppError('Invalid verification request', 400);
-    if (user.isBlocked) {
-      throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
-    }
-    assertPortalRoleAccess(user, role, portalAuthOptions(role));
-    if (user.emailVerified) throw new AppError('Email already verified', 400);
-    if (!user.emailOtpHash || !user.emailOtpExpiresAt) throw new AppError('Verification code has expired. Request a new code.', 400);
-    if (new Date(user.emailOtpExpiresAt).getTime() < Date.now()) {
-      throw new AppError('Verification code has expired. Request a new code.', 400);
-    }
-    if (user.emailOtpAttempts >= 5) {
-      throw new AppError('Too many incorrect attempts. Request a new code.', 429);
-    }
-
-    if (hashOtp(otp) !== user.emailOtpHash) {
-      user.emailOtpAttempts += 1;
-      await user.save();
-      throw new AppError('Invalid verification code', 400);
-    }
-
-    user.emailVerified = true;
-    user.emailOtpHash = '';
-    user.emailOtpExpiresAt = null;
-    user.emailOtpLastSentAt = null;
-    user.emailOtpAttempts = 0;
-
-    const tokenId = generateTokenId();
-    await registerSession(user, tokenId, req);
-    const token = signToken(user._id, user.role, tokenId);
-
-    sendResponse(res, 200, 'Email verified successfully', {
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        aiLevel: user.aiLevel,
-        profileComplete: user.profileComplete,
-        authProvider: user.authProvider,
-        emailVerified: true,
-      },
-    });
-  } catch (err) { next(err); }
-};
-
-exports.resendEmailOtp = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-    if (!email) throw new AppError('Email is required', 400);
-
-    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
-    if (!user) throw new AppError('Invalid verification request', 400);
-    if (user.emailVerified) throw new AppError('Email already verified', 400);
-    if (isOtpCoolingDown(user)) throw new AppError('Please wait a minute before requesting another code', 429);
-
-    const emailResult = await issueEmailOtp(user, { awaitDelivery: false });
-    const message = emailResult?.queued
-      ? 'Verification code is being sent to your email.'
-      : 'Verification code sent';
-    sendResponse(res, 200, message);
-  } catch (err) { next(err); }
-};
-
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) throw new AppError('Email is required', 400);
 
-    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() }).select(
+      'password role isBlocked blockedReason passwordResetOtpLastSentAt email name'
+    );
     if (!user) {
       throw new AppError('No account found with this email', 404);
     }
+
+    if (user.role === 'teacher') user.role = 'educator';
+    if (user.role === 'student') user.role = 'learner';
+
+    if (user.role === 'admin') {
+      throw new AppError('Password reset is only available for learner and educator accounts', 403);
+    }
+    if (!['learner', 'educator'].includes(user.role)) {
+      throw new AppError('Password reset is only available for learner and educator accounts', 403);
+    }
     if (user.isBlocked) {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
+    }
+    if (!user.password) {
+      throw new AppError('This account uses Google sign-in. Please sign in with Google instead.', 400);
     }
     if (isPasswordResetOtpCoolingDown(user)) {
       throw new AppError('Please wait a minute before requesting another code', 429);
@@ -475,6 +383,16 @@ exports.resetPassword = async (req, res, next) => {
 
     const user = await User.findOne({ email: String(email).trim().toLowerCase() });
     if (!user) throw new AppError('No account found with this email', 404);
+
+    if (user.role === 'teacher') user.role = 'educator';
+    if (user.role === 'student') user.role = 'learner';
+
+    if (user.role === 'admin') {
+      throw new AppError('Password reset is only available for learner and educator accounts', 403);
+    }
+    if (!['learner', 'educator'].includes(user.role)) {
+      throw new AppError('Password reset is only available for learner and educator accounts', 403);
+    }
     if (user.isBlocked) {
       throw new AppError(`Account is blocked: ${user.blockedReason || 'Contact support'}`, 403);
     }

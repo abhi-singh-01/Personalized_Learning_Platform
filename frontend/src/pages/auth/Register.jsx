@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, ArrowRight, Phone, MapPin, Mail, RotateCcw } from 'lucide-react';
+import { GraduationCap, ArrowRight, Phone, MapPin } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
@@ -76,19 +76,14 @@ export default function Register() {
   const isEducatorFlow = searchParams.get('role') === 'educator';
   usePageTitle(isEducatorFlow ? 'Educator Sign Up' : 'Sign Up');
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', country: '', state: '', city: '' });
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const { register, verifyEmailOtp, resendEmailOtp, googleLogin } = useAuth();
+  const { register, googleLogin } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
 
   useEffect(() => {
     setError('');
-    setVerificationEmail('');
-    setOtp('');
   }, [isEducatorFlow]);
 
   const redirectToMatchingPortal = useCallback((message) => {
@@ -113,62 +108,15 @@ export default function Register() {
     setLoading(true);
     try {
       const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-      const result = await register({ ...form, role: selectedRole });
-      if (result?.verificationRequired) {
-        setVerificationEmail(result.email || form.email);
-        toast.success(
-          result.pendingVerification
-            ? 'Account found — enter the verification code sent to your email.'
-            : 'Verification code sent to your email'
-        );
-        return;
-      }
-      const user = result;
+      const user = await register({ ...form, role: selectedRole });
       toast.success(isEducatorFlow ? 'Educator account created! Welcome aboard 🎉' : 'Account created successfully! Welcome aboard 🎉');
       nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed';
-      const pending = err.response?.data?.data?.pendingVerification;
       if (redirectToMatchingPortal(msg)) return;
       setError(msg);
-      if (pending) {
-        toast.info('Use Sign in with the same password, then verify your email.');
-      } else {
-        toast.error(msg);
-      }
-    } finally { setLoading(false); }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError('');
-    const cleanOtp = otp.replace(/\D/g, '').slice(0, 6);
-    if (cleanOtp.length !== 6) { setError('Enter the 6-digit verification code'); return; }
-
-    setLoading(true);
-    try {
-      const selectedRole = isEducatorFlow ? 'educator' : 'learner';
-      const user = await verifyEmailOtp(verificationEmail, cleanOtp, selectedRole);
-      toast.success('Email verified successfully');
-      nav(`/${roleHomeSegment(user.role || selectedRole)}/dashboard`, { replace: true });
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Verification failed';
-      setError(msg);
       toast.error(msg);
     } finally { setLoading(false); }
-  };
-
-  const handleResendOtp = async () => {
-    setError('');
-    setResendLoading(true);
-    try {
-      await resendEmailOtp(verificationEmail);
-      toast.success('A new verification code was sent');
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Could not resend the code';
-      setError(msg);
-      toast.error(msg);
-    } finally { setResendLoading(false); }
   };
 
   const handleGoogleCredential = useCallback(
@@ -220,9 +168,7 @@ export default function Register() {
             {isEducatorFlow ? 'Create your educator account' : 'Create your account'}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            {verificationEmail
-              ? 'Enter the code sent to your email to activate your account'
-              : (isEducatorFlow ? 'Start teaching and earning — free to get started' : 'Start learning for free — no credit card required')}
+            {isEducatorFlow ? 'Start teaching and earning — free to get started' : 'Start learning for free — no credit card required'}
           </p>
 
           {error && (
@@ -231,7 +177,7 @@ export default function Register() {
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                 {error}
               </div>
-              {(error.toLowerCase().includes('sign in') || error.toLowerCase().includes('not verified')) && (
+              {error.toLowerCase().includes('sign in') && (
                 <Link
                   to={isEducatorFlow ? '/login?role=educator' : '/login'}
                   className="mt-2 inline-flex text-sm font-semibold text-purple-700 dark:text-purple-300 hover:underline"
@@ -242,70 +188,34 @@ export default function Register() {
             </div>
           )}
 
-          {verificationEmail ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800/40 p-4 flex gap-3">
-                <Mail size={20} className="text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Check your inbox</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 break-all">{verificationEmail}</p>
-                </div>
-              </div>
+          <div className="mb-5">
+            <GoogleSignInButton
+              key={isEducatorFlow ? 'educator' : 'learner'}
+              mode="signup"
+              onCredential={handleGoogleCredential}
+              onGsiError={(msg) => setError(msg)}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
+            >
+              {(busy) =>
+                busy ? (
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <GoogleIcon />
+                    Sign up with Google
+                  </>
+                )
+              }
+            </GoogleSignInButton>
+          </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">6-digit OTP</label>
-                <input
-                  className="input-field text-center text-lg font-semibold tracking-[0.4em]"
-                  inputMode="numeric"
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  required
-                  maxLength={6}
-                />
-              </div>
+          <div className="flex items-center gap-4 mb-5">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+          </div>
 
-              <button type="submit" disabled={loading}
-                className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50">
-                {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</> : <>Verify email <ArrowRight size={18} /></>}
-              </button>
-
-              <button type="button" onClick={handleResendOtp} disabled={resendLoading}
-                className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 py-3 rounded-xl transition-colors disabled:opacity-50">
-                <RotateCcw size={16} />
-                {resendLoading ? 'Sending...' : 'Resend code'}
-              </button>
-            </form>
-          ) : (
-            <>
-              <div className="mb-5">
-                <GoogleSignInButton
-                  key={isEducatorFlow ? 'educator' : 'learner'}
-                  mode="signup"
-                  onCredential={handleGoogleCredential}
-                  onGsiError={(msg) => setError(msg)}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50"
-                >
-                  {(busy) =>
-                    busy ? (
-                      <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <GoogleIcon />
-                        Sign up with Google
-                      </>
-                    )
-                  }
-                </GoogleSignInButton>
-              </div>
-
-              <div className="flex items-center gap-4 mb-5">
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">or</span>
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
               <input className="input-field" placeholder="John Doe" value={form.name} onChange={(e) => updateField('name', e.target.value)} required />
@@ -319,7 +229,6 @@ export default function Register() {
               <input type="password" className="input-field" placeholder="Min 6 characters" value={form.password} onChange={(e) => updateField('password', e.target.value)} required minLength={6} />
             </div>
 
-            {/* Phone */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                 Mobile Number <span className="text-red-500">*</span>
@@ -335,7 +244,6 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Country */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                 Country <span className="text-red-500">*</span>
@@ -349,7 +257,6 @@ export default function Register() {
               </div>
             </div>
 
-            {/* State & City */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -375,9 +282,7 @@ export default function Register() {
               className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50">
               {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creating...</> : <>Sign up <ArrowRight size={18} /></>}
             </button>
-              </form>
-            </>
-          )}
+          </form>
 
           <p className="text-[11px] text-gray-400 text-center mt-4 leading-relaxed">
             By signing up, you agree to our Terms of Service and Privacy Policy.

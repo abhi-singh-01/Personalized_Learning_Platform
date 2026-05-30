@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, RotateCcw } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useToast } from '../../context/ToastContext';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
@@ -22,12 +22,9 @@ function GoogleIcon({ size = 20 }) {
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [show, setShow] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const { login, googleLogin, verifyEmailOtp, resendEmailOtp } = useAuth();
+  const { login, googleLogin } = useAuth();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionEvicted = searchParams.get('reason') === 'session_expired';
@@ -39,8 +36,6 @@ export default function Login() {
 
   useEffect(() => {
     setError('');
-    setVerificationEmail('');
-    setOtp('');
   }, [isEducatorFlow]);
 
   const redirectToMatchingPortal = useCallback((message) => {
@@ -72,13 +67,6 @@ export default function Login() {
     } catch (err) {
       const msg = err.response?.data?.message || 'Sign in failed';
       if (redirectToMatchingPortal(msg)) return;
-      if (err.response?.status === 403 && msg.toLowerCase().includes('verify')) {
-        setVerificationEmail(form.email);
-        setError('');
-        toast.info(msg);
-        setLoading(false);
-        return;
-      }
       setError(msg);
       toast.error(msg);
     } finally {
@@ -101,42 +89,6 @@ export default function Login() {
     },
     [googleLogin, portalRole, redirectAfterLogin, redirectToMatchingPortal, toast]
   );
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError('');
-    const cleanOtp = otp.replace(/\D/g, '').slice(0, 6);
-    if (cleanOtp.length !== 6) { setError('Enter the 6-digit verification code'); return; }
-
-    setLoading(true);
-    try {
-      const user = await verifyEmailOtp(verificationEmail, cleanOtp, portalRole);
-      toast.success('Email verified successfully');
-      redirectAfterLogin(user);
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Verification failed';
-      if (redirectToMatchingPortal(msg)) return;
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setError('');
-    setResendLoading(true);
-    try {
-      await resendEmailOtp(verificationEmail);
-      toast.success('A new verification code was sent');
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Could not resend the code';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setResendLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-[#0A0A0A]">
@@ -258,56 +210,7 @@ export default function Login() {
               </div>
             )}
 
-            {verificationEmail ? (
-              <form onSubmit={handleVerifyOtp} className="space-y-5">
-                <div className="rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800/40 p-4">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Verify your email</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 break-all">{verificationEmail}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">6-digit OTP</label>
-                  <input
-                    className="input-field text-center text-lg font-semibold tracking-[0.4em]"
-                    inputMode="numeric"
-                    placeholder="000000"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    required
-                    maxLength={6}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    <>
-                      <LogIn size={18} />
-                      Verify and sign in
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  disabled={resendLoading}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 py-3 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  <RotateCcw size={16} />
-                  {resendLoading ? 'Sending...' : 'Resend code'}
-                </button>
-              </form>
-            ) : (
-              <>
+            <>
                 {/* Google Sign-In */}
                 <div className="mb-5">
                   <GoogleSignInButton
@@ -380,6 +283,14 @@ export default function Login() {
                         {show ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                    <div className="text-right mt-2">
+                      <Link
+                        to={isEducatorFlow ? '/forgot-password?role=educator' : '/forgot-password'}
+                        className="text-sm font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
                   </div>
 
                   <button
@@ -399,14 +310,8 @@ export default function Login() {
                       </>
                     )}
                   </button>
-                  <div className="text-right">
-                    <Link to="/forgot-password" className="text-sm font-semibold text-purple-600 dark:text-purple-400 hover:underline">
-                      Forgot password?
-                    </Link>
-                  </div>
                 </form>
-              </>
-            )}
+            </>
 
             {/* Sign up link */}
             <div className="flex items-center gap-4 my-6">
